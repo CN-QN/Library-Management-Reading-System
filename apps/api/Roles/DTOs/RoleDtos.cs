@@ -1,13 +1,9 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace api.Roles.DTOs;
 
 public class CreateRoleRequest
 {
-    [Required]
     public string Code { get; set; } = string.Empty;
 
-    [Required]
     public string Name { get; set; } = string.Empty;
 
     public string Scope { get; set; } = "GLOBAL"; // GLOBAL, BRANCH
@@ -15,7 +11,6 @@ public class CreateRoleRequest
 
 public class UpdateRoleRequest
 {
-    [Required]
     public string Name { get; set; } = string.Empty;
     public string Scope { get; set; } = "GLOBAL";
     public string Status { get; set; } = "ACTIVE";
@@ -23,7 +18,6 @@ public class UpdateRoleRequest
 
 public class AssignPermissionRequest
 {
-    [Required]
     public string PermissionId { get; set; } = string.Empty;
 }
 

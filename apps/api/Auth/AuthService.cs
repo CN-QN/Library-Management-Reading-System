@@ -40,14 +40,14 @@ public class AuthService
         var emailExists = await _context.Users.Find(u => u.Email == request.Email).AnyAsync();
         if (emailExists)
         {
-            throw new ConflictException(ErrorCodes.BOOK_002, "Email is already registered."); // Reusing conflict code
+            throw new ConflictException(ErrorCodes.USER_001, "Email này đã được đăng ký.");
         }
 
         // 2. Check if student code exists
         var codeExists = await _context.Users.Find(u => u.StudentCode == request.StudentCode).AnyAsync();
         if (codeExists)
         {
-            throw new ConflictException(ErrorCodes.BOOK_002, "Student code is already registered.");
+            throw new ConflictException(ErrorCodes.USER_002, "Mã sinh viên này đã được đăng ký.");
         }
 
         // 3. Create User

@@ -6,6 +6,10 @@ public static class ErrorCodes
     public const string AUTH_002 = "AUTH_002"; // Refresh token hết hạn/thu hồi
     public const string AUTH_003 = "AUTH_003"; // Tài khoản bị khóa
     
+    public const string USER_001 = "USER_001"; // Email đã được đăng ký
+    public const string USER_002 = "USER_002"; // Mã sinh viên đã được đăng ký
+    public const string USER_003 = "USER_003"; // Không tìm thấy người dùng
+    
     public const string PERM_001 = "PERM_001"; // Không có permission
     public const string PERM_002 = "PERM_002"; // Ngoài phạm vi chi nhánh
     

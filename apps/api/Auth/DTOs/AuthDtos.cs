@@ -1,31 +1,20 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace api.Auth.DTOs;
 
 public class RegisterRequest
 {
-    [Required]
-    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
-    [MinLength(6)]
     public string Password { get; set; } = string.Empty;
 
-    [Required]
     public string FullName { get; set; } = string.Empty;
 
-    [Required]
     public string StudentCode { get; set; } = string.Empty;
 }
 
 public class LoginRequest
 {
-    [Required]
-    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
     public string Password { get; set; } = string.Empty;
     
     public string Device { get; set; } = "UNKNOWN";
@@ -40,7 +29,6 @@ public class LoginResponse
 
 public class RefreshRequest
 {
-    [Required]
     public string RefreshToken { get; set; } = string.Empty;
 }
 

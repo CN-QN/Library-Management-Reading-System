@@ -7,6 +7,8 @@ using api.Database.Seed;
 using api.Middleware;
 using api.Roles;
 using api.Users;
+using api.Common.Filters;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -99,7 +101,11 @@ try
         });
     });
 
-    builder.Services.AddControllers();
+    builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+    builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<FluentValidationFilter>();
+    });
     
     // Add Swagger with Security options
     builder.Services.AddEndpointsApiExplorer();
