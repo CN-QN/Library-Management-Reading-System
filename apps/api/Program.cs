@@ -82,10 +82,20 @@ try
     {
         options.AddDefaultPolicy(policy =>
         {
-            policy.WithOrigins(originsList)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            if (originsList.Length == 1 && originsList[0] == "*")
+            {
+                policy.SetIsOriginAllowed(origin => true)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+            else
+            {
+                policy.WithOrigins(originsList)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
         });
     });
 
