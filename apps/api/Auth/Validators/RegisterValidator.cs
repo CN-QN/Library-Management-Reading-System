@@ -19,7 +19,7 @@ public class RegisterValidator : AbstractValidator<RegisterRequest>
             .Matches(@"[A-Z]").WithMessage("Mật khẩu phải chứa ít nhất 1 chữ hoa.")
             .Matches(@"[a-z]").WithMessage("Mật khẩu phải chứa ít nhất 1 chữ thường.")
             .Matches(@"[0-9]").WithMessage("Mật khẩu phải chứa ít nhất 1 chữ số.")
-            .Matches(@"[\!\@\#\$\%\^\&\*\(\)\-\_\+\=\[\]\{\}\;\:\'\""\,\<\.\>\/\?\|\\~`]").WithMessage("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.");
+            .Matches(@"[!@#$%^&*()_+=\-\[\]{};':"",.<>/?|\\~`]").WithMessage("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.");
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Họ tên là bắt buộc.")

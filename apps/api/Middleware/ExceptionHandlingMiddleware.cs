@@ -4,6 +4,8 @@ using api.Common.Constants;
 using api.Common.Exceptions;
 using api.Common.Models;
 using FluentValidation;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace api.Middleware;
 
@@ -11,11 +13,16 @@ public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IWebHostEnvironment _env;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next, 
+        ILogger<ExceptionHandlingMiddleware> logger,
+        IWebHostEnvironment env)
     {
         _next = next;
         _logger = logger;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -64,7 +71,10 @@ public class ExceptionHandlingMiddleware
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorResponse.ErrorCode = ErrorCodes.SYS_001;
-                errorResponse.Message = "An unexpected error occurred. Please try again later.";
+                
+                errorResponse.Message = _env.IsDevelopment() 
+                    ? $"{exception.Message} | StackTrace: {exception.StackTrace}" 
+                    : "An unexpected error occurred. Please try again later.";
                 break;
         }
 
