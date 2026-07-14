@@ -15,26 +15,28 @@ Hệ thống sử dụng Docker Compose để chạy database cục bộ một c
    ```
    *Lệnh này sẽ tự động tải và khởi chạy MongoDB (Port 27017) và Redis (Port 6379).*
 
-### Bước 2: Cấu hình Environment
-1. Tại thư mục `/apps/api/`, kiểm tra hoặc tạo file `.env` từ file mẫu `.env.example`.
-2. Đảm bảo cấu hình giống như sau để kết nối được MongoDB và Redis local:
-   ```env
-   # MongoDB
-   MongoDb__ConnectionString=mongodb://localhost:27017
-   MongoDb__DatabaseName=libraryhub
-
-   # Redis
-   Redis__ConnectionString=localhost:6379
-
-   # JWT Config
-   Jwt__Secret=SuperSecretKeyForLibraryHubManagementSystem2026!
-   Jwt__Issuer=LibraryHub
-   Jwt__Audience=LibraryHubUsers
-   Jwt__AccessExpiryMinutes=15
-   Jwt__RefreshExpiryDays=7
-
-   # CORS
-   CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+### Bước 2: Cấu hình file appsettings.json
+Mặc định dự án ASP.NET Core sử dụng file `appsettings.json` để cấu hình hệ thống.
+1. Mở file [appsettings.json](file:///d:/workspaces/Projects/LibraryHub/apps/api/appsettings.json) trong thư mục `apps/api/`.
+2. Đảm bảo cấu hình của bạn khớp với MongoDB và Redis chạy ở local (mặc định đã được cấu hình sẵn):
+   ```json
+   {
+     "MongoDb": {
+       "ConnectionString": "mongodb://localhost:27017",
+       "DatabaseName": "libraryhub"
+     },
+     "Redis": {
+       "ConnectionString": "localhost:6379"
+     },
+     "CORS_ORIGINS": "http://localhost:3000,http://localhost:3001",
+     "Jwt": {
+       "Secret": "SuperSecretKeyForLibraryHubManagementSystem2026!",
+       "Issuer": "LibraryHub",
+       "Audience": "LibraryHubUsers",
+       "AccessExpiryMinutes": 15,
+       "RefreshExpiryDays": 7
+     }
+   }
    ```
 
 ### Bước 3: Chạy ứng dụng Backend API
