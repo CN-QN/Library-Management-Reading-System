@@ -1,0 +1,34 @@
+# dotnet
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# node
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# temp/logs
+*.log
+docs/extracted.txt
+docs/Ke-hoach-trien-khai-quan-li-thu-vien-va-doc-sach.md
