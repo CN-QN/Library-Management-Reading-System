@@ -59,6 +59,30 @@ public class AuthController : ControllerBase
         Response.Cookies.Append("refreshToken", token, cookieOptions);
     }
 
+    private void SetAccessTokenCookie(string token)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = false, // Set to true if using HTTPS in prod, false is fine for localhost HTTP development
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddMinutes(15),
+            Path = "/"
+        };
+        Response.Cookies.Append("accessToken", token, cookieOptions);
+    }
+
+    private void ClearAccessTokenCookie()
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
+        Response.Cookies.Delete("accessToken", cookieOptions);
+    }
+
     private void ClearRefreshTokenCookie()
     {
         var cookieOptions = new CookieOptions
@@ -71,25 +95,27 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<LoginResponse>>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
+        SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Registration successful."));
+        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Registration successful."));
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Login([FromBody] LoginRequest request)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
         var device = GetDeviceNameFromUserAgent();
         var result = await _authService.LoginAsync(request, device, ipAddress);
+        SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Login successful."));
+        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Login successful."));
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<LoginResponse>>> Refresh([FromBody] RefreshRequest request)
+    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Refresh([FromBody] RefreshRequest request)
     {
         var token = request.RefreshToken;
         if (string.IsNullOrEmpty(token))
@@ -104,8 +130,9 @@ public class AuthController : ControllerBase
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
         var result = await _authService.RefreshAsync(new RefreshRequest { RefreshToken = token }, ipAddress);
+        SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Token refreshed successfully."));
+        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Token refreshed successfully."));
     }
 
     [Authorize]
@@ -124,6 +151,7 @@ public class AuthController : ControllerBase
         }
 
         await _authService.LogoutAsync(token);
+        ClearAccessTokenCookie();
         ClearRefreshTokenCookie();
         return Ok(ApiResponse.SuccessResponse("Logged out successfully."));
     }
