@@ -101,6 +101,7 @@ try
         });
     });
 
+    builder.Services.AddHttpContextAccessor();
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
     builder.Services.AddControllers(options =>
     {

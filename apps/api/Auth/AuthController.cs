@@ -22,10 +22,59 @@ public class AuthController : ControllerBase
         _context = context;
     }
 
+    private string GetDeviceNameFromUserAgent()
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        if (string.IsNullOrEmpty(userAgent)) return "Thiết bị không xác định";
+
+        if (userAgent.Contains("PostmanRuntime") || userAgent.Contains("Postman")) return "Postman";
+        if (userAgent.Contains("iPhone")) return "iPhone";
+        if (userAgent.Contains("iPad")) return "iPad";
+        if (userAgent.Contains("Android")) return "Android Mobile";
+
+        var browser = "Browser";
+        if (userAgent.Contains("Edg/")) browser = "Edge";
+        else if (userAgent.Contains("Chrome/")) browser = "Chrome";
+        else if (userAgent.Contains("Safari/")) browser = "Safari";
+        else if (userAgent.Contains("Firefox/")) browser = "Firefox";
+
+        var os = "Unknown OS";
+        if (userAgent.Contains("Windows")) os = "Windows";
+        else if (userAgent.Contains("Macintosh")) os = "macOS";
+        else if (userAgent.Contains("Linux")) os = "Linux";
+
+        return $"{browser} ({os})";
+    }
+
+    private void SetRefreshTokenCookie(string token)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = false, // Set to true if using HTTPS in prod, false is fine for localhost HTTP development
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddDays(7),
+            Path = "/api/auth"
+        };
+        Response.Cookies.Append("refreshToken", token, cookieOptions);
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Path = "/api/auth"
+        };
+        Response.Cookies.Delete("refreshToken", cookieOptions);
+    }
+
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
+        SetRefreshTokenCookie(result.RefreshToken);
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Registration successful."));
     }
 
@@ -33,15 +82,29 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
-        var result = await _authService.LoginAsync(request, ipAddress);
+        var device = GetDeviceNameFromUserAgent();
+        var result = await _authService.LoginAsync(request, device, ipAddress);
+        SetRefreshTokenCookie(result.RefreshToken);
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Login successful."));
     }
 
     [HttpPost("refresh")]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Refresh([FromBody] RefreshRequest request)
     {
+        var token = request.RefreshToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            token = Request.Cookies["refreshToken"];
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            return UnprocessableEntity(ApiResponse.ErrorResponse(422, "Refresh token là bắt buộc."));
+        }
+
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
-        var result = await _authService.RefreshAsync(request, ipAddress);
+        var result = await _authService.RefreshAsync(new RefreshRequest { RefreshToken = token }, ipAddress);
+        SetRefreshTokenCookie(result.RefreshToken);
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Token refreshed successfully."));
     }
 
@@ -49,7 +112,19 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<ActionResult<ApiResponse>> Logout([FromBody] RefreshRequest request)
     {
-        await _authService.LogoutAsync(request.RefreshToken);
+        var token = request.RefreshToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            token = Request.Cookies["refreshToken"];
+        }
+
+        if (string.IsNullOrEmpty(token))
+        {
+            return UnprocessableEntity(ApiResponse.ErrorResponse(422, "Refresh token là bắt buộc."));
+        }
+
+        await _authService.LogoutAsync(token);
+        ClearRefreshTokenCookie();
         return Ok(ApiResponse.SuccessResponse("Logged out successfully."));
     }
 

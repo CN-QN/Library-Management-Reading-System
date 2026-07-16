@@ -77,7 +77,7 @@ public class AuthService
         return await GenerateLoginSessionAsync(user, "DefaultDevice", "0.0.0.0");
     }
 
-    public async Task<LoginResponse> LoginAsync(LoginRequest request, string ipAddress)
+    public async Task<LoginResponse> LoginAsync(LoginRequest request, string device, string ipAddress)
     {
         // Rate limiting check can be done in middleware
         var user = await _context.Users.Find(u => u.Email == request.Email).FirstOrDefaultAsync();
@@ -91,7 +91,7 @@ public class AuthService
             throw new ForbiddenException(ErrorCodes.AUTH_003, "Tài khoản của bạn đã bị khóa hoặc tạm ngưng.");
         }
 
-        return await GenerateLoginSessionAsync(user, request.Device, ipAddress);
+        return await GenerateLoginSessionAsync(user, device, ipAddress);
     }
 
     public async Task<LoginResponse> RefreshAsync(RefreshRequest request, string ipAddress)
