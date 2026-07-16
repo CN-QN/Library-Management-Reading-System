@@ -30,6 +30,9 @@ public class AuditController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
+        page = page < 1 ? 1 : page;
+        limit = limit < 1 ? 20 : limit > 100 ? 100 : limit;
+
         var builder = Builders<AuditLog>.Filter;
         var filter = builder.Empty;
 

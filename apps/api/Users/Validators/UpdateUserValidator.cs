@@ -1,12 +1,18 @@
 using FluentValidation;
 using api.Users.DTOs;
+using api.Database;
+using MongoDB.Driver;
 
 namespace api.Users.Validators;
 
 public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
 {
-    public UpdateUserValidator()
+    private readonly MongoDbContext _context;
+
+    public UpdateUserValidator(MongoDbContext context)
     {
+        _context = context;
+
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Họ tên là bắt buộc.")
             .MinimumLength(2).WithMessage("Họ tên tối thiểu 2 ký tự.")
@@ -19,6 +25,11 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
 
         RuleFor(x => x.BranchId)
             .Matches(@"^[0-9a-fA-F]{24}$").WithMessage("BranchId phải là MongoDB ObjectId hợp lệ (24 ký tự hex).")
+            .MustAsync(async (branchId, cancellation) =>
+            {
+                var exists = await _context.LibraryBranches.Find(b => b.Id == branchId).AnyAsync(cancellation);
+                return exists;
+            }).WithMessage("Chi nhánh (BranchId) không tồn tại trong hệ thống.")
             .When(x => !string.IsNullOrEmpty(x.BranchId));
     }
 }

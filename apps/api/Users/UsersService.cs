@@ -24,6 +24,9 @@ public class UsersService
 
     public async Task<PagedResult<UserDto>> GetUsersAsync(string? search, string? status, string? branchId, int page, int limit, string? currentUserBranchId = null)
     {
+        page = page < 1 ? 1 : page;
+        limit = limit < 1 ? 20 : limit > 100 ? 100 : limit;
+
         var builder = Builders<User>.Filter;
         var filter = builder.Empty;
 
@@ -140,11 +143,11 @@ public class UsersService
         // 1. Check uniqueness
         var emailExists = await _context.Users.Find(u => u.Email == request.Email).AnyAsync();
         if (emailExists)
-            throw new ConflictException(ErrorCodes.BOOK_002, "Email đã tồn tại.");
+            throw new ConflictException(ErrorCodes.USER_001, "Email đã tồn tại.");
 
         var codeExists = await _context.Users.Find(u => u.StudentCode == request.StudentCode).AnyAsync();
         if (codeExists)
-            throw new ConflictException(ErrorCodes.BOOK_002, "Mã số sinh viên đã tồn tại.");
+            throw new ConflictException(ErrorCodes.USER_002, "Mã số sinh viên đã tồn tại.");
 
         // Check branch scope
         var branchId = currentUserBranchId ?? request.BranchId;

@@ -1,16 +1,34 @@
 using FluentValidation;
 using api.Auth.DTOs;
+using api.Database;
+using MongoDB.Driver;
+using System.Linq;
 
 namespace api.Auth.Validators;
 
 public class RegisterValidator : AbstractValidator<RegisterRequest>
 {
-    public RegisterValidator()
+    private readonly MongoDbContext _context;
+
+    public RegisterValidator(MongoDbContext context)
     {
+        _context = context;
+
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email là bắt buộc.")
             .EmailAddress().WithMessage("Email không đúng định dạng.")
-            .MaximumLength(255).WithMessage("Email tối đa 255 ký tự.");
+            .MaximumLength(255).WithMessage("Email tối đa 255 ký tự.")
+            .Must(email => 
+            {
+                if (string.IsNullOrEmpty(email)) return false;
+                var domain = email.Split('@').Last().ToLower();
+                return domain == "gmail.com" || domain == "student.edu.vn" || domain.EndsWith(".edu.vn");
+            }).WithMessage("Email đăng ký phải thuộc tên miền @gmail.com hoặc tên miền trường học (.edu.vn).")
+            .MustAsync(async (email, cancellation) => 
+            {
+                var exists = await _context.Users.Find(u => u.Email == email).AnyAsync(cancellation);
+                return !exists;
+            }).WithMessage("Email này đã được đăng ký trong hệ thống.");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Mật khẩu là bắt buộc.")
@@ -29,8 +47,11 @@ public class RegisterValidator : AbstractValidator<RegisterRequest>
 
         RuleFor(x => x.StudentCode)
             .NotEmpty().WithMessage("Mã sinh viên là bắt buộc.")
-            .MinimumLength(5).WithMessage("Mã sinh viên tối thiểu 5 ký tự.")
-            .MaximumLength(20).WithMessage("Mã sinh viên tối đa 20 ký tự.")
-            .Matches(@"^[a-zA-Z0-9]+$").WithMessage("Mã sinh viên chỉ được phép chứa chữ cái và số.");
+            .Matches(@"^[0-9]{8,12}$").WithMessage("Mã sinh viên phải là dãy số từ 8 đến 12 chữ số.")
+            .MustAsync(async (code, cancellation) => 
+            {
+                var exists = await _context.Users.Find(u => u.StudentCode == code).AnyAsync(cancellation);
+                return !exists;
+            }).WithMessage("Mã sinh viên này đã được đăng ký trong hệ thống.");
     }
 }
