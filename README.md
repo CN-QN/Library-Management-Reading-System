@@ -103,8 +103,15 @@ Khi ứng dụng khởi chạy thành công, terminal sẽ hiển thị thông t
 
 Khi khởi chạy lần đầu tiên, hệ thống sẽ **tự động khởi tạo dữ liệu mẫu (Auto-Seeding)** vào MongoDB bao gồm: Chi nhánh mặc định, 34 quyền hạn hệ thống, các vai trò, và các tài khoản thử nghiệm.
 
-Mở trình duyệt và truy cập đường dẫn dưới đây để xem tài liệu API chi tiết (Swagger UI):
+### 🌐 Sử dụng Swagger UI để Kiểm thử API
+
+Mở trình duyệt và truy cập đường dẫn dưới đây để xem tài liệu API chi tiết:
 👉 **[http://localhost:5210/swagger/index.html](http://localhost:5210/swagger/index.html)**
+
+#### Hướng dẫn xác thực trên Swagger UI:
+- **Cơ chế Cookie tự động:** Vì hệ thống sử dụng cơ chế bảo mật HttpOnly Cookie cho môi trường Web, khi bạn gọi API `POST /api/auth/login` thành công trên giao diện Swagger, trình duyệt sẽ **tự động lưu trữ** `accessToken` và `refreshToken` vào Cookie.
+- **Tự động đính kèm:** Đối với tất cả các cuộc gọi API nghiệp vụ sau đó trên Swagger (ví dụ: lấy thông tin người dùng, đổi quyền,...), trình duyệt sẽ **tự động gửi kèm Cookie** lên. Bạn **không cần** phải click nút `Authorize` hay copy-paste Token thủ công!
+- **Sử dụng Token Header (Postman/Mobile):** Trong trường hợp bạn sử dụng các tool ngoài như Postman hoặc lập trình ứng dụng Di động, Swagger vẫn hỗ trợ cấu hình Header `Authorization: Bearer <Your_Access_Token>` bằng cách click vào nút `Authorize` ở góc trên cùng bên phải.
 
 ### Danh sách tài khoản thử nghiệm (Mật khẩu chung: `Test@123456`)
 
@@ -118,6 +125,60 @@ Mở trình duyệt và truy cập đường dẫn dưới đây để xem tài 
 | **student@libraryhub.com**   | `STUDENT`         | Sinh viên (Độc giả chính)                                  |
 | **guest@libraryhub.com**     | `GUEST`           | Khách vãng lai, quyền đọc hạn chế                          |
 | **worker@libraryhub.com**    | `SYSTEM_WORKER`   | Tài khoản dành riêng cho các tác vụ chạy nền (Worker/Cron) |
+
+---
+
+## 📡 Danh sách API Routes (API Reference)
+
+Dưới đây là danh sách toàn bộ các routes API được phân chia theo module chức năng, kèm phương thức, đường dẫn, yêu cầu đăng nhập và phân quyền chi tiết.
+
+### 1. Module Xác thực & Tài khoản (`/api/auth`)
+
+| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :---: | :--- |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản độc giả mới | ❌ | Không yêu cầu |
+| `POST` | `/api/auth/login` | Đăng nhập hệ thống (Tự động cấp cookie) | ❌ | Không yêu cầu |
+| `POST` | `/api/auth/refresh` | Làm mới Access Token khi hết hạn | ❌ | Không yêu cầu |
+| `POST` | `/api/auth/logout` | Đăng xuất người dùng (Xóa toàn bộ cookie) | ✅ | Không yêu cầu |
+| `GET` | `/api/auth/profile` | Xem thông tin chi tiết tài khoản hiện tại | ✅ | Không yêu cầu |
+| `GET` | `/api/auth/sessions` | Danh sách các phiên đăng nhập đang hoạt động | ✅ | Không yêu cầu |
+| `DELETE` | `/api/auth/sessions/{id}` | Thu hồi (hủy kích hoạt) một phiên đăng nhập | ✅ | Không yêu cầu |
+
+---
+
+### 2. Module Quản lý Người dùng (`/api/users`)
+
+| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :---: | :--- |
+| `GET` | `/api/users` | Tìm kiếm và xem danh sách người dùng phân trang | ✅ | `user.read` |
+| `GET` | `/api/users/{id}` | Xem chi tiết thông tin một người dùng | ✅ | `user.read` |
+| `POST` | `/api/users` | Admin tạo trực tiếp tài khoản mới | ✅ | `user.create` |
+| `PUT` | `/api/users/{id}` | Cập nhật thông tin hồ sơ người dùng | ✅ | `user.update` |
+| `PATCH` | `/api/users/{id}/status` | Khóa hoặc mở khóa tài khoản | ✅ | `user.lock` |
+| `POST` | `/api/users/{id}/roles` | Gán thêm vai trò cho người dùng | ✅ | `user.assign_role` |
+| `DELETE` | `/api/users/{id}/roles/{userRoleId}` | Gỡ bỏ vai trò khỏi người dùng | ✅ | `user.assign_role` |
+
+---
+
+### 3. Module Quản lý Vai trò & Quyền hạn (`/api/roles`)
+
+| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :---: | :--- |
+| `GET` | `/api/roles` | Lấy danh sách các vai trò (roles) trong hệ thống | ✅ | `role.read` |
+| `GET` | `/api/roles/{id}` | Xem thông tin chi tiết của một vai trò | ✅ | `role.read` |
+| `POST` | `/api/roles` | Khởi tạo vai trò mới | ✅ | `role.create` |
+| `PUT` | `/api/roles/{id}` | Thay đổi thông tin cơ bản của vai trò | ✅ | `role.update` |
+| `GET` | `/api/permissions` | Xem danh sách tất cả quyền hạn (permissions) hệ thống | ✅ | `role.read` |
+| `POST` | `/api/roles/{id}/permissions` | Gán quyền chức năng cho vai trò | ✅ | `role.assign_permission` |
+| `DELETE` | `/api/roles/{id}/permissions/{permissionId}` | Gỡ quyền chức năng khỏi vai trò | ✅ | `role.assign_permission` |
+
+---
+
+### 4. Module Nhật ký Hệ thống (`/api/audit-logs`)
+
+| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :---: | :--- |
+| `GET` | `/api/audit-logs` | Truy vấn nhật ký thay đổi dữ liệu của hệ thống | ✅ | `audit.read` |
 
 ---
 
