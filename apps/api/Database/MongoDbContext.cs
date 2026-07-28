@@ -48,6 +48,7 @@ public class MongoDbContext
     public IMongoCollection<Borrowing> Borrowings => _database.GetCollection<Borrowing>("borrowings");
     public IMongoCollection<BorrowingItem> BorrowingItems => _database.GetCollection<BorrowingItem>("borrowing_items");
     public IMongoCollection<Fine> Fines => _database.GetCollection<Fine>("fines");
+    public IMongoCollection<Reservation> Reservations => _database.GetCollection<Reservation>("reservations");
 
     // ===== READING (M09) =====
     public IMongoCollection<ReadingProgress> ReadingProgresses => _database.GetCollection<ReadingProgress>("reading_progress");
