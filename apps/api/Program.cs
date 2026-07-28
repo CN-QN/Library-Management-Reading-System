@@ -8,9 +8,11 @@ using api.Middleware;
 using api.Roles;
 using api.Users;
 using api.Common.Filters;
+using api.Common.Redis;
 using api.Modules.Catalog.Services;
 using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
+using api.Modules.Circulation.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
 using FluentValidation;
@@ -69,8 +71,11 @@ try
     // ===== DIGITAL CONTENT MODULE =====
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
-    // ===== INVENTORY MODULE =====
-    builder.Services.AddScoped<ICopyService, CopyService>();
+    // ===== REDIS HELPERS =====
+    builder.Services.AddSingleton<RedisLockHelper>();
+
+    // ===== CIRCULATION MODULE (M06) =====
+    builder.Services.AddScoped<IBorrowingService, BorrowingService>();
 
     // ===== REPOSITORIES =====
     builder.Services.AddScoped<IBookRepository, BookRepository>();
@@ -79,6 +84,8 @@ try
     builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
     builder.Services.AddScoped<ICopyRepository, CopyRepository>();
     builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
+    builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
+    builder.Services.AddScoped<IFineRepository, FineRepository>();
 
     // JWT Bearer Auth Setup
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 

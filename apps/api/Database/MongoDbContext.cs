@@ -44,9 +44,10 @@ public class MongoDbContext
     // ===== INVENTORY (M05) =====
     public IMongoCollection<BookCopy> BookCopies => _database.GetCollection<BookCopy>("book_copies");
 
-    // ===== CIRCULATION (M06) =====
+    // ===== CIRCULATION & FINES (M06 & M07) =====
     public IMongoCollection<Borrowing> Borrowings => _database.GetCollection<Borrowing>("borrowings");
     public IMongoCollection<BorrowingItem> BorrowingItems => _database.GetCollection<BorrowingItem>("borrowing_items");
+    public IMongoCollection<Fine> Fines => _database.GetCollection<Fine>("fines");
 
     // ===== READING (M09) =====
     public IMongoCollection<ReadingProgress> ReadingProgresses => _database.GetCollection<ReadingProgress>("reading_progress");
