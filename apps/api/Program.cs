@@ -8,11 +8,17 @@ using api.Middleware;
 using api.Roles;
 using api.Users;
 using api.Common.Filters;
+using api.Modules.Catalog.Services;
+using api.Modules.DigitalContent.Services;
+using api.Modules.Inventory.Services;
+using api.Repositories.Implementations;
+using api.Repositories.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using MongoDB.Driver;  // ← THÊM DÒNG NÀY
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -38,6 +44,13 @@ try
     builder.Services.AddSingleton<MongoDbContext>();
     builder.Services.AddSingleton<RedisContext>();
 
+    // ===== ĐĂNG KÝ IMongoDatabase CHO REPOSITORIES =====
+    builder.Services.AddSingleton<IMongoDatabase>(sp =>
+    {
+        var context = sp.GetRequiredService<MongoDbContext>();
+        return context.Database;
+    });
+
     // Register Index & Seed helpers
     builder.Services.AddScoped<IndexCreator>();
     builder.Services.AddScoped<SeedRunner>();
@@ -47,6 +60,25 @@ try
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<RolesService>();
+    
+    // ===== CATALOG MODULE =====
+    builder.Services.AddScoped<IBookService, BookService>();
+    // builder.Services.AddScoped<IAuthorService, AuthorService>(); // Khi có
+    // builder.Services.AddScoped<ICategoryService, CategoryService>(); // Khi có
+
+    // ===== DIGITAL CONTENT MODULE =====
+    builder.Services.AddScoped<IChapterService, ChapterService>();
+
+    // ===== INVENTORY MODULE =====
+    builder.Services.AddScoped<ICopyService, CopyService>();
+
+    // ===== REPOSITORIES =====
+    builder.Services.AddScoped<IBookRepository, BookRepository>();
+    builder.Services.AddScoped<IChapterRepository, ChapterRepository>();
+    builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
+    builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+    builder.Services.AddScoped<ICopyRepository, CopyRepository>();
+    builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
 
     // JWT Bearer Auth Setup
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 

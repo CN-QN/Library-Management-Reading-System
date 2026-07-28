@@ -72,7 +72,8 @@ public class IndexCreator
             var bookSlugKey = Builders<Book>.IndexKeys.Ascending(b => b.Slug);
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookSlugKey, new CreateIndexOptions { Unique = true }));
 
-            var bookIsbnKey = Builders<Book>.IndexKeys.Ascending(b => b.Isbn);
+            // ✅ ĐÃ SỬA: Isbn → ISBN
+            var bookIsbnKey = Builders<Book>.IndexKeys.Ascending(b => b.ISBN);
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookIsbnKey));
 
             var bookTextKey = Builders<Book>.IndexKeys.Text(b => b.Title).Text(b => b.Summary);

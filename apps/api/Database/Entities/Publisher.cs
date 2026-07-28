@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace api.Database.Entities
 {
-    public class Author
+    public class Publisher
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
@@ -15,11 +15,11 @@ namespace api.Database.Entities
         [BsonElement("slug")]
         public string Slug { get; set; } = string.Empty;
 
-        [BsonElement("biography")]
-        public string? Biography { get; set; }
+        [BsonElement("address")]
+        public string? Address { get; set; }
 
-        [BsonElement("avatar")]
-        public string? Avatar { get; set; }
+        [BsonElement("contact")]
+        public string? Contact { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

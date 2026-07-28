@@ -1,0 +1,182 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using api.Modules.DigitalContent.DTOs;
+using api.Modules.DigitalContent.Services;
+using api.Common.Models;
+using System.Security.Claims;
+
+namespace api.Modules.DigitalContent.Controllers
+{
+    [ApiController]
+    [Route("api/books/{bookId}/chapters")]
+    [Authorize]
+    public class ChaptersController : ControllerBase
+    {
+        private readonly IChapterService _chapterService;
+        private readonly ILogger<ChaptersController> _logger;
+
+        public ChaptersController(IChapterService chapterService, ILogger<ChaptersController> logger)
+        {
+            _chapterService = chapterService;
+            _logger = logger;
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetByBookId(string bookId)
+        {
+            try
+            {
+                var chapters = await _chapterService.GetByBookIdAsync(bookId);
+                return Ok(ApiResponse<List<ChapterResponseDto>>.SuccessResponse(chapters, "Chapters retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting chapters for book {bookId}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving chapters"));
+            }
+        }
+
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetById(string id)
+        {
+            try
+            {
+                var chapter = await _chapterService.GetByIdAsync(id);
+                if (chapter == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting chapter {id}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving the chapter"));
+            }
+        }
+
+        [HttpGet("{id}/content")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetContent(string id)
+        {
+            try
+            {
+                var content = await _chapterService.GetContentAsync(id);
+                if (content == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+
+                return Ok(ApiResponse<ChapterContentDto>.SuccessResponse(content, "Chapter content retrieved"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting chapter content {id}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving chapter content"));
+            }
+        }
+
+        [HttpGet("next-number")]
+        [Authorize(Policy = "chapter.create")]
+        public async Task<IActionResult> GetNextNumber(string bookId)
+        {
+            try
+            {
+                var nextNumber = await _chapterService.GetNextChapterNumberAsync(bookId);
+                return Ok(new { nextNumber });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting next chapter number for book {bookId}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while getting next chapter number"));
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "chapter.create")]
+        public async Task<IActionResult> Create(string bookId, [FromBody] CreateChapterDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+                dto.BookId = bookId;
+
+                var chapter = await _chapterService.CreateAsync(dto, userId);
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { bookId, id = chapter.Id },
+                    ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter created successfully", null, 201)
+                );
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse(400, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating chapter for book {bookId}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while creating the chapter"));
+            }
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Policy = "chapter.update")]
+        public async Task<IActionResult> Update(string id, [FromBody] UpdateChapterDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+                var chapter = await _chapterService.UpdateAsync(id, dto, userId);
+
+                if (chapter == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter updated successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating chapter {id}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while updating the chapter"));
+            }
+        }
+
+        [HttpPatch("{id}/publish")]
+        [Authorize(Policy = "chapter.publish")]
+        public async Task<IActionResult> Publish(string id)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+                var chapter = await _chapterService.PublishAsync(id, userId);
+
+                if (chapter == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter published successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error publishing chapter {id}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while publishing the chapter"));
+            }
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Policy = "chapter.delete")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            try
+            {
+                var result = await _chapterService.DeleteAsync(id);
+                if (!result)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+
+                return Ok(ApiResponse.SuccessResponse("Chapter hidden successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error deleting chapter {id}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while deleting the chapter"));
+            }
+        }
+    }
+}

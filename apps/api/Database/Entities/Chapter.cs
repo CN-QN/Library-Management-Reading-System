@@ -1,47 +1,48 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace api.Database.Entities;
-
-public class Chapter
+namespace api.Database.Entities
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = string.Empty;
+    public class Chapter
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; } = string.Empty;
 
-    [BsonElement("bookId")]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string BookId { get; set; } = string.Empty;
+        [BsonElement("bookId")]
+        public string BookId { get; set; } = string.Empty;
 
-    [BsonElement("number")]
-    public int Number { get; set; }
+        [BsonElement("number")]
+        public int Number { get; set; }
 
-    [BsonElement("title")]
-    public string Title { get; set; } = string.Empty;
+        [BsonElement("title")]
+        public string Title { get; set; } = string.Empty;
 
-    [BsonElement("contentJson")]
-    public string ContentJson { get; set; } = string.Empty; // Rich text / structured JSON content stored as raw JSON string
+        [BsonElement("contentJson")]
+        public string? ContentJson { get; set; }
 
-    [BsonElement("status")]
-    public string Status { get; set; } = "DRAFT"; // DRAFT, PUBLISHED, HIDDEN
+        [BsonElement("wordCount")]
+        public int WordCount { get; set; }
 
-    [BsonElement("wordCount")]
-    public int WordCount { get; set; } = 0;
+        [BsonElement("status")]
+        public string Status { get; set; } = "DRAFT";
 
-    [BsonElement("publishedAt")]
-    public DateTime? PublishedAt { get; set; }
+        [BsonElement("version")]
+        public int Version { get; set; } = 1;
 
-    [BsonElement("createdBy")]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string CreatedBy { get; set; } = string.Empty;
+        [BsonElement("publishedAt")]
+        public DateTime? PublishedAt { get; set; }
 
-    [BsonElement("updatedBy")]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string? UpdatedBy { get; set; }
+        [BsonElement("createdBy")]
+        public string? CreatedBy { get; set; }
 
-    [BsonElement("createdAt")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [BsonElement("updatedBy")]
+        public string? UpdatedBy { get; set; }
 
-    [BsonElement("updatedAt")]
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        [BsonElement("createdAt")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
 }
