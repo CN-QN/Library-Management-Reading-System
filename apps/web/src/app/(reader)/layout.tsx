@@ -1,5 +1,5 @@
 import ReaderLayout from "@/components/layout/ReaderLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ProtectedRoute from "@/components/Protect/ProtectedRoute";
 
 export default function AppReaderLayout({
   children,

@@ -1,20 +1,4 @@
-import { Book } from './books';
-
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  color?: string;
-}
-
-export interface ReadingProgress {
-  bookId: string;
-  book: Book;
-  progressPercentage: number;
-  lastReadAt: string;
-  currentChapterId?: string;
-  currentChapterTitle?: string;
-}
+import { Category, ReadingProgress } from '@/types';
 
 export const MOCK_CATEGORIES: Category[] = [
   { id: 'c1', name: 'Khoa học', slug: 'khoa-hoc' },
@@ -53,12 +37,20 @@ export const MOCK_READING_PROGRESS: ReadingProgress[] = [
   }
 ];
 
+/**
+ * Lấy danh sách thể loại (Mock data).
+ * TODO(api): Thay bằng lời gọi Axios tới Backend khi API Categories sẵn sàng.
+ */
 export async function getCategories(): Promise<Category[]> {
-  // Simulate network delay
+  // Giả lập độ trễ mạng (500ms) để kiểm thử Skeleton fallback của Suspense
   return new Promise((resolve) => setTimeout(() => resolve(MOCK_CATEGORIES), 500));
 }
 
+/**
+ * Lấy tiến độ đọc sách của người dùng hiện tại (Mock data).
+ * TODO(api): Thay bằng lời gọi Axios tới Backend (cần truyền Token xác thực).
+ */
 export async function getReadingProgress(): Promise<ReadingProgress[]> {
-  // Simulate network delay
+  // Giả lập độ trễ mạng (800ms)
   return new Promise((resolve) => setTimeout(() => resolve(MOCK_READING_PROGRESS), 800));
 }
