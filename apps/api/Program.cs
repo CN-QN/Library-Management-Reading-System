@@ -15,6 +15,7 @@ using api.Modules.Inventory.Services;
 using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
 using api.Modules.Reading.Services;
+using api.Modules.SearchAndRecommendation.Services;
 using api.Workers;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
@@ -87,6 +88,10 @@ try
     // ===== READING MODULE (M09) =====
     builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
     builder.Services.AddHostedService<ReadingProgressSyncWorker>();
+
+    // ===== SEARCH & RECOMMENDATION MODULE (M12) =====
+    builder.Services.AddScoped<ISearchRecommendationService, SearchRecommendationService>();
+    builder.Services.AddScoped<ISearchRecommendationRepository, SearchRecommendationRepository>();
 
     // ===== REPOSITORIES =====
     builder.Services.AddScoped<IBookRepository, BookRepository>();
