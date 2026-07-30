@@ -16,6 +16,7 @@ using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
 using api.Modules.Reading.Services;
 using api.Modules.SearchAndRecommendation.Services;
+using api.Modules.Notifications.Services;
 using api.Workers;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
@@ -92,6 +93,10 @@ try
     // ===== SEARCH & RECOMMENDATION MODULE (M12) =====
     builder.Services.AddScoped<ISearchRecommendationService, SearchRecommendationService>();
     builder.Services.AddScoped<ISearchRecommendationRepository, SearchRecommendationRepository>();
+
+    // ===== NOTIFICATION MODULE (M13) =====
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
     // ===== REPOSITORIES =====
     builder.Services.AddScoped<IBookRepository, BookRepository>();

@@ -57,6 +57,9 @@ public class MongoDbContext
     // ===== ANALYTICS =====
     public IMongoCollection<ViewEvent> ViewEvents => _database.GetCollection<ViewEvent>("view_events");
 
+    // ===== NOTIFICATIONS (M13) =====
+    public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("notifications");
+
     // Generic helper to get any collection by name
     public IMongoCollection<T> GetCollection<T>(string name)
     {
