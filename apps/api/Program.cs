@@ -14,6 +14,8 @@ using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
 using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
+using api.Modules.Reading.Services;
+using api.Workers;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
 using FluentValidation;
@@ -82,6 +84,10 @@ try
     builder.Services.AddScoped<IReservationService, ReservationService>();
     builder.Services.AddScoped<IFineService, FineService>();
 
+    // ===== READING MODULE (M09) =====
+    builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
+    builder.Services.AddHostedService<ReadingProgressSyncWorker>();
+
     // ===== REPOSITORIES =====
     builder.Services.AddScoped<IBookRepository, BookRepository>();
     builder.Services.AddScoped<IChapterRepository, ChapterRepository>();
@@ -92,6 +98,8 @@ try
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+    builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
+    builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
 
     // JWT Bearer Auth Setup
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 
