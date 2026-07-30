@@ -33,21 +33,24 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
       <header className="sticky top-0 z-50 w-full border-b bg-card">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl hover:opacity-90 transition-opacity">
-            <BookOpen size={24} />
-            <span>LibraryHub</span>
-          </Link>
+          {/* Logo & Main Nav */}
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl hover:opacity-90 transition-opacity">
+              <BookOpen size={24} />
+              <span>LibraryHub</span>
+            </Link>
+          </div>
 
           {/* Search Bar */}
-          <div className="flex relative w-full max-w-[200px] sm:max-w-xs md:max-w-sm mx-2 sm:mx-4">
+          <form action="/books" method="GET" className="flex relative w-full max-w-[200px] sm:max-w-xs md:max-w-sm mx-2 sm:mx-4">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
-              type="search" 
+              type="search"
+              name="Keyword"
               placeholder="Tìm kiếm sách, tác giả..." 
               className="w-full bg-background pl-9 border-border focus-visible:ring-primary"
             />
-          </div>
+          </form>
 
           {/* User Menu / Login Button */}
           <div className="flex items-center gap-4">

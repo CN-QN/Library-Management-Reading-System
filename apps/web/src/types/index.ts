@@ -4,6 +4,7 @@ export interface Book {
   author: string;
   /** URL tuyệt đối đến ảnh bìa sách */
   coverImage?: string;
+  rating?: number;
   description?: string;
   categoryIds?: string[];
   /** Trạng thái xuất bản: "Published", "Draft", v.v. */

@@ -36,8 +36,10 @@ export function LoginForm() {
     try {
       await login(email, password);
       router.push(returnUrl);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosError = err as any;
+      setError(axiosError.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
     } finally {
       setIsSubmitting(false);
     }
