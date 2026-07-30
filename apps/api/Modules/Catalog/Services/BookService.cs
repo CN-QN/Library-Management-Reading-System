@@ -105,7 +105,10 @@ namespace api.Modules.Catalog.Services
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Stats = new BookStats()
+                Stats = new BookStats(),
+                // [THÊM MỚI] Lưu danh sách CategoryIds và AuthorIds
+                CategoryIds = dto.CategoryIds ?? new List<string>(),
+                AuthorIds = dto.AuthorIds ?? new List<string>()
             };
 
             await _bookRepository.InsertAsync(book);
@@ -124,6 +127,10 @@ namespace api.Modules.Catalog.Services
             if (dto.PublicationYear.HasValue) book.PublicationYear = dto.PublicationYear;
             if (!string.IsNullOrEmpty(dto.Language)) book.Language = dto.Language;
             if (!string.IsNullOrEmpty(dto.AccessType)) book.AccessType = dto.AccessType;
+            
+            // [THÊM MỚI] Cập nhật danh sách CategoryIds và AuthorIds
+            if (dto.CategoryIds != null) book.CategoryIds = dto.CategoryIds;
+            if (dto.AuthorIds != null) book.AuthorIds = dto.AuthorIds;
 
             book.UpdatedAt = DateTime.UtcNow;
             await _bookRepository.UpdateAsync(id, book);
@@ -174,6 +181,7 @@ namespace api.Modules.Catalog.Services
             return !await _bookRepository.ExistsByISBNAsync(isbn);
         }
 
+        // [SỬA LỖI QUAN TRỌNG] Cập nhật MapToResponseAsync để lấy tên Authors và Categories
         private async Task<BookResponseDto> MapToResponseAsync(Book book)
         {
             var response = new BookResponseDto
@@ -191,14 +199,42 @@ namespace api.Modules.Catalog.Services
                 ViewCount = book.Stats?.ViewCount ?? 0,
                 Rating = book.Stats?.Rating ?? 0,
                 CreatedAt = book.CreatedAt,
-                UpdatedAt = book.UpdatedAt
+                UpdatedAt = book.UpdatedAt,
+                // [THÊM MỚI] Gán danh sách ID
+                CategoryIds = book.CategoryIds ?? new List<string>(),
+                AuthorIds = book.AuthorIds ?? new List<string>()
             };
 
+            // Lấy tên Publisher
             if (!string.IsNullOrEmpty(book.PublisherId))
             {
                 var publisher = await _publisherRepository.GetByIdAsync(book.PublisherId);
                 response.PublisherName = publisher?.Name;
             }
+
+            // [SỬA LỖI] Lấy danh sách tên Categories
+            var categoryNames = new List<string>();
+            if (book.CategoryIds != null && book.CategoryIds.Any())
+            {
+                var categories = await _categoryRepository.GetByIdsAsync(book.CategoryIds);
+                if (categories != null)
+                {
+                    categoryNames = categories.Select(c => c.Name).ToList();
+                }
+            }
+            response.CategoryNames = categoryNames;
+
+            // [SỬA LỖI] Lấy danh sách tên Authors
+            var authorNames = new List<string>();
+            if (book.AuthorIds != null && book.AuthorIds.Any())
+            {
+                var authors = await _authorRepository.GetByIdsAsync(book.AuthorIds);
+                if (authors != null)
+                {
+                    authorNames = authors.Select(a => a.Name).ToList();
+                }
+            }
+            response.AuthorNames = authorNames;
 
             return response;
         }

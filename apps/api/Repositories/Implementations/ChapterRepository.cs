@@ -27,7 +27,8 @@ namespace api.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task<Chapter?> GetByBookAndNumberAsync(string bookId, int number)
+        // [THÊM MỚI] Lấy chapter theo BookId và Number
+        public async Task<Chapter?> GetByBookIdAndNumberAsync(string bookId, int number)
         {
             var filter = Builders<Chapter>.Filter.And(
                 Builders<Chapter>.Filter.Eq(c => c.BookId, bookId),
@@ -36,15 +37,29 @@ namespace api.Repositories.Implementations
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<List<Chapter>> GetPublishedChaptersAsync(string bookId)
+        // [THÊM MỚI] Đếm số chapter của một sách
+        public async Task<int> CountByBookIdAsync(string bookId)
+        {
+            var filter = Builders<Chapter>.Filter.Eq(c => c.BookId, bookId);
+            return (int)await _collection.CountDocumentsAsync(filter);
+        }
+
+        // [THÊM MỚI] Cập nhật thứ tự chapter
+        public async Task UpdateOrderAsync(string chapterId, int newOrder)
+        {
+            var filter = Builders<Chapter>.Filter.Eq(c => c.Id, chapterId);
+            var update = Builders<Chapter>.Update.Set(c => c.Number, newOrder);
+            await _collection.UpdateOneAsync(filter, update);
+        }
+
+        // [THÊM MỚI] Kiểm tra chapter đã tồn tại
+        public async Task<bool> ExistsAsync(string bookId, int number)
         {
             var filter = Builders<Chapter>.Filter.And(
                 Builders<Chapter>.Filter.Eq(c => c.BookId, bookId),
-                Builders<Chapter>.Filter.Eq(c => c.Status, "PUBLISHED")
+                Builders<Chapter>.Filter.Eq(c => c.Number, number)
             );
-            return await _collection.Find(filter)
-                .Sort(Builders<Chapter>.Sort.Ascending(c => c.Number))
-                .ToListAsync();
+            return await _collection.Find(filter).AnyAsync();
         }
 
         public async Task InsertAsync(Chapter chapter)
@@ -62,15 +77,6 @@ namespace api.Repositories.Implementations
         {
             var filter = Builders<Chapter>.Filter.Eq(c => c.Id, id);
             await _collection.DeleteOneAsync(filter);
-        }
-
-        public async Task<bool> ExistsByNumberAsync(string bookId, int number)
-        {
-            var filter = Builders<Chapter>.Filter.And(
-                Builders<Chapter>.Filter.Eq(c => c.BookId, bookId),
-                Builders<Chapter>.Filter.Eq(c => c.Number, number)
-            );
-            return await _collection.Find(filter).AnyAsync();
         }
     }
 }

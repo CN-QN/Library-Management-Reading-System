@@ -53,6 +53,13 @@ namespace api.Database.Entities
 
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // [THÊM MỚI] Lưu danh sách CategoryIds và AuthorIds
+        [BsonElement("categoryIds")]
+        public List<string> CategoryIds { get; set; } = new();
+
+        [BsonElement("authorIds")]
+        public List<string> AuthorIds { get; set; } = new();
     }
 
     public class BookStats

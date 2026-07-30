@@ -1,4 +1,8 @@
-namespace api.Modules.Catalog.DTOs.Responses
+using MongoDB.Bson;  // Thêm dòng này
+using api.Database.Entities;
+using api.Repositories.Interfaces;
+using MongoDB.Driver;
+namespace LibraryManagementReadingSystem.Modules.Catalog.DTOs.Responses
 {
     public class BookResponseDto
     {
@@ -15,8 +19,13 @@ namespace api.Modules.Catalog.DTOs.Responses
         public int TotalChapters { get; set; }
         public int ViewCount { get; set; }
         public double Rating { get; set; }
+        
+        // [THÊM MỚI] Thêm CategoryIds và AuthorIds để mapping đầy đủ
+        public List<string> CategoryIds { get; set; } = new();
+        public List<string> AuthorIds { get; set; } = new();
         public List<string> AuthorNames { get; set; } = new();
         public List<string> CategoryNames { get; set; } = new();
+        
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

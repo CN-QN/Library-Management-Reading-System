@@ -15,6 +15,9 @@ namespace api.Database.Entities
         [BsonElement("slug")]
         public string Slug { get; set; } = string.Empty;
 
+        [BsonElement("description")]
+        public string? Description { get; set; }
+
         [BsonElement("parentId")]
         public string? ParentId { get; set; }
 
@@ -23,6 +26,9 @@ namespace api.Database.Entities
 
         [BsonElement("status")]
         public string Status { get; set; } = "ACTIVE";
+
+        [BsonElement("displayOrder")]
+        public int DisplayOrder { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

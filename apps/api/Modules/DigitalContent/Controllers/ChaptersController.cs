@@ -4,6 +4,7 @@ using api.Modules.DigitalContent.DTOs;
 using api.Modules.DigitalContent.Services;
 using api.Common.Models;
 using System.Security.Claims;
+using LibraryManagement.Shared.Attributes;
 
 namespace api.Modules.DigitalContent.Controllers
 {
@@ -21,6 +22,9 @@ namespace api.Modules.DigitalContent.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Lấy danh sách chapter của sách
+        /// </summary>
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetByBookId(string bookId)
@@ -28,7 +32,10 @@ namespace api.Modules.DigitalContent.Controllers
             try
             {
                 var chapters = await _chapterService.GetByBookIdAsync(bookId);
-                return Ok(ApiResponse<List<ChapterResponseDto>>.SuccessResponse(chapters, "Chapters retrieved successfully"));
+                return Ok(ApiResponse<List<ChapterResponseDto>>.SuccessResponse(
+                    chapters,
+                    "Chapters retrieved successfully"
+                ));
             }
             catch (Exception ex)
             {
@@ -37,6 +44,9 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy thông tin chapter theo ID
+        /// </summary>
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(string id)
@@ -47,7 +57,10 @@ namespace api.Modules.DigitalContent.Controllers
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter retrieved successfully"));
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                    chapter,
+                    "Chapter retrieved successfully"
+                ));
             }
             catch (Exception ex)
             {
@@ -56,6 +69,9 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy nội dung chapter
+        /// </summary>
         [HttpGet("{id}/content")]
         [AllowAnonymous]
         public async Task<IActionResult> GetContent(string id)
@@ -64,9 +80,12 @@ namespace api.Modules.DigitalContent.Controllers
             {
                 var content = await _chapterService.GetContentAsync(id);
                 if (content == null)
-                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter content not found"));
 
-                return Ok(ApiResponse<ChapterContentDto>.SuccessResponse(content, "Chapter content retrieved"));
+                return Ok(ApiResponse<ChapterContentDto>.SuccessResponse(
+                    content,
+                    "Chapter content retrieved successfully"
+                ));
             }
             catch (Exception ex)
             {
@@ -75,8 +94,11 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy số chapter tiếp theo
+        /// </summary>
         [HttpGet("next-number")]
-        [Authorize(Policy = "chapter.create")]
+        [RequirePermission("chapter.create")]
         public async Task<IActionResult> GetNextNumber(string bookId)
         {
             try
@@ -91,8 +113,11 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Tạo chapter mới
+        /// </summary>
         [HttpPost]
-        [Authorize(Policy = "chapter.create")]
+        [RequirePermission("chapter.create")]
         public async Task<IActionResult> Create(string bookId, [FromBody] CreateChapterDto dto)
         {
             try
@@ -101,10 +126,16 @@ namespace api.Modules.DigitalContent.Controllers
                 dto.BookId = bookId;
 
                 var chapter = await _chapterService.CreateAsync(dto, userId);
+                
                 return CreatedAtAction(
                     nameof(GetById),
                     new { bookId, id = chapter.Id },
-                    ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter created successfully", null, 201)
+                    ApiResponse<ChapterResponseDto>.SuccessResponse(
+                        chapter,
+                        "Chapter created successfully",
+                        null,
+                        201
+                    )
                 );
             }
             catch (InvalidOperationException ex)
@@ -118,8 +149,11 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Cập nhật chapter
+        /// </summary>
         [HttpPut("{id}")]
-        [Authorize(Policy = "chapter.update")]
+        [RequirePermission("chapter.update")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateChapterDto dto)
         {
             try
@@ -130,7 +164,14 @@ namespace api.Modules.DigitalContent.Controllers
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter updated successfully"));
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                    chapter,
+                    "Chapter updated successfully"
+                ));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse(400, ex.Message));
             }
             catch (Exception ex)
             {
@@ -139,8 +180,11 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Xuất bản chapter
+        /// </summary>
         [HttpPatch("{id}/publish")]
-        [Authorize(Policy = "chapter.publish")]
+        [RequirePermission("chapter.publish")]
         public async Task<IActionResult> Publish(string id)
         {
             try
@@ -151,7 +195,14 @@ namespace api.Modules.DigitalContent.Controllers
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(chapter, "Chapter published successfully"));
+                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                    chapter,
+                    "Chapter published successfully"
+                ));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse(400, ex.Message));
             }
             catch (Exception ex)
             {
@@ -160,8 +211,11 @@ namespace api.Modules.DigitalContent.Controllers
             }
         }
 
+        /// <summary>
+        /// Xóa chapter (archive)
+        /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Policy = "chapter.delete")]
+        [RequirePermission("chapter.delete")]
         public async Task<IActionResult> Delete(string id)
         {
             try
@@ -170,12 +224,43 @@ namespace api.Modules.DigitalContent.Controllers
                 if (!result)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse.SuccessResponse("Chapter hidden successfully"));
+                return Ok(ApiResponse.SuccessResponse("Chapter archived successfully"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error deleting chapter {id}");
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while deleting the chapter"));
+            }
+        }
+
+        /// <summary>
+        /// Đổi thứ tự các chapter
+        /// </summary>
+        [HttpPatch("reorder")]
+        [RequirePermission("chapter.update")]
+        public async Task<IActionResult> ReorderChapters(string bookId, [FromBody] List<string> orderedChapterIds)
+        {
+            try
+            {
+                if (orderedChapterIds == null || !orderedChapterIds.Any())
+                {
+                    return BadRequest(ApiResponse<object>.ErrorResponse(400, "Chapter list cannot be empty"));
+                }
+
+                var result = await _chapterService.ReorderChaptersAsync(bookId, orderedChapterIds);
+                if (!result)
+                    return BadRequest(ApiResponse<object>.ErrorResponse(400, "Invalid chapter list"));
+
+                return Ok(ApiResponse.SuccessResponse("Chapters reordered successfully"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse(400, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error reordering chapters for book {bookId}");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while reordering chapters"));
             }
         }
     }

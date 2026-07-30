@@ -5,6 +5,8 @@ using api.Modules.Catalog.DTOs.Responses;
 using api.Modules.Catalog.Services;
 using api.Common.Models;
 using System.Security.Claims;
+// [THÊM IMPORT] Cho RequirePermission attribute
+using LibraryManagement.Shared.Attributes; // Hoặc namespace phù hợp
 
 namespace api.Modules.Catalog.Controllers
 {
@@ -114,8 +116,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.create")] bằng [RequirePermission("book.create")]
         [HttpPost]
-        [Authorize(Policy = "book.create")]
+        [RequirePermission("book.create")]
         public async Task<IActionResult> Create([FromBody] CreateBookDto dto)
         {
             try
@@ -140,8 +143,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.update")] bằng [RequirePermission("book.update")]
         [HttpPut("{id}")]
-        [Authorize(Policy = "book.update")]
+        [RequirePermission("book.update")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateBookDto dto)
         {
             try
@@ -165,8 +169,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.publish")] bằng [RequirePermission("book.publish")]
         [HttpPatch("{id}/status")]
-        [Authorize(Policy = "book.publish")]
+        [RequirePermission("book.publish")]
         public async Task<IActionResult> UpdateStatus(string id, [FromBody] UpdateStatusDto dto)
         {
             try
@@ -190,8 +195,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.delete")] bằng [RequirePermission("book.delete")]
         [HttpDelete("{id}")]
-        [Authorize(Policy = "book.delete")]
+        [RequirePermission("book.delete")]
         public async Task<IActionResult> Delete(string id)
         {
             try

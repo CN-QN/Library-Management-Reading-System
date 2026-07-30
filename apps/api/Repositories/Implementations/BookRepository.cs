@@ -1,6 +1,7 @@
 using api.Database.Entities;
 using api.Repositories.Interfaces;
 using MongoDB.Driver;
+using MongoDB.Bson; 
 
 namespace api.Repositories.Implementations
 {
@@ -54,23 +55,51 @@ namespace api.Repositories.Implementations
             await _collection.DeleteOneAsync(filter);
         }
 
-        public async Task<(List<Book> Items, long Total)> SearchAsync(string? keyword, string? categoryId, string? authorId, string? status, int page, int limit)
+        // [SỬA LỖI] Cập nhật SearchAsync để lọc theo CategoryId và AuthorId
+        public async Task<(List<Book> Items, long Total)> SearchAsync(
+            string? keyword, 
+            string? categoryId, 
+            string? authorId, 
+            string? status, 
+            int page, 
+            int limit)
         {
+            var filterBuilder = Builders<Book>.Filter;
             var filters = new List<FilterDefinition<Book>>();
 
+            // [SỬA LỖI 1] Lọc theo keyword - Sử dụng Regex thay vì Text Search
             if (!string.IsNullOrEmpty(keyword))
             {
-                filters.Add(Builders<Book>.Filter.Text(keyword));
+                var keywordFilter = filterBuilder.Regex(b => b.Title, new BsonRegularExpression(keyword, "i")) |
+                                    filterBuilder.Regex(b => b.Summary, new BsonRegularExpression(keyword, "i"));
+                filters.Add(keywordFilter);
             }
 
+            // [SỬA LỖI 2] Lọc theo CategoryId - THÊM MỚI
+            if (!string.IsNullOrEmpty(categoryId))
+            {
+                filters.Add(filterBuilder.AnyEq(b => b.CategoryIds, categoryId));
+            }
+
+            // [SỬA LỖI 3] Lọc theo AuthorId - THÊM MỚI
+            if (!string.IsNullOrEmpty(authorId))
+            {
+                filters.Add(filterBuilder.AnyEq(b => b.AuthorIds, authorId));
+            }
+
+            // Lọc theo status
             if (!string.IsNullOrEmpty(status))
             {
-                filters.Add(Builders<Book>.Filter.Eq(b => b.Status, status));
+                filters.Add(filterBuilder.Eq(b => b.Status, status));
             }
 
-            var filter = filters.Any() ? Builders<Book>.Filter.And(filters) : Builders<Book>.Filter.Empty;
+            // Kết hợp tất cả filters
+            var filter = filters.Any() ? filterBuilder.And(filters) : filterBuilder.Empty;
+            
+            // Đếm tổng số bản ghi
             var total = await _collection.CountDocumentsAsync(filter);
 
+            // Phân trang và sắp xếp
             var skip = (page - 1) * limit;
             var items = await _collection.Find(filter)
                 .Skip(skip)
