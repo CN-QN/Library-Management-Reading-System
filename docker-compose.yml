@@ -150,9 +150,55 @@ networks:
     driver: bridge
     name: libraryhub_network
 
-# ========================================
-# VOLUMES
-# ========================================
+  backend:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: libraryhub_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - MongoDb__ConnectionString=mongodb://mongodb:27017
+      - MongoDb__DatabaseName=libraryhub
+      - Redis__ConnectionString=redis:6379
+      - Jwt__Secret=SuperSecretKeyForLibraryHubManagementSystem2026!
+      - Jwt__Issuer=LibraryHub
+      - Jwt__Audience=LibraryHubUsers
+      - Jwt__AccessExpiryMinutes=15
+      - Jwt__RefreshExpiryMinutes=10080
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - mongodb
+      - redis
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+    container_name: libraryhub_admin
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: libraryhub_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+
 volumes:
   mongodb_data:
     name: libraryhub_mongodb_data
