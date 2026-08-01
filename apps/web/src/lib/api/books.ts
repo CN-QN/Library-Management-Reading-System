@@ -1,6 +1,6 @@
 import { API_URL } from '../api-client';
 
-import { Book } from '@/types';
+import { Book } from '@/types/Book';
 
 /**
  * Lấy danh sách sách đang thịnh hành.

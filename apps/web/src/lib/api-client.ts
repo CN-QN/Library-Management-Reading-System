@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
       
       try {
         // Attempt to refresh the token using HttpOnly cookie (no payload needed)
-        await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
+        await apiClient.post('/auth/refresh');
         
         // If successful, retry the original request
         // The new token is set in the HttpOnly cookie by the backend response

@@ -1,5 +1,6 @@
 'use client';
 
+import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Loader2 } from 'lucide-react';
@@ -28,18 +29,19 @@ export function LoginForm() {
   const rawReturnUrl = searchParams.get('returnUrl') || '/';
   const returnUrl = rawReturnUrl.startsWith('/') ? rawReturnUrl : '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
     setError('');
     setIsSubmitting(true);
 
     try {
       await login(email, password);
       router.push(returnUrl);
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const axiosError = err as any;
-      setError(axiosError.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      setError(message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
     } finally {
       setIsSubmitting(false);
     }

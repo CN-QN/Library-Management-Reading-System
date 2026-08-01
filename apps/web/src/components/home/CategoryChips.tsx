@@ -1,4 +1,4 @@
-import { getCategories } from '@/lib/api/mock';
+import { getCategories } from '@/lib/api/mocks/category.mocks';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
