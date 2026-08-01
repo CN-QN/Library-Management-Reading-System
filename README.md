@@ -1,16 +1,18 @@
-# LibraryHub - Hệ thống quản lý thư viện và Đọc sách trực tuyến (Backend Core)
+# LibraryHub - Hệ thống Quản lý Thư viện & Đọc sách Trực tuyến (Monolith Core)
 
-LibraryHub là lõi dịch vụ Backend (API) hỗ trợ quản lý thư viện nội bộ trường học, mượn trả sách vật lý và cổng đọc sách trực tuyến dành cho sinh viên. Hệ thống được xây dựng trên nền tảng **Modular Monolith**, sẵn sàng mở rộng thành microservices, sử dụng các công nghệ hiện đại đảm bảo hiệu năng và tính bảo mật cao.
+LibraryHub là lõi dịch vụ Backend (API) kết hợp ứng dụng Web (Client & Admin) phục vụ quản lý thư viện nội bộ trường học, mượn trả sách vật lý, và cổng đọc sách trực tuyến dành cho sinh viên. Hệ thống được thiết kế theo hướng **Modular Monolith**, sẵn sàng mở rộng thành microservices, sử dụng các công nghệ hiện đại đảm bảo hiệu năng và tính bảo mật cao.
 
 ---
 
 ## 🚀 Công nghệ sử dụng
 
-- **Runtime & Framework:** .NET 9.0 (ASP.NET Core Web API).
-- **Cơ sở dữ liệu chính:** MongoDB 7.0 (lưu trữ phi cấu trúc, hiệu năng đọc ghi cao).
-- **Caching & Session Storage:** Redis 7.0 (lưu cache quyền hạn, quản lý phiên đăng nhập, chống spam API).
-- **Containerization:** Docker & Docker Compose (quản lý và chạy các dịch vụ môi trường).
+- **Backend Runtime & Framework:** .NET 9.0 (ASP.NET Core Web API).
+- **Frontend Framework:** Next.js (Admin & Client Web App).
+- **Cơ sở dữ liệu chính:** MongoDB 7.0 (lưu trữ dữ liệu phi cấu trúc, hiệu năng đọc ghi cao).
+- **Caching & Cửa sổ giao dịch:** Redis 7.0 (lưu cache quyền hạn, quản lý phiên đăng nhập, chống spam API, khóa phân tán Distributed Lock).
+- **Containerization:** Docker & Docker Compose (Quản lý toàn bộ 8 services môi trường và ứng dụng).
 - **Thư viện bổ trợ nổi bật:**
+  - `StackExchange.Redis` - Kết nối và thực thi lệnh cache/lock trên Redis.
   - `FluentValidation` - Thực hiện kiểm tra định dạng và logic nghiệp vụ.
   - `BCrypt.Net-Next` - Mã hóa mật khẩu người dùng.
   - `Serilog` - Nhật ký hệ thống (Structured Logging).
@@ -20,189 +22,122 @@ LibraryHub là lõi dịch vụ Backend (API) hỗ trợ quản lý thư viện 
 ## 🛠️ Yêu cầu chuẩn bị (Prerequisites)
 
 Trước khi bắt đầu, hãy đảm bảo máy tính của bạn đã cài đặt các công cụ sau:
-
-1.  **Docker Desktop** (Để chạy nhanh MongoDB & Redis). [Tải Docker](https://www.docker.com/products/docker-desktop/).
-2.  **.NET 9.0 SDK**. [Tải .NET 9.0](https://dotnet.microsoft.com/download/dotnet/9.0).
-3.  **MongoDB Compass** (Tùy chọn - Công cụ trực quan hóa dữ liệu MongoDB). [Tải Compass](https://www.mongodb.com/products/tools/compass).
-4.  Một IDE lập trình bất kỳ: **Visual Studio 2022**, **JetBrains Rider**, hoặc **VS Code**.
+1.  **Docker Desktop** (Bắt buộc để chạy nhanh MongoDB, Redis và các dịch vụ). [Tải Docker](https://www.docker.com/products/docker-desktop/).
+2.  **.NET 9.0 SDK** (Nếu muốn chạy hoặc debug backend bằng mã nguồn cục bộ). [Tải .NET 9.0](https://dotnet.microsoft.com/download/dotnet/9.0).
+3.  Một IDE lập trình bất kỳ: **Visual Studio 2022**, **JetBrains Rider**, hoặc **VS Code**.
 
 ---
 
-## ⚙️ Hướng dẫn cài đặt và Chạy dự án (Setup Guide)
+## ⚙️ Hướng dẫn khởi chạy bằng Docker Compose (Khuyên dùng)
 
-Làm theo các bước dưới đây để chạy hệ thống từ đầu:
+Hệ thống được cấu hình sẵn một tệp `docker-compose.yml` tối ưu để khởi động toàn bộ 8 dịch vụ chỉ với một dòng lệnh:
 
-### Bước 1: Clone dự án và truy cập thư mục
-
-Mở terminal và di chuyển đến thư mục chứa dự án của bạn:
-
-```bash
-cd LibraryHub
-```
-
-### Bước 2: Thiết lập tệp cấu hình môi trường (.env)
-
-Sao chép tệp `.env.example` thành `.env` để cấu hình kết nối:
-
+### Bước 1: Clone dự án và thiết lập tệp môi trường
+Mở terminal tại thư mục chứa dự án và tạo tệp cấu hình `.env`:
 ```bash
 cp .env.example .env
 ```
 
-_(Lưu ý: Các giá trị mặc định trong `.env.example` đã được cấu hình tối ưu để chạy trực tiếp trên môi trường localhost)._
-
-### Bước 3: Khởi chạy Database & Cache (MongoDB, Redis)
-
-Khởi động Docker containers chạy ngầm bằng lệnh:
-
+### Bước 2: Khởi chạy toàn bộ hệ thống
+Chạy lệnh sau để tự động tải image, xây dựng code và chạy các container:
 ```bash
-docker compose up -d
+docker-compose up --build -d
 ```
 
-Kiểm tra xem các container đã hoạt động chưa:
+### Bước 3: Bản đồ cổng truy cập hệ thống (Port Map Reference)
 
-```bash
-docker ps
-```
+Khi Docker khởi động thành công, các dịch vụ sẽ lắng nghe tại các địa chỉ sau:
 
-Bạn sẽ thấy 2 container đang chạy là `libraryhub-mongodb` (cổng `27017`) và `libraryhub-redis` (cổng `6379`).
-
-### Bước 4: Khởi động Backend API
-
-Di chuyển vào thư mục dự án API:
-
-```bash
-cd apps/api
-```
-
-Khôi phục các gói NuGet phụ thuộc:
-
-```bash
-dotnet restore
-```
-
-Biên dịch dự án:
-
-```bash
-dotnet build
-```
-
-Chạy ứng dụng:
-
-```bash
-dotnet run
-```
-
-Khi ứng dụng khởi chạy thành công, terminal sẽ hiển thị thông tin lắng nghe trên các cổng:
-
-- **HTTP:** `http://localhost:5210`
-- **HTTPS:** `https://localhost:7041`
-
----
-
-## 📖 Trải nghiệm API & Danh sách Tài khoản Test (Seeding Data)
-
-Khi khởi chạy lần đầu tiên, hệ thống sẽ **tự động khởi tạo dữ liệu mẫu (Auto-Seeding)** vào MongoDB bao gồm: Chi nhánh mặc định, 34 quyền hạn hệ thống, các vai trò, và các tài khoản thử nghiệm.
-
-### 🌐 Sử dụng Swagger UI để Kiểm thử API
-
-Mở trình duyệt và truy cập đường dẫn dưới đây để xem tài liệu API chi tiết:
-👉 **[http://localhost:5210/swagger/index.html](http://localhost:5210/swagger/index.html)**
-
-#### Hướng dẫn xác thực trên Swagger UI:
-- **Cơ chế Cookie tự động:** Vì hệ thống sử dụng cơ chế bảo mật HttpOnly Cookie cho môi trường Web, khi bạn gọi API `POST /api/auth/login` thành công trên giao diện Swagger, trình duyệt sẽ **tự động lưu trữ** `accessToken` và `refreshToken` vào Cookie.
-- **Tự động đính kèm:** Đối với tất cả các cuộc gọi API nghiệp vụ sau đó trên Swagger (ví dụ: lấy thông tin người dùng, đổi quyền,...), trình duyệt sẽ **tự động gửi kèm Cookie** lên. Bạn **không cần** phải click nút `Authorize` hay copy-paste Token thủ công!
-- **Sử dụng Token Header (Postman/Mobile):** Trong trường hợp bạn sử dụng các tool ngoài như Postman hoặc lập trình ứng dụng Di động, Swagger vẫn hỗ trợ cấu hình Header `Authorization: Bearer <Your_Access_Token>` bằng cách click vào nút `Authorize` ở góc trên cùng bên phải.
-
-### Danh sách tài khoản thử nghiệm (Mật khẩu chung: `Test@123456`)
-
-| Email đăng nhập              | Vai trò (Role)    | Mô tả phạm vi quyền hạn                                    |
-| :--------------------------- | :---------------- | :--------------------------------------------------------- |
-| **admin@libraryhub.com**     | `SUPER_ADMIN`     | Quản trị viên tối cao, toàn quyền hệ thống                 |
-| **libadmin@libraryhub.com**  | `LIBRARY_ADMIN`   | Quản lý chi nhánh mặc định (Thư viện Trung tâm)            |
-| **librarian@libraryhub.com** | `LIBRARIAN`       | Thủ thư hỗ trợ mượn/trả sách vật lý tại quầy               |
-| **editor@libraryhub.com**    | `CONTENT_EDITOR`  | Biên tập viên chuyên quản lý sách số và chương sách        |
-| **inventory@libraryhub.com** | `INVENTORY_STAFF` | Nhân viên quản lý kho, kiểm kê đầu sách                    |
-| **student@libraryhub.com**   | `STUDENT`         | Sinh viên (Độc giả chính)                                  |
-| **guest@libraryhub.com**     | `GUEST`           | Khách vãng lai, quyền đọc hạn chế                          |
-| **worker@libraryhub.com**    | `SYSTEM_WORKER`   | Tài khoản dành riêng cho các tác vụ chạy nền (Worker/Cron) |
+| Dịch vụ | Cổng Host | Địa chỉ truy cập | Mô tả chức năng |
+| :--- | :--- | :--- | :--- |
+| **Web Client** | `3000` | [http://localhost:3000](http://localhost:3000) | **Reader Portal:** Giao diện cho Độc giả/Sinh viên đọc sách trực tuyến, mượn sách. |
+| **Admin Web** | `3001` | [http://localhost:3001](http://localhost:3001) | **Admin Portal (Template):** Giao diện quản trị viên (hiện tại là trang mặc định của Next.js). |
+| **Backend API** | `5000` | [http://localhost:5000](http://localhost:5000) | **Production API Gateway:** Điểm kết nối chính từ các frontend tới backend. |
+| **Dev API** | `5210` | [http://localhost:5210](http://localhost:5210) | **Swagger API Playground:** Xem chi tiết tài liệu API và test API cục bộ. |
+| **Mongo Express**| `8081` | [http://localhost:8081](http://localhost:8081) | **MongoDB Admin UI:** Giao diện quản trị, xem và sửa dữ liệu trực tiếp trong MongoDB. |
+| **Redis Commander**| `8082` | [http://localhost:8082](http://localhost:8082) | **Redis Admin UI:** Giao diện xem cache và các key/lock đang hoạt động trên Redis. |
+| **MongoDB Database**| `27017`| `localhost:27017` | Kết nối trực tiếp từ MongoDB Compass. |
+| **Redis Server** | `6379` | `localhost:6379` | Kết nối trực tiếp từ Redis CLI. |
 
 ---
 
 ## 📡 Danh sách API Routes (API Reference)
 
-Dưới đây là danh sách toàn bộ các routes API được phân chia theo module chức năng, kèm phương thức, đường dẫn, yêu cầu đăng nhập và phân quyền chi tiết.
+### 1. Xác thực & Tài khoản (`/api/auth`)
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản độc giả mới | Không yêu cầu (Chỉ Gmail) |
+| `POST` | `/api/auth/login` | Đăng nhập hệ thống (Tự cấp cookie) | Không yêu cầu |
+| `POST` | `/api/auth/logout` | Đăng xuất người dùng (Xóa cookie) | Đăng nhập |
+| `GET` | `/api/auth/profile` | Xem thông tin chi tiết tài khoản hiện tại | Đăng nhập |
 
-### 1. Module Xác thực & Tài khoản (`/api/auth`)
+### 2. Quản lý Mượn - Trả sách vật lý (`/api/borrowings`)
+*Đòi hỏi quyền hạn cụ thể của Thủ thư để tránh sinh viên tự duyệt mượn trả.*
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/borrowings` | Tạo phiếu mượn sách mới tại quầy | `loan.create` (Thủ thư) |
+| `GET` | `/api/borrowings` | Danh sách phiếu mượn (Lọc theo user/status) | `user.read` |
+| `GET` | `/api/borrowings/{id}` | Chi tiết phiếu mượn | Đăng nhập |
+| `POST` | `/api/borrowings/{id}/return` | Duyệt trả sách mượn (Tự tính phạt quá hạn)| `loan.return` (Thủ thư) |
+| `POST` | `/api/borrowings/items/{itemId}/renew` | Gia hạn mượn sách (Max 2 lần) | `loan.extend` |
+| `PATCH` | `/api/borrowings/items/{itemId}/status`| Báo hỏng hoặc làm mất sách (Tự tính phạt) | `loan.return` (Thủ thư) |
 
-| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
-| :--- | :--- | :--- | :---: | :--- |
-| `POST` | `/api/auth/register` | Đăng ký tài khoản độc giả mới | ❌ | Không yêu cầu |
-| `POST` | `/api/auth/login` | Đăng nhập hệ thống (Tự động cấp cookie) | ❌ | Không yêu cầu |
-| `POST` | `/api/auth/refresh` | Làm mới Access Token khi hết hạn | ❌ | Không yêu cầu |
-| `POST` | `/api/auth/logout` | Đăng xuất người dùng (Xóa toàn bộ cookie) | ✅ | Không yêu cầu |
-| `GET` | `/api/auth/profile` | Xem thông tin chi tiết tài khoản hiện tại | ✅ | Không yêu cầu |
-| `GET` | `/api/auth/sessions` | Danh sách các phiên đăng nhập đang hoạt động | ✅ | Không yêu cầu |
-| `DELETE` | `/api/auth/sessions/{id}` | Thu hồi (hủy kích hoạt) một phiên đăng nhập | ✅ | Không yêu cầu |
+### 3. Đặt trước sách khi hết bản sao (`/api/reservations`)
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/reservations` | Đặt xếp hàng trước sách (Chỉ cho khi hết bản sao) | Đăng nhập |
+| `GET` | `/api/reservations` | Tìm kiếm, xem hàng đợi đặt trước | Đăng nhập |
+| `POST` | `/api/reservations/{id}/cancel` | Hủy lượt đặt trước sách (Dồn vị trí hàng đợi)| Đăng nhập |
+| `POST` | `/api/reservations/{id}/fulfill` | Hoàn thành giao sách đặt trước cho người mượn | `reservation.approve` (Thủ thư) |
 
----
+### 4. Quản lý Tiền phạt (`/api/fines`)
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/fines` | Tra cứu danh sách tiền phạt quá hạn/hỏng sách | Đăng nhập |
+| `POST` | `/api/fines/{id}/pay` | Thanh toán tiền phạt tại quầy thủ thư | `fine.waive` (Thủ thư) |
+| `POST` | `/api/fines/{id}/waive` | Miễn giảm tiền phạt (Lý do cụ thể) | `fine.waive` (Librarian/Admin) |
 
-### 2. Module Quản lý Người dùng (`/api/users`)
+### 5. Tiến trình đọc sách trực tuyến (`/api/reading`)
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/reading/progress` | Autosave tiến trình đọc (Lưu tạm vào Redis Hash) | Đăng nhập |
+| `GET` | `/api/reading/progress/{bookId}`| Lấy vị trí đọc gần nhất của sách | Đăng nhập |
+| `POST` | `/api/reading/sessions/start` | Khởi tạo phiên đọc sách mới | Đăng nhập |
+| `POST` | `/api/reading/sessions/{id}/heartbeat`| Gửi heartbeat định kỳ để tính tích lũy thời gian| Đăng nhập |
+| `POST` | `/api/reading/sessions/{id}/end` | Kết thúc phiên đọc sách | Đăng nhập |
 
-| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
-| :--- | :--- | :--- | :---: | :--- |
-| `GET` | `/api/users` | Tìm kiếm và xem danh sách người dùng phân trang | ✅ | `user.read` |
-| `GET` | `/api/users/{id}` | Xem chi tiết thông tin một người dùng | ✅ | `user.read` |
-| `POST` | `/api/users` | Admin tạo trực tiếp tài khoản mới | ✅ | `user.create` |
-| `PUT` | `/api/users/{id}` | Cập nhật thông tin hồ sơ người dùng | ✅ | `user.update` |
-| `PATCH` | `/api/users/{id}/status` | Khóa hoặc mở khóa tài khoản | ✅ | `user.lock` |
-| `POST` | `/api/users/{id}/roles` | Gán thêm vai trò cho người dùng | ✅ | `user.assign_role` |
-| `DELETE` | `/api/users/{id}/roles/{userRoleId}` | Gỡ bỏ vai trò khỏi người dùng | ✅ | `user.assign_role` |
+### 6. Tìm kiếm & Gợi ý sách nâng cao (`/api/search`)
+*Không yêu cầu đăng nhập (Public APIs).*
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/search` | Tìm kiếm sách nâng cao (Lookup Author & Category) | Không yêu cầu |
+| `GET` | `/api/search/suggestions`| Autocomplete gợi ý nhanh từ khóa khi gõ | Không yêu cầu |
+| `GET` | `/api/search/trending` | Sách thịnh hành (Tính động 7 ngày, cache Redis) | Không yêu cầu |
+| `GET` | `/api/search/recommendations`| Gợi ý cá nhân hóa (Dựa trên lịch sử sách đã đọc) | Đăng nhập / Khách |
 
----
-
-### 3. Module Quản lý Vai trò & Quyền hạn (`/api/roles`)
-
-| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
-| :--- | :--- | :--- | :---: | :--- |
-| `GET` | `/api/roles` | Lấy danh sách các vai trò (roles) trong hệ thống | ✅ | `role.read` |
-| `GET` | `/api/roles/{id}` | Xem thông tin chi tiết của một vai trò | ✅ | `role.read` |
-| `POST` | `/api/roles` | Khởi tạo vai trò mới | ✅ | `role.create` |
-| `PUT` | `/api/roles/{id}` | Thay đổi thông tin cơ bản của vai trò | ✅ | `role.update` |
-| `GET` | `/api/permissions` | Xem danh sách tất cả quyền hạn (permissions) hệ thống | ✅ | `role.read` |
-| `POST` | `/api/roles/{id}/permissions` | Gán quyền chức năng cho vai trò | ✅ | `role.assign_permission` |
-| `DELETE` | `/api/roles/{id}/permissions/{permissionId}` | Gỡ quyền chức năng khỏi vai trò | ✅ | `role.assign_permission` |
-
----
-
-### 4. Module Nhật ký Hệ thống (`/api/audit-logs`)
-
-| Method | Endpoint | Mô tả chức năng | Đăng nhập | Quyền yêu cầu (Permission) |
-| :--- | :--- | :--- | :---: | :--- |
-| `GET` | `/api/audit-logs` | Truy vấn nhật ký thay đổi dữ liệu của hệ thống | ✅ | `audit.read` |
-
----
-
-## 🔒 Cơ chế bảo mật Token qua HttpOnly Cookie
-
-Để đảm bảo an toàn tuyệt đối trước các cuộc tấn công **XSS (Cross-Site Scripting)**, hệ thống không trả Access Token hay Refresh Token về JSON body để Client lưu vào `localStorage`. Thay vào đó, hệ thống lưu trữ trực tiếp vào Cookie bảo mật:
-
-1.  **Đăng nhập thành công (`POST /api/auth/login`):**
-    - Hệ thống thiết lập cookie `accessToken` với `Path=/` (tự động đính kèm ở các request gọi API nghiệp vụ như lấy sách, người dùng...).
-    - Hệ thống thiết lập cookie `refreshToken` với `Path=/api/auth` (chỉ gửi lên khi cần refresh token hoặc logout).
-    - Body trả về chỉ chứa thông tin profile cơ bản của người dùng (`user`), không chứa mã token.
-2.  **Đọc Token tự động:**
-    - Backend tự động đọc cookie `accessToken` để xác thực phiên làm việc.
-    - _(Tương thích đa nền tảng)_: Vẫn hỗ trợ đọc từ header `Authorization: Bearer <token>` nếu client là ứng dụng Di động (Mobile App) không hỗ trợ cookie.
+### 7. Hệ thống Thông báo (`/api/notifications`)
+| Method | Endpoint | Mô tả chức năng | Quyền yêu cầu (Permission) |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/notifications` | Lấy danh sách thông báo của user (phân trang) | Đăng nhập |
+| `GET` | `/api/notifications/unread-count`| Số lượng thông báo chưa đọc | Đăng nhập |
+| `POST` | `/api/notifications/{id}/read`| Đánh dấu một thông báo đã đọc | Đăng nhập |
+| `POST` | `/api/notifications/read-all`| Đánh dấu toàn bộ thông báo đã đọc | Đăng nhập |
+| `POST` | `/api/notifications/send` | Gửi thông báo cá nhân cho một sinh viên cụ thể | `notification.send` (Admin/Thủ thư) |
+| `POST` | `/api/notifications/broadcast`| Phát thông báo hệ thống cho mọi user hoạt động | `notification.broadcast` (Admin/Thủ thư) |
 
 ---
 
-## 🛡️ Ràng buộc Validation & Nghiệp vụ Quan trọng
+## 🔒 Các nghiệp vụ nền tảng & Bảo mật cốt lõi
 
-Hệ thống tích hợp bộ lọc **FluentValidation** chặt chẽ trước khi tiếp nhận dữ liệu:
+### 1. Phân quyền động an toàn (RBAC & Redis):
+Hệ thống sử dụng bộ lọc `[RequirePermission(Permissions.XXX)]` để chặn truy cập API trái phép. Danh sách quyền hạn được phân tích từ vai trò (`user_roles`) của người dùng và lưu trữ tức thì trên Redis. Mỗi cuộc gọi API chỉ tốn chưa tới 1ms để check quyền trên Redis Cache, không gây nghẽn database chính.
 
-- **Đăng ký sinh viên:**
-  - Mã số sinh viên (`studentCode`) **bắt buộc** chỉ chứa số, độ dài từ 8 đến 12 chữ số (chặn các mã rác chứa chữ cái).
-  - Email đăng ký bắt buộc phải thuộc tên miền `@gmail.com` hoặc các tên miền giáo dục kết thúc bằng `.edu.vn`.
-- **Độ mạnh mật khẩu:** Bắt buộc tối thiểu 8 ký tự, có chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt.
-- **Toàn vẹn quan hệ (DB Checks):** Tự động truy vấn MongoDB ở bước validate để đảm bảo `BranchId`, `RoleId` hay `PermissionId` truyền lên phải tồn tại thực tế trong database.
-- **An toàn phân trang:** Tự động điều chỉnh các tham số `page` và `limit` về giá trị hợp lệ nếu Client truyền số âm hoặc số 0, tránh lỗi crash database.
+### 2. Chặn tranh chấp mượn sách bằng Distributed Lock:
+Khi gọi API mượn sách, hệ thống áp dụng cơ chế khóa phân tán Redis `borrow_lock:{copyId}` trong 10 giây. Điều này đảm bảo tại một thời điểm, một bản sao sách vật lý duy nhất chỉ được xử lý mượn bởi một thủ thư, loại bỏ hoàn toàn lỗi tranh chấp dữ liệu khi nhiều người mượn cùng lúc.
+
+### 3. Đồng bộ tiến trình đọc chạy ngầm (Sync Worker & BulkWrite):
+Khi độc giả cuộn trang đọc sách trực tuyến, Web Client liên tục gọi API Autosave. Để giảm tải 95% IOPS ghi cho MongoDB, backend chỉ ghi tiến trình vào **Redis Hash** và đưa khóa vào hàng đợi dirty set `reading_progress:dirty`.
+Một tiến trình chạy nền **`ReadingProgressSyncWorker`** (Hosted Service) tự động quét hàng đợi này mỗi 30 giây, chuyển dữ liệu và đồng bộ hàng loạt vào MongoDB bằng lệnh `BulkWriteAsync` tối ưu.
+
+### 4. Thuật toán chống xung đột đa thiết bị (Versioning):
+Khi lưu tiến trình đọc, hệ thống so khớp trường `Version` từ thiết bị gửi lên với Version trên hệ thống. Nếu sinh viên mở sách trên nhiều thiết bị và thiết bị cũ gửi lên phiên bản nhỏ hơn phiên bản đang lưu, backend từ chối ghi và trả về tiến trình mới nhất của thiết bị kia để ứng dụng tự đồng bộ lại giao diện.

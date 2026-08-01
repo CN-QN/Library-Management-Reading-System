@@ -1,4 +1,10 @@
-version: '3.8'
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  libraryhub_network:
+    driver: bridge
+    name: libraryhub_network
 
 services:
   # ========================================
@@ -50,49 +56,6 @@ services:
       start_period: 10s
 
   # ========================================
-  # API - Backend Service
-  # ========================================
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    container_name: libraryhub_api
-    restart: always
-    ports:
-      - "5210:5210"
-      - "5211:5211"  # HTTPS
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:5210
-      - ASPNETCORE_HTTPS_PORT=5211
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
-      - ConnectionStrings__MongoDb=mongodb://mongodb:27017
-      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-}
-      - Jwt__Secret=SuperSecretKeyForLibraryHubManagementSystem2026!
-      - Jwt__Issuer=LibraryHub
-      - Jwt__Audience=LibraryHubUsers
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:4200
-    volumes:
-      - ./apps/api:/app
-      - ./apps/api/wwwroot:/app/wwwroot
-      - ./logs:/app/logs
-      - ~/.aspnet/https:/https:ro
-    networks:
-      - libraryhub_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5210/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # ========================================
   # MONGODB EXPRESS - Admin UI cho MongoDB
   # ========================================
   mongo-express:
@@ -142,23 +105,28 @@ services:
       timeout: 10s
       retries: 3
 
-# ========================================
-# NETWORKS
-# ========================================
-networks:
-  libraryhub_network:
-    driver: bridge
-    name: libraryhub_network
-
+  # ========================================
+  # BACKEND SERVICE (API)
+  # ========================================
   backend:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: libraryhub_backend
     restart: always
     ports:
-      - "5000:5000"
+      - "5000:5210"  # Cổng kết nối từ Web/Admin
+      - "5210:5210"  # Cổng Swagger API / Dev
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5210
+      - ConnectionStrings__MongoDb=mongodb://mongodb:27017
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-}
       - MongoDb__ConnectionString=mongodb://mongodb:27017
       - MongoDb__DatabaseName=libraryhub
       - Redis__ConnectionString=redis:6379
@@ -167,12 +135,19 @@ networks:
       - Jwt__Audience=LibraryHubUsers
       - Jwt__AccessExpiryMinutes=15
       - Jwt__RefreshExpiryMinutes=10080
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-      - ASPNETCORE_ENVIRONMENT=Development
-    depends_on:
-      - mongodb
-      - redis
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:4200
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5210/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
+  # ========================================
+  # ADMIN APP
+  # ========================================
   admin:
     build:
       context: ./apps/admin
@@ -185,7 +160,12 @@ networks:
       - NEXT_PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend
+    networks:
+      - libraryhub_network
 
+  # ========================================
+  # WEB APP
+  # ========================================
   web:
     build:
       context: ./apps/web
@@ -198,9 +178,11 @@ networks:
       - NEXT_PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend
+    networks:
+      - libraryhub_network
 
 volumes:
   mongodb_data:
     name: libraryhub_mongodb_data
   redis_data:
-    name: libraryhub_redis_data
+    name: libraryhub_redis_data
