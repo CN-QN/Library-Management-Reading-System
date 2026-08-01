@@ -12,16 +12,11 @@ using api.Common.Redis;
 using api.Modules.Catalog.Services;
 using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
-using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
 using api.Modules.Reading.Services;
 using api.Modules.SearchAndRecommendation.Services;
 using api.Workers;
-using api.Workers;
-using api.Modules.SearchAndRecommendation.Services;
 using api.Modules.Notifications.Services;
-using api.Workers;
-using api.Modules.Borrowings.Services;
 using api.Modules.Files.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
@@ -78,8 +73,10 @@ try
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<RolesService>();
-
-    builder.Services.AddScoped<IBorrowingService, BorrowingService>();
+builder.Services.AddScoped<
+    api.Modules.Circulation.Services.IBorrowingService,
+    api.Modules.Circulation.Services.BorrowingService
+>();
     builder.Services.AddScoped<IBookService, BookService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
@@ -87,7 +84,6 @@ try
     builder.Services.AddSingleton<RedisLockHelper>();
 
     // ===== CIRCULATION MODULE (M06) =====
-    builder.Services.AddScoped<IBorrowingService, BorrowingService>();
 
     // ===== RESERVATIONS & FINES MODULE (M07) =====
     builder.Services.AddScoped<IReservationService, ReservationService>();

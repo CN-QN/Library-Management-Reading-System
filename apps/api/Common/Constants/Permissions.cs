@@ -70,4 +70,3 @@ public static class Permissions
     public const string NotificationSend = "notification.send";
     public const string NotificationBroadcast = "notification.broadcast";
 }
-}

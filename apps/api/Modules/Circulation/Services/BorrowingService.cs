@@ -308,11 +308,12 @@ namespace api.Modules.Circulation.Services
                 copy.Condition = dto.ConditionIn ?? dto.Status;
                 copy.UpdatedAt = now;
                 await _copyRepository.UpdateAsync(copy.Id, copy);
-
-                if (copy.Price > 0)
-                {
-                    fineAmount = dto.Status == "LOST" ? copy.Price : Math.Round(copy.Price * 0.5m, 0);
-                }
+if (copy.Price is > 0)
+{
+    fineAmount = dto.Status == "LOST"
+        ? copy.Price.Value
+        : Math.Round(copy.Price.Value * 0.5m, 0);
+}
             }
 
             // Issue fine
