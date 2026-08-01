@@ -58,5 +58,15 @@ namespace api.Repositories.Implementations
             var filter = Builders<Category>.Filter.Eq(c => c.Slug, slug);
             return await _collection.Find(filter).AnyAsync();
         }
+
+        // [THÊM MỚI] Lấy nhiều thể loại theo danh sách ID
+        public async Task<List<Category>> GetByIdsAsync(List<string> ids)
+        {
+            if (ids == null || !ids.Any())
+                return new List<Category>();
+
+            var filter = Builders<Category>.Filter.In(c => c.Id, ids);
+            return await _collection.Find(filter).ToListAsync();
+        }
     }
 }

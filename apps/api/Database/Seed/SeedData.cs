@@ -59,11 +59,11 @@ namespace api.Database.Seed
 
             var publishers = new List<Publisher>
             {
-                new() { Name = "NXB Trẻ", Slug = "nxb-tre", Address = "TP. Hồ Chí Minh", Contact = "028 1234 5678" },
-                new() { Name = "NXB Kim Đồng", Slug = "nxb-kim-dong", Address = "Hà Nội", Contact = "024 1234 5678" },
-                new() { Name = "NXB Văn Học", Slug = "nxb-van-hoc", Address = "Hà Nội", Contact = "024 8765 4321" },
-                new() { Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van", Address = "Hà Nội", Contact = "024 1234 8765" },
-                new() { Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia", Address = "Hà Nội", Contact = "024 5678 1234" }
+                new() { Name = "NXB Trẻ", Slug = "nxb-tre" },
+                new() { Name = "NXB Kim Đồng", Slug = "nxb-kim-dong" },
+                new() { Name = "NXB Văn Học", Slug = "nxb-van-hoc" },
+                new() { Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van" },
+                new() { Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia" }
             };
 
             await collection.InsertManyAsync(publishers);
@@ -77,21 +77,16 @@ namespace api.Database.Seed
 
             var categories = new List<Category>
             {
-                // Cấp 1
-                new() { Name = "Văn học", Slug = "van-hoc", Status = "ACTIVE" },
-                new() { Name = "Khoa học", Slug = "khoa-hoc", Status = "ACTIVE" },
-                new() { Name = "Kỹ năng sống", Slug = "ky-nang-song", Status = "ACTIVE" },
-                new() { Name = "Lịch sử", Slug = "lich-su", Status = "ACTIVE" },
-                new() { Name = "Thiếu nhi", Slug = "thieu-nhi", Status = "ACTIVE" },
-
-                // Cấp 2 - Văn học
-                new() { Name = "Tiểu thuyết", Slug = "tieu-thuyet", ParentId = "van-hoc", Path = "/van-hoc/tieu-thuyet", Status = "ACTIVE" },
-                new() { Name = "Truyện ngắn", Slug = "truyen-ngan", ParentId = "van-hoc", Path = "/van-hoc/truyen-ngan", Status = "ACTIVE" },
-                new() { Name = "Thơ", Slug = "tho", ParentId = "van-hoc", Path = "/van-hoc/tho", Status = "ACTIVE" },
-
-                // Cấp 2 - Khoa học
-                new() { Name = "Khoa học tự nhiên", Slug = "khoa-hoc-tu-nhien", ParentId = "khoa-hoc", Path = "/khoa-hoc/khoa-hoc-tu-nhien", Status = "ACTIVE" },
-                new() { Name = "Khoa học xã hội", Slug = "khoa-hoc-xa-hoi", ParentId = "khoa-hoc", Path = "/khoa-hoc/khoa-hoc-xa-hoi", Status = "ACTIVE" }
+                new() { Name = "Văn học", Slug = "van-hoc", Description = "Sách văn học Việt Nam và thế giới" },
+                new() { Name = "Khoa học", Slug = "khoa-hoc", Description = "Sách khoa học tự nhiên và xã hội" },
+                new() { Name = "Kỹ năng sống", Slug = "ky-nang-song", Description = "Sách phát triển bản thân và kỹ năng" },
+                new() { Name = "Lịch sử", Slug = "lich-su", Description = "Sách về lịch sử Việt Nam và thế giới" },
+                new() { Name = "Thiếu nhi", Slug = "thieu-nhi", Description = "Sách thiếu nhi và truyện cổ tích" },
+                new() { Name = "Tiểu thuyết", Slug = "tieu-thuyet", Description = "Tiểu thuyết văn học" },
+                new() { Name = "Truyện ngắn", Slug = "truyen-ngan", Description = "Tuyển tập truyện ngắn" },
+                new() { Name = "Thơ", Slug = "tho", Description = "Tuyển tập thơ ca" },
+                new() { Name = "Khoa học tự nhiên", Slug = "khoa-hoc-tu-nhien", Description = "Toán, Lý, Hóa, Sinh" },
+                new() { Name = "Khoa học xã hội", Slug = "khoa-hoc-xa-hoi", Description = "Sử, Địa, Văn hóa, Xã hội" }
             };
 
             await collection.InsertManyAsync(categories);
@@ -129,13 +124,17 @@ namespace api.Database.Seed
                 ("Giông tố", "giong-to", "9786041000017", "Tác phẩm của Vũ Trọng Phụng", 1936),
                 ("Kỹ nghệ lấy tây", "ky-nghe-lay-tay", "9786041000018", "Tác phẩm của Vũ Trọng Phụng", 1937),
                 ("Truyện ngắn Tô Hoài", "truyen-ngan-to-hoai", "9786041000019", "Tuyển tập truyện ngắn Tô Hoài", 1940),
-                ("Nhà trọ", "nha-tro", "9786041000020", "Truyện ngắn của Tô Hoài", 1942),
-                // Thêm 30 sách nữa để đạt 50 sách
+                ("Nhà trọ", "nha-tro", "9786041000020", "Truyện ngắn của Tô Hoài", 1942)
             };
 
             var random = new Random();
             foreach (var (title, slug, isbn, summary, year) in bookTitles)
             {
+                // Chọn ngẫu nhiên 1-2 thể loại
+                var selectedCategories = categoryIds.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
+                // Chọn ngẫu nhiên 1-2 tác giả
+                var selectedAuthors = authorIds.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
+
                 var book = new Book
                 {
                     Title = title,
@@ -148,14 +147,16 @@ namespace api.Database.Seed
                     Status = "PUBLISHED",
                     TotalChapters = 0,
                     PublisherId = publisherIds[random.Next(publisherIds.Count)],
+                    CategoryIds = selectedCategories,
+                    AuthorIds = selectedAuthors,
                     CreatedBy = "admin",
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                     UpdatedAt = DateTime.UtcNow,
                     Stats = new BookStats
                     {
                         ViewCount = random.Next(100, 10000),
                         ReadingCount = random.Next(50, 5000),
-                        Rating = Math.Round(random.NextDouble() * 2 + 3, 1), // 3.0 - 5.0
+                        Rating = Math.Round(random.NextDouble() * 2 + 3, 1),
                         RatingCount = random.Next(10, 200)
                     }
                 };
@@ -177,22 +178,32 @@ namespace api.Database.Seed
             var random = new Random();
             foreach (var book in books)
             {
-                var chapterCount = random.Next(5, 15); // Mỗi sách 5-15 chương
+                var chapterCount = random.Next(5, 15);
                 for (int i = 1; i <= chapterCount; i++)
                 {
-                    var isPublished = random.Next(0, 5) < 4; // 80% published
+                    var isPublished = random.Next(0, 5) < 4;
                     var chapter = new Chapter
                     {
                         BookId = book.Id,
                         Number = i,
                         Title = $"Chương {i}: {GenerateChapterTitle(i, random)}",
-                        ContentJson = GenerateChapterContent(i, random),
+                        // [SỬA] Dùng Content thay vì ContentJson
+                        Content = new ChapterContent
+                        {
+                            Introduction = $"Giới thiệu chương {i}",
+                            Paragraphs = new List<Paragraph>
+                            {
+                                new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 1 },
+                                new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 2 },
+                                new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 3 }
+                            },
+                            Conclusion = $"Kết luận chương {i}"
+                        },
                         WordCount = random.Next(500, 3000),
                         Status = isPublished ? "PUBLISHED" : "DRAFT",
-                        Version = 1,
+                        // [SỬA] Xóa Version và UpdatedBy
                         PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
                         CreatedBy = "admin",
-                        UpdatedBy = "admin",
                         CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -203,7 +214,7 @@ namespace api.Database.Seed
             await collection.InsertManyAsync(chapters);
             _logger.LogInformation($"Seeded {chapters.Count} chapters");
 
-            // Update total chapters for each book
+            // Update total chapters
             var bookCollection = _database.GetCollection<Book>("books");
             foreach (var book in books)
             {
@@ -215,28 +226,27 @@ namespace api.Database.Seed
 
         private async Task SeedBookCopiesAsync()
         {
-            var collection = _database.GetCollection<BookCopy>("book_copies");
+            var collection = _database.GetCollection<BookCopy>("bookCopies");
             if (await collection.Find(_ => true).AnyAsync()) return;
 
             var books = await _database.GetCollection<Book>("books").Find(_ => true).ToListAsync();
-            var branches = await GetBranchIdsAsync();
             var copies = new List<BookCopy>();
 
             var random = new Random();
             foreach (var book in books)
             {
-                var copyCount = random.Next(2, 6); // Mỗi sách 2-6 bản sao
+                var copyCount = random.Next(2, 6);
                 for (int i = 1; i <= copyCount; i++)
                 {
-                    var statuses = new[] { "AVAILABLE", "BORROWED", "RESERVED", "MAINTENANCE" };
+                    var statuses = new[] { "AVAILABLE", "BORROWED", "AVAILABLE", "AVAILABLE" };
                     var status = statuses[random.Next(0, statuses.Length)];
-                    var conditions = new[] { "NEW", "GOOD", "DAMAGED" };
+                    var conditions = new[] { "NEW", "GOOD", "GOOD" };
                     var condition = conditions[random.Next(0, conditions.Length)];
 
                     var copy = new BookCopy
                     {
                         BookId = book.Id,
-                        BranchId = branches[random.Next(branches.Count)],
+                        BranchId = $"branch-{random.Next(1, 4)}",
                         Barcode = $"{book.Id.Substring(0, 8)}{i:D3}{random.Next(100, 999)}",
                         ShelfCode = $"A{random.Next(1, 10)}-{random.Next(1, 20):D2}",
                         Condition = condition,
@@ -256,15 +266,15 @@ namespace api.Database.Seed
 
         private async Task SeedLibraryBranchesAsync()
         {
-            var collection = _database.GetCollection<LibraryBranch>("library_branches");
+            var collection = _database.GetCollection<LibraryBranch>("libraryBranches");
             if (await collection.Find(_ => true).AnyAsync()) return;
 
             var branches = new List<LibraryBranch>
             {
-                new() { Code = "BR001", Name = "Thư viện Trung tâm", Address = "Số 1, Đường ABC, Quận 1, TP.HCM", Contact = "028 1234 5678", Status = "ACTIVE" },
-                new() { Code = "BR002", Name = "Thư viện Đại học Quốc gia", Address = "Số 2, Đường DEF, Quận 2, TP.HCM", Contact = "028 8765 4321", Status = "ACTIVE" },
-                new() { Code = "BR003", Name = "Thư viện Khoa học Tổng hợp", Address = "Số 3, Đường GHI, Quận 3, TP.HCM", Contact = "028 1234 8765", Status = "ACTIVE" },
-                new() { Code = "BR004", Name = "Thư viện Thiếu nhi", Address = "Số 4, Đường JKL, Quận 4, TP.HCM", Contact = "028 5678 1234", Status = "ACTIVE" }
+                new() { Name = "Thư viện Trung tâm", Address = "Số 1, Đường ABC, Quận 1, TP.HCM", Phone = "028 1234 5678", IsActive = true },
+                new() { Name = "Thư viện Đại học Quốc gia", Address = "Số 2, Đường DEF, Quận 2, TP.HCM", Phone = "028 8765 4321", IsActive = true },
+                new() { Name = "Thư viện Khoa học Tổng hợp", Address = "Số 3, Đường GHI, Quận 3, TP.HCM", Phone = "028 1234 8765", IsActive = true },
+                new() { Name = "Thư viện Thiếu nhi", Address = "Số 4, Đường JKL, Quận 4, TP.HCM", Phone = "028 5678 1234", IsActive = true }
             };
 
             await collection.InsertManyAsync(branches);
@@ -291,43 +301,21 @@ namespace api.Database.Seed
             return await collection.Find(_ => true).Project(c => c.Id).ToListAsync();
         }
 
-        private async Task<List<string>> GetBranchIdsAsync()
-        {
-            var collection = _database.GetCollection<LibraryBranch>("library_branches");
-            return await collection.Find(_ => true).Project(b => b.Id).ToListAsync();
-        }
-
         private string GenerateChapterTitle(int number, Random random)
         {
             var titles = new[]
             {
-                "Mở đầu câu chuyện",
-                "Những điều chưa kể",
-                "Cuộc gặp gỡ định mệnh",
-                "Bước ngoặt cuộc đời",
-                "Tình bạn và tình yêu",
-                "Những ngày tháng khó quên",
-                "Bí mật được hé lộ",
-                "Hành trình mới",
-                "Bài học cuộc sống",
-                "Kết thúc và khởi đầu mới",
-                "Trong bóng tối",
-                "Ánh sáng le lói",
-                "Nỗi đau và hy vọng",
-                "Sự hy sinh cao cả",
-                "Tình yêu thương vô bờ",
-                "Những giấc mơ",
-                "Thực tại phũ phàng",
-                "Bước qua nỗi sợ",
-                "Hạnh phúc giản đơn",
-                "Vượt qua giới hạn"
+                "Mở đầu câu chuyện", "Những điều chưa kể", "Cuộc gặp gỡ định mệnh",
+                "Bước ngoặt cuộc đời", "Tình bạn và tình yêu", "Những ngày tháng khó quên",
+                "Bí mật được hé lộ", "Hành trình mới", "Bài học cuộc sống",
+                "Kết thúc và khởi đầu mới", "Trong bóng tối", "Ánh sáng le lói"
             };
             return titles[random.Next(titles.Length)];
         }
 
-        private string GenerateChapterContent(int number, Random random)
+        private string GenerateParagraphText(Random random)
         {
-            var paragraphs = new[]
+            var texts = new[]
             {
                 "Trời hôm nay thật đẹp, nắng vàng rải nhẹ trên những tán cây xanh mướt.",
                 "Cơn gió nhẹ nhàng thổi qua, mang theo hương thơm của những bông hoa dại.",
@@ -338,58 +326,9 @@ namespace api.Database.Seed
                 "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
                 "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
                 "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
-                "Gió thổi vi vu, mang theo hương vị của biển cả bao la.",
-                "Những ký ức tuổi thơ ùa về, đẹp đẽ và trong trẻo.",
-                "Tình yêu như một dòng sông, chảy mãi không ngừng.",
-                "Cuộc sống luôn ẩn chứa những điều bất ngờ thú vị.",
-                "Hạnh phúc đôi khi đến từ những điều giản dị nhất.",
-                "Thời gian trôi qua, để lại trong ta những bài học quý giá."
+                "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
             };
-
-            var content = new
-            {
-                type = "doc",
-                content = new List<object>()
-            };
-
-            var nodes = new List<object>();
-            var paragraphCount = random.Next(3, 8);
-            for (int i = 0; i < paragraphCount; i++)
-            {
-                var selectedParagraphs = paragraphs
-                    .OrderBy(_ => random.Next())
-                    .Take(random.Next(2, 5));
-                var text = string.Join(" ", selectedParagraphs);
-
-                nodes.Add(new
-                {
-                    type = "paragraph",
-                    content = new[]
-                    {
-                        new { type = "text", text = text }
-                    }
-                });
-            }
-
-            // Thêm 1-2 đoạn văn có format đặc biệt
-            if (random.Next(0, 2) == 0)
-            {
-                nodes.Insert(random.Next(1, nodes.Count - 1), new
-                {
-                    type = "heading",
-                    attrs = new { level = random.Next(2, 4) },
-                    content = new[]
-                    {
-                        new { type = "text", text = $"Phần {random.Next(1, 10)}: {GenerateChapterTitle(number, random)}" }
-                    }
-                });
-            }
-
-            return System.Text.Json.JsonSerializer.Serialize(new
-            {
-                type = "doc",
-                content = nodes
-            });
+            return texts[random.Next(texts.Length)];
         }
 
         #endregion

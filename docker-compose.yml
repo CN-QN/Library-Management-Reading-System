@@ -1,6 +1,9 @@
 version: '3.8'
 
 services:
+  # ========================================
+  # MONGODB - Database chính
+  # ========================================
   mongodb:
     image: mongo:7.0
     container_name: libraryhub_mongodb
@@ -9,9 +12,23 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     environment:
       MONGO_INITDB_DATABASE: libraryhub
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  # ========================================
+  # REDIS - Cache & Session
+  # ========================================
   redis:
     image: redis:7.0-alpine
     container_name: libraryhub_redis
@@ -20,7 +37,118 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ========================================
+  # API - Backend Service
+  # ========================================
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: libraryhub_api
+    restart: always
+    ports:
+      - "5210:5210"
+      - "5211:5211"  # HTTPS
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5210
+      - ASPNETCORE_HTTPS_PORT=5211
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ConnectionStrings__MongoDb=mongodb://mongodb:27017
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-}
+      - Jwt__Secret=SuperSecretKeyForLibraryHubManagementSystem2026!
+      - Jwt__Issuer=LibraryHub
+      - Jwt__Audience=LibraryHubUsers
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:4200
+    volumes:
+      - ./apps/api:/app
+      - ./apps/api/wwwroot:/app/wwwroot
+      - ./logs:/app/logs
+      - ~/.aspnet/https:/https:ro
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5210/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ========================================
+  # MONGODB EXPRESS - Admin UI cho MongoDB
+  # ========================================
+  mongo-express:
+    image: mongo-express:latest
+    container_name: libraryhub_mongo_express
+    restart: always
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin123
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # REDIS COMMANDER - Admin UI cho Redis
+  # ========================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: libraryhub_redis_commander
+    restart: always
+    ports:
+      - "8082:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - libraryhub_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  libraryhub_network:
+    driver: bridge
+    name: libraryhub_network
 
   backend:
     build:
@@ -73,4 +201,6 @@ services:
 
 volumes:
   mongodb_data:
+    name: libraryhub_mongodb_data
   redis_data:
+    name: libraryhub_redis_data
