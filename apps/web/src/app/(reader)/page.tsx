@@ -7,6 +7,10 @@ import { SectionSkeleton, ContinueReadingSkeleton } from '@/components/home/Sect
 import { AsyncSection } from '@/components/common/AsyncSection';
 import React from 'react';
 
+// Bắt buộc render động (SSR) thay vì tĩnh (SSG) vì trang này gọi API backend
+// lúc runtime. Nếu dùng SSG, Docker build sẽ thất bại do backend chưa chạy.
+export const dynamic = 'force-dynamic';
+
 const SECTIONS = [
   { id: 'continue-reading', Component: ContinueReading, Fallback: <ContinueReadingSkeleton /> },
   { id: 'trending-books', Component: TrendingBooks, Fallback: <SectionSkeleton /> },
