@@ -66,4 +66,8 @@ public static class Permissions
     public const string SettingUpdate = "setting.update";
     public const string AuditRead = "audit.read";
     public const string FileManage = "file.manage";
+
+    public const string NotificationSend = "notification.send";
+    public const string NotificationBroadcast = "notification.broadcast";
+}
 }

@@ -1,0 +1,71 @@
+@api_HostAddress = http://localhost:5000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Đăng nhập Lấy Access Token (Librarian)
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "librarian@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 2. Tạo phiếu mượn sách mới (Create Borrowing)
+POST {{api_HostAddress}}/api/borrowings
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": "666000000000000000000006",
+  "branchId": "666000000000000000000001",
+  "copyIds": [
+    "BOOKCOPY_ID_HERE"
+  ],
+  "daysToBorrow": 14,
+  "note": "Mượn sách cho kỳ học mới"
+}
+
+### 3. Tra cứu danh sách phiếu mượn (Search Borrowings)
+GET {{api_HostAddress}}/api/borrowings?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 4. Lấy chi tiết phiếu mượn (Get Borrowing By Id)
+GET {{api_HostAddress}}/api/borrowings/BORROWING_ID_HERE
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 5. Trả sách mượn tại quầy thủ thư (Return Items)
+POST {{api_HostAddress}}/api/borrowings/BORROWING_ID_HERE/return
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "returnedItems": [
+    {
+      "itemId": "ITEM_ID_HERE",
+      "conditionIn": "GOOD",
+      "note": "Trả đúng hạn"
+    }
+  ]
+}
+
+### 6. Gia hạn sách mượn (Renew Item)
+POST {{api_HostAddress}}/api/borrowings/items/ITEM_ID_HERE/renew
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "daysToExtend": 7
+}
+
+### 7. Báo hỏng hoặc mất sách (Mark Lost/Damaged)
+PATCH {{api_HostAddress}}/api/borrowings/items/ITEM_ID_HERE/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "status": "LOST",
+  "conditionIn": "LOST",
+  "note": "Độc giả báo mất sách"
+}

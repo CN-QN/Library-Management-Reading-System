@@ -8,9 +8,16 @@ using api.Middleware;
 using api.Roles;
 using api.Users;
 using api.Common.Filters;
+using api.Common.Redis;
 using api.Modules.Catalog.Services;
 using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
+using api.Modules.Circulation.Services;
+using api.Modules.ReservationsAndFines.Services;
+using api.Modules.Reading.Services;
+using api.Modules.SearchAndRecommendation.Services;
+using api.Modules.Notifications.Services;
+using api.Workers;
 using api.Modules.Borrowings.Services;
 using api.Modules.Files.Services;
 using api.Repositories.Implementations;
@@ -72,6 +79,28 @@ try
     builder.Services.AddScoped<IBorrowingService, BorrowingService>();
     builder.Services.AddScoped<IBookService, BookService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
+
+    // ===== REDIS HELPERS =====
+    builder.Services.AddSingleton<RedisLockHelper>();
+
+    // ===== CIRCULATION MODULE (M06) =====
+    builder.Services.AddScoped<IBorrowingService, BorrowingService>();
+
+    // ===== RESERVATIONS & FINES MODULE (M07) =====
+    builder.Services.AddScoped<IReservationService, ReservationService>();
+    builder.Services.AddScoped<IFineService, FineService>();
+
+    // ===== READING MODULE (M09) =====
+    builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
+    builder.Services.AddHostedService<ReadingProgressSyncWorker>();
+
+    // ===== SEARCH & RECOMMENDATION MODULE (M12) =====
+    builder.Services.AddScoped<ISearchRecommendationService, SearchRecommendationService>();
+    builder.Services.AddScoped<ISearchRecommendationRepository, SearchRecommendationRepository>();
+
+    // ===== NOTIFICATION MODULE (M13) =====
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
     builder.Services.AddScoped<ICopyService, CopyService>();
 
     builder.Services.AddScoped<IBookRepository, BookRepository>();
@@ -80,6 +109,11 @@ try
     builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
     builder.Services.AddScoped<ICopyRepository, CopyRepository>();
     builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
+    builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
+    builder.Services.AddScoped<IFineRepository, FineRepository>();
+    builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+    builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
+    builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
     builder.Services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
 
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
