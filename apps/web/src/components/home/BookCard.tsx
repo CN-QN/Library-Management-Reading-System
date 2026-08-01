@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Book } from '@/types';
+import { Book } from '@/types/Book';
 import { Badge } from '@/components/ui/badge';
 
 interface BookCardProps {

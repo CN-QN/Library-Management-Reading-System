@@ -1,4 +1,4 @@
-import { getReadingProgress } from '@/lib/api/mock';
+import { getReadingProgress } from '@/lib/api/mocks/reading-progress.mocks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, ArrowRight } from 'lucide-react';

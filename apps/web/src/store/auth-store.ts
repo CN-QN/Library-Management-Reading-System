@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false 
       });
-    } catch (error) {
+    } catch {
       // 401 means not authenticated, so we clear auth
       get().clearAuth();
       set({ isLoading: false });
