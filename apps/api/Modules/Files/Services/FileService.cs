@@ -294,6 +294,9 @@ namespace api.Modules.Files.Services
             return Path.Combine("uploads", subFolder, dateFolder, fileName);
         }
 
+        // ============================================================
+        // ✅ ĐÃ SỬA: UpdateBookCoverAsync - Cập nhật ảnh bìa sách
+        // ============================================================
         private async Task UpdateBookCoverAsync(string bookId, string coverUrl)
         {
             try
@@ -301,18 +304,30 @@ namespace api.Modules.Files.Services
                 var book = await _bookRepository.GetByIdAsync(bookId);
                 if (book != null)
                 {
-                    // Giả sử Book entity có property CoverUrl
-                    // Cần thêm vào Book entity: public string? CoverUrl { get; set; }
-                    // book.CoverUrl = coverUrl;
-                    // await _bookRepository.UpdateAsync(bookId, book);
+                    // Cập nhật CoverAssetId vào Book entity
+                    // Lưu ý: Book entity cần có property CoverAssetId
+                    book.CoverAssetId = coverUrl;
+                    
+                    // Cập nhật vào database
+                    await _bookRepository.UpdateAsync(bookId, book);
+                    
+                    _logger.LogInformation($"✅ Updated cover for book {bookId}: {coverUrl}");
+                }
+                else
+                {
+                    _logger.LogWarning($"⚠️ Book {bookId} not found for cover update");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to update book cover for {bookId}");
+                _logger.LogError(ex, $"❌ Failed to update book cover for {bookId}");
+                throw; // Ném exception để xử lý ở nơi gọi
             }
         }
 
+        // ============================================================
+        // ✅ ĐÃ SỬA: RemoveBookCoverAsync - Xóa ảnh bìa sách
+        // ============================================================
         private async Task RemoveBookCoverAsync(string bookId)
         {
             try
@@ -320,13 +335,23 @@ namespace api.Modules.Files.Services
                 var book = await _bookRepository.GetByIdAsync(bookId);
                 if (book != null)
                 {
-                    // book.CoverUrl = null;
-                    // await _bookRepository.UpdateAsync(bookId, book);
+                    // Xóa CoverAssetId khỏi Book entity
+                    book.CoverAssetId = null;
+                    
+                    // Cập nhật vào database
+                    await _bookRepository.UpdateAsync(bookId, book);
+                    
+                    _logger.LogInformation($"✅ Removed cover for book {bookId}");
+                }
+                else
+                {
+                    _logger.LogWarning($"⚠️ Book {bookId} not found for cover removal");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to remove book cover for {bookId}");
+                _logger.LogError(ex, $"❌ Failed to remove book cover for {bookId}");
+                throw;
             }
         }
 

@@ -5,8 +5,8 @@ using api.Modules.Catalog.DTOs.Responses;
 using api.Modules.Catalog.Services;
 using api.Common.Models;
 using System.Security.Claims;
-// [THÊM IMPORT] Cho RequirePermission attribute
-using LibraryManagement.Shared.Attributes; // Hoặc namespace phù hợp
+using api.Auth;              // ✅ SỬA: api.Modules.Auth → api.Auth
+using api.Common.Constants;  // ✅ GIỮ NGUYÊN
 
 namespace api.Modules.Catalog.Controllers
 {
@@ -24,6 +24,9 @@ namespace api.Modules.Catalog.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Tìm kiếm sách - Public API
+        /// </summary>
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> Search([FromQuery] BookQueryDto query)
@@ -44,6 +47,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy sách theo ID - Public API
+        /// </summary>
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(string id)
@@ -64,6 +70,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy sách theo Slug - Public API
+        /// </summary>
         [HttpGet("slug/{slug}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetBySlug(string slug)
@@ -84,6 +93,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy sách thịnh hành - Public API
+        /// </summary>
         [HttpGet("trending")]
         [AllowAnonymous]
         public async Task<IActionResult> GetTrending([FromQuery] int limit = 10)
@@ -100,6 +112,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy sách mới - Public API
+        /// </summary>
         [HttpGet("new-releases")]
         [AllowAnonymous]
         public async Task<IActionResult> GetNewReleases([FromQuery] int limit = 10)
@@ -116,9 +131,11 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
-        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.create")] bằng [RequirePermission("book.create")]
+        /// <summary>
+        /// Tạo sách mới - Yêu cầu quyền BookCreate
+        /// </summary>
         [HttpPost]
-        [RequirePermission("book.create")]
+        [RequirePermission(Permissions.BookCreate)]
         public async Task<IActionResult> Create([FromBody] CreateBookDto dto)
         {
             try
@@ -143,9 +160,11 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
-        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.update")] bằng [RequirePermission("book.update")]
+        /// <summary>
+        /// Cập nhật sách - Yêu cầu quyền BookUpdate
+        /// </summary>
         [HttpPut("{id}")]
-        [RequirePermission("book.update")]
+        [RequirePermission(Permissions.BookUpdate)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateBookDto dto)
         {
             try
@@ -169,9 +188,11 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
-        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.publish")] bằng [RequirePermission("book.publish")]
+        /// <summary>
+        /// Cập nhật trạng thái sách - Yêu cầu quyền BookPublish
+        /// </summary>
         [HttpPatch("{id}/status")]
-        [RequirePermission("book.publish")]
+        [RequirePermission(Permissions.BookPublish)]
         public async Task<IActionResult> UpdateStatus(string id, [FromBody] UpdateStatusDto dto)
         {
             try
@@ -195,9 +216,11 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
-        // [SỬA LỖI] Thay thế [Authorize(Policy = "book.delete")] bằng [RequirePermission("book.delete")]
+        /// <summary>
+        /// Xóa sách - Yêu cầu quyền BookDelete
+        /// </summary>
         [HttpDelete("{id}")]
-        [RequirePermission("book.delete")]
+        [RequirePermission(Permissions.BookDelete)]
         public async Task<IActionResult> Delete(string id)
         {
             try
@@ -215,6 +238,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Kiểm tra slug - Public API
+        /// </summary>
         [HttpGet("validate-slug/{slug}")]
         [AllowAnonymous]
         public async Task<IActionResult> ValidateSlug(string slug)
@@ -231,6 +257,9 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Kiểm tra ISBN - Public API
+        /// </summary>
         [HttpGet("validate-isbn/{isbn}")]
         [AllowAnonymous]
         public async Task<IActionResult> ValidateISBN(string isbn)

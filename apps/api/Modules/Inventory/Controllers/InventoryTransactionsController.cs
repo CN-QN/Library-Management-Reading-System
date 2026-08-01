@@ -4,7 +4,8 @@ using api.Modules.Inventory.DTOs;
 using api.Modules.Inventory.Services;
 using api.Common.Models;
 using System.Security.Claims;
-using LibraryManagement.Shared.Attributes;
+using api.Auth;             
+using api.Common.Constants;  
 
 namespace api.Modules.Inventory.Controllers
 {
@@ -28,7 +29,7 @@ namespace api.Modules.Inventory.Controllers
         /// Nhập kho sách
         /// </summary>
         [HttpPost("import")]
-        [RequirePermission("inventory.import")]
+        [RequirePermission(Permissions.CopyCreate)]  
         public async Task<IActionResult> ImportBook([FromBody] InventoryTransactionRequestDto request)
         {
             try
@@ -56,7 +57,7 @@ namespace api.Modules.Inventory.Controllers
         /// Chuyển kho sách
         /// </summary>
         [HttpPost("transfer")]
-        [RequirePermission("inventory.transfer")]
+        [RequirePermission(Permissions.InventoryTransfer)] 
         public async Task<IActionResult> TransferBook([FromBody] InventoryTransferRequestDto request)
         {
             try
@@ -84,7 +85,7 @@ namespace api.Modules.Inventory.Controllers
         /// Kiểm kê sách
         /// </summary>
         [HttpPost("audit")]
-        [RequirePermission("inventory.audit")]
+        [RequirePermission(Permissions.InventoryAudit)]  
         public async Task<IActionResult> AuditBook([FromBody] InventoryAuditRequestDto request)
         {
             try
@@ -112,7 +113,7 @@ namespace api.Modules.Inventory.Controllers
         /// Đánh dấu sách bị mất
         /// </summary>
         [HttpPost("lost")]
-        [RequirePermission("inventory.update")]
+        [RequirePermission(Permissions.CopyUpdateStatus)] 
         public async Task<IActionResult> MarkAsLost([FromBody] MarkLostRequestDto request)
         {
             try
@@ -144,7 +145,7 @@ namespace api.Modules.Inventory.Controllers
         /// Đánh dấu sách tìm thấy
         /// </summary>
         [HttpPost("found")]
-        [RequirePermission("inventory.update")]
+        [RequirePermission(Permissions.CopyUpdateStatus)]  
         public async Task<IActionResult> MarkAsFound([FromBody] MarkFoundRequestDto request)
         {
             try
@@ -176,7 +177,7 @@ namespace api.Modules.Inventory.Controllers
         /// Đánh dấu sách bị hỏng
         /// </summary>
         [HttpPost("damaged")]
-        [RequirePermission("inventory.update")]
+        [RequirePermission(Permissions.CopyUpdateStatus)]  
         public async Task<IActionResult> MarkAsDamaged([FromBody] MarkDamagedRequestDto request)
         {
             try
@@ -208,7 +209,7 @@ namespace api.Modules.Inventory.Controllers
         /// Lấy danh sách giao dịch
         /// </summary>
         [HttpGet]
-        [RequirePermission("inventory.view")]
+        [RequirePermission(Permissions.CopyRead)]  
         public async Task<IActionResult> GetTransactions([FromQuery] InventoryTransactionQueryDto query)
         {
             try
@@ -230,7 +231,7 @@ namespace api.Modules.Inventory.Controllers
         /// Lấy thông tin giao dịch theo ID
         /// </summary>
         [HttpGet("{id}")]
-        [RequirePermission("inventory.view")]
+        [RequirePermission(Permissions.CopyRead)]  
         public async Task<IActionResult> GetById(string id)
         {
             try
@@ -255,7 +256,7 @@ namespace api.Modules.Inventory.Controllers
         /// Lấy lịch sử giao dịch của bản sao sách
         /// </summary>
         [HttpGet("book-copy/{bookCopyId}")]
-        [RequirePermission("inventory.view")]
+        [RequirePermission(Permissions.CopyRead)]  
         public async Task<IActionResult> GetByBookCopy(string bookCopyId)
         {
             try
@@ -277,7 +278,7 @@ namespace api.Modules.Inventory.Controllers
         /// Lấy lịch sử giao dịch của sách
         /// </summary>
         [HttpGet("book/{bookId}")]
-        [RequirePermission("inventory.view")]
+        [RequirePermission(Permissions.CopyRead)]  
         public async Task<IActionResult> GetByBook(string bookId)
         {
             try
@@ -299,7 +300,7 @@ namespace api.Modules.Inventory.Controllers
         /// Lấy thống kê giao dịch
         /// </summary>
         [HttpGet("statistics")]
-        [RequirePermission("inventory.view")]
+        [RequirePermission(Permissions.CopyRead)]  
         public async Task<IActionResult> GetStatistics([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
             try
@@ -321,7 +322,7 @@ namespace api.Modules.Inventory.Controllers
         /// Hủy giao dịch
         /// </summary>
         [HttpPatch("{id}/cancel")]
-        [RequirePermission("inventory.cancel")]
+        [RequirePermission(Permissions.CopyUpdateStatus)]  // ✅ SỬA
         public async Task<IActionResult> CancelTransaction(string id, [FromBody] CancelTransactionRequestDto request)
         {
             try

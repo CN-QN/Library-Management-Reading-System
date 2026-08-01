@@ -4,8 +4,8 @@ using api.Modules.Files.DTOs;
 using api.Modules.Files.Services;
 using api.Common.Models;
 using System.Security.Claims;
-using LibraryManagement.Shared.Attributes;
-
+using api.Auth;             
+using api.Common.Constants;  
 namespace api.Modules.Files.Controllers
 {
     [ApiController]
@@ -28,7 +28,7 @@ namespace api.Modules.Files.Controllers
         /// Upload file
         /// </summary>
         [HttpPost("upload")]
-        [RequirePermission("file.upload")]
+        [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadFile(
             [FromForm] IFormFile file,
             [FromForm] string? bookId,
@@ -72,7 +72,7 @@ namespace api.Modules.Files.Controllers
         /// Upload nhiều file
         /// </summary>
         [HttpPost("upload-multiple")]
-        [RequirePermission("file.upload")]
+        [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadMultipleFiles(
             [FromForm] List<IFormFile> files,
             [FromForm] string? bookId,
@@ -116,7 +116,7 @@ namespace api.Modules.Files.Controllers
         /// Upload ảnh bìa cho sách
         /// </summary>
         [HttpPost("upload-cover/{bookId}")]
-        [RequirePermission("file.upload")]
+        [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadCover(
             string bookId,
             [FromForm] IFormFile file)
@@ -155,7 +155,7 @@ namespace api.Modules.Files.Controllers
         /// Upload nội dung số cho sách (PDF/EPUB)
         /// </summary>
         [HttpPost("upload-content/{bookId}")]
-        [RequirePermission("file.upload")]
+        [RequirePermission(Permissions.FileManage)] 
         public async Task<IActionResult> UploadContent(
             string bookId,
             [FromForm] IFormFile file,
@@ -295,7 +295,7 @@ namespace api.Modules.Files.Controllers
         /// Cập nhật thông tin file
         /// </summary>
         [HttpPatch("{id}")]
-        [RequirePermission("file.update")]
+        [RequirePermission(Permissions.FileManage)] 
         public async Task<IActionResult> UpdateFile(
             string id,
             [FromBody] UpdateFileRequestDto request)
@@ -329,7 +329,7 @@ namespace api.Modules.Files.Controllers
         /// Xóa file
         /// </summary>
         [HttpDelete("{id}")]
-        [RequirePermission("file.delete")]
+        [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> DeleteFile(string id)
         {
             try

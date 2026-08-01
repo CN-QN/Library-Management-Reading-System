@@ -1,11 +1,12 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
+using api.Common.Constants;
+using api.Common.Models;
+using api.Auth; 
 using api.Modules.Borrowings.DTOs;
 using api.Modules.Borrowings.Services;
-using api.Common.Models;
-using System.Security.Claims;
-using LibraryManagement.Shared.Attributes;
-using MongoDB.Bson;
 
 namespace api.Modules.Borrowings.Controllers
 {
@@ -29,7 +30,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Mượn sách
         /// </summary>
         [HttpPost]
-        [RequirePermission("borrowing.create")]
+        [RequirePermission(Permissions.LoanCreate)]  // ✅ SỬA: BorrowingCreate → LoanCreate
         public async Task<IActionResult> BorrowBook([FromBody] BorrowRequestDto request)
         {
             try
@@ -63,7 +64,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Lấy danh sách mượn sách
         /// </summary>
         [HttpGet]
-        [RequirePermission("borrowing.view")]
+        [RequirePermission(Permissions.LoanRead)]  // ✅ SỬA: BorrowingView → LoanRead
         public async Task<IActionResult> GetBorrowings([FromQuery] BorrowQueryDto query)
         {
             try
@@ -85,7 +86,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Lấy thông tin mượn theo ID
         /// </summary>
         [HttpGet("{id}")]
-        [RequirePermission("borrowing.view")]
+        [RequirePermission(Permissions.LoanRead)]  // ✅ SỬA: BorrowingView → LoanRead
         public async Task<IActionResult> GetById(string id)
         {
             try
@@ -135,7 +136,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Lấy danh sách mượn quá hạn
         /// </summary>
         [HttpGet("overdue")]
-        [RequirePermission("borrowing.manage")]
+        [RequirePermission(Permissions.LoanManage)]  // ✅ SỬA: BorrowingManage → LoanManage
         public async Task<IActionResult> GetOverdue()
         {
             try
@@ -157,7 +158,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Lấy danh sách mượn đang hoạt động
         /// </summary>
         [HttpGet("active")]
-        [RequirePermission("borrowing.view")]
+        [RequirePermission(Permissions.LoanRead)]  // ✅ SỬA: BorrowingView → LoanRead
         public async Task<IActionResult> GetActive()
         {
             try
@@ -179,7 +180,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Trả sách
         /// </summary>
         [HttpPatch("{id}/return")]
-        [RequirePermission("borrowing.update")]
+        [RequirePermission(Permissions.LoanReturn)]  // ✅ SỬA: BorrowingUpdate → LoanReturn
         public async Task<IActionResult> ReturnBook(string id, [FromBody] ReturnRequestDto? request = null)
         {
             try
@@ -209,7 +210,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Gia hạn mượn sách
         /// </summary>
         [HttpPatch("{id}/renew")]
-        [RequirePermission("borrowing.update")]
+        [RequirePermission(Permissions.LoanExtend)]  // ✅ SỬA: BorrowingUpdate → LoanExtend
         public async Task<IActionResult> RenewBook(string id, [FromBody] RenewRequestDto request)
         {
             try
@@ -237,7 +238,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Tính tiền phạt cho mượn quá hạn
         /// </summary>
         [HttpGet("{id}/calculate-fine")]
-        [RequirePermission("borrowing.view")]
+        [RequirePermission(Permissions.LoanRead)]  // ✅ SỬA: BorrowingView → LoanRead
         public async Task<IActionResult> CalculateFine(string id)
         {
             try
@@ -260,7 +261,7 @@ namespace api.Modules.Borrowings.Controllers
         /// Thanh toán tiền phạt
         /// </summary>
         [HttpPatch("{id}/pay-fine")]
-        [RequirePermission("borrowing.update")]
+        [RequirePermission(Permissions.FineWaive)]  // ✅ SỬA: BorrowingUpdate → FineWaive
         public async Task<IActionResult> PayFine(string id)
         {
             try

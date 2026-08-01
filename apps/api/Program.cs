@@ -22,9 +22,6 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using MongoDB.Driver;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
-using LibraryManagement.Shared.Attributes;
-using api.Common.Authorization;
-using Microsoft.AspNetCore.Authorization;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -65,7 +62,6 @@ try
         options.InstanceName = "LibraryHub_";
     });
 
-    builder.Services.AddScoped<IAuthorizationHandler, RequirePermissionHandler>();
     builder.Services.AddAuthorization();
 
     builder.Services.AddScoped<JwtService>();

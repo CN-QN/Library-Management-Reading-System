@@ -4,8 +4,8 @@ using api.Modules.DigitalContent.DTOs;
 using api.Modules.DigitalContent.Services;
 using api.Common.Models;
 using System.Security.Claims;
-using LibraryManagement.Shared.Attributes;
-
+using api.Auth;
+using api.Common.Constants;
 namespace api.Modules.DigitalContent.Controllers
 {
     [ApiController]
