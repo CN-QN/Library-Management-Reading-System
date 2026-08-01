@@ -12,5 +12,6 @@ namespace api.Repositories.Interfaces
         Task UpdateAsync(string id, Category category);
         Task DeleteAsync(string id);
         Task<bool> ExistsBySlugAsync(string slug);
+        Task<List<Category>> GetByIdsAsync(List<string> ids); // [THÊM]
     }
 }
