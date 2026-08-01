@@ -175,8 +175,9 @@ namespace api.Modules.Inventory.Services
                 ShelfCode = copy.ShelfCode,
                 Condition = copy.Condition,
                 Status = copy.Status,
-                Price = copy.Price,
-                AcquiredAt = copy.AcquiredAt,
+                // [SỬA LỖI] Sử dụng null-coalescing operator
+                Price = copy.Price ?? 0,
+                AcquiredAt = copy.AcquiredAt ?? DateTime.UtcNow,
                 LastInventoryAt = copy.LastInventoryAt,
                 CreatedAt = copy.CreatedAt
             };

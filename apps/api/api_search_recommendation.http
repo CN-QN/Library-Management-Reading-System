@@ -1,0 +1,33 @@
+@api_HostAddress = http://localhost:5000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Đăng nhập Sinh viên/Độc giả (để lấy Token kiểm thử Đề xuất cá nhân hóa)
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student1@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 2. Tìm kiếm sách nâng cao (Không có bộ lọc)
+GET {{api_HostAddress}}/api/search?page=1&limit=10
+
+### 3. Tìm kiếm sách có từ khóa
+GET {{api_HostAddress}}/api/search?keyword=Nhật&page=1&limit=10
+
+### 4. Tìm kiếm sách lọc theo ngôn ngữ & sắp xếp theo năm giảm dần
+GET {{api_HostAddress}}/api/search?language=vi&sortBy=year_desc&page=1&limit=10
+
+### 5. Gợi ý tìm kiếm Autocomplete (Sách & Tác giả)
+GET {{api_HostAddress}}/api/search/suggestions?q=to
+
+### 6. Danh sách sách thịnh hành (Trending Books)
+GET {{api_HostAddress}}/api/search/trending?limit=5
+
+### 7. Đề xuất sách cho Khách vãng lai (Anonymous Recommendation)
+GET {{api_HostAddress}}/api/search/recommendations?limit=5
+
+### 8. Đề xuất sách cá nhân hóa cho Độc giả đã đăng nhập (Personalized Recommendation)
+GET {{api_HostAddress}}/api/search/recommendations?limit=5
+Authorization: Bearer {{accessToken}}

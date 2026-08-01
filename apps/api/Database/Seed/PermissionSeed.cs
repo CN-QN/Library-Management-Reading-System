@@ -68,7 +68,11 @@ public static class PermissionSeed
         new Permission { Code = Constants.Permissions.SettingRead, Resource = "setting", Action = "read", Description = "Read system settings" },
         new Permission { Code = Constants.Permissions.SettingUpdate, Resource = "setting", Action = "update", Description = "Update system settings" },
         new Permission { Code = Constants.Permissions.AuditRead, Resource = "audit", Action = "read", Description = "View audit logs" },
-        new Permission { Code = Constants.Permissions.FileManage, Resource = "file", Action = "manage", Description = "Manage media uploads" }
+        new Permission { Code = Constants.Permissions.FileManage, Resource = "file", Action = "manage", Description = "Manage media uploads" },
+
+        // Notifications
+        new Permission { Code = Constants.Permissions.NotificationSend, Resource = "notification", Action = "send", Description = "Send notification to a user" },
+        new Permission { Code = Constants.Permissions.NotificationBroadcast, Resource = "notification", Action = "broadcast", Description = "Broadcast system notification" }
     };
 
     // Role code -> lists of permission codes
@@ -86,7 +90,8 @@ public static class PermissionSeed
                 Constants.Permissions.CopyRead, Constants.Permissions.CopyCreate, Constants.Permissions.CopyUpdateStatus,
                 Constants.Permissions.LoanCreate, Constants.Permissions.LoanReturn, Constants.Permissions.LoanExtend,
                 Constants.Permissions.ReportView, Constants.Permissions.ReportExport,
-                Constants.Permissions.SettingRead, Constants.Permissions.SettingUpdate, Constants.Permissions.AuditRead
+                Constants.Permissions.SettingRead, Constants.Permissions.SettingUpdate, Constants.Permissions.AuditRead,
+                Constants.Permissions.NotificationSend, Constants.Permissions.NotificationBroadcast
             }
         },
         {

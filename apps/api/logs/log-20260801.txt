@@ -1,0 +1,14 @@
+[2026-08-01 11:38:21 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:21 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:21 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:21 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:43 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:43 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:43 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:43 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:22 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 13:31:23 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 13:31:23 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:23 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:23 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 13:31:59 INF] ReadingProgressSyncWorker stopped. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
