@@ -22,7 +22,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 
 const FilterContent = ({ 
@@ -141,10 +140,6 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
   
   const [keyword, setKeyword] = useState(initialKeyword);
   const [sort, setSort] = useState(searchParams.get('SortBy') || 'newest');
-
-  useEffect(() => {
-    setKeyword(initialKeyword);
-  }, [initialKeyword]);
 
   // Đồng bộ từ khóa tìm kiếm lên URL sau khi người dùng ngừng gõ phím 500ms.
   // Chỉ thực hiện router.replace nếu từ khóa thực sự khác với giá trị hiện tại trên URL

@@ -2,10 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, Search, LogOut, User } from 'lucide-react';
+import { BookOpen, LogOut, User } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,17 +39,6 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
               <span>LibraryHub</span>
             </Link>
           </div>
-
-          {/* Search Bar */}
-          <form action="/books" method="GET" className="flex relative w-full max-w-[200px] sm:max-w-xs md:max-w-sm mx-2 sm:mx-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              type="search"
-              name="Keyword"
-              placeholder="Tìm kiếm sách, tác giả..." 
-              className="w-full bg-background pl-9 border-border focus-visible:ring-primary"
-            />
-          </form>
 
           {/* User Menu / Login Button */}
           <div className="flex items-center gap-4">

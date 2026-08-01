@@ -60,7 +60,7 @@ export default async function BooksPage({
   return (
     <div className="container mx-auto py-8">
       <div className="flex flex-col md:flex-row gap-8">
-        <BookSearchAndFilters initialKeyword={keyword} />
+        <BookSearchAndFilters key={keyword} initialKeyword={keyword} />
         
         <div className="flex-1 flex flex-col min-h-0">
           <BookListContainer books={data.items} />
