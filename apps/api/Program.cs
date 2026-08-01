@@ -15,6 +15,8 @@ using api.Modules.Inventory.Services;
 using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
 using api.Modules.Reading.Services;
+using api.Modules.SearchAndRecommendation.Services;
+using api.Workers;
 using api.Workers;
 using api.Modules.SearchAndRecommendation.Services;
 using api.Modules.Notifications.Services;
