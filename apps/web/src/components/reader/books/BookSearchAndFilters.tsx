@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -18,171 +24,245 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select';
+  BOOK_AVAILABILITY_FILTERS,
+  BOOK_CATEGORY_FILTERS,
+  BOOK_LANGUAGE_FILTERS,
+  BOOK_SORT_OPTIONS,
+} from '@/lib/api/mocks/book-filter.mocks';
 
-const FilterContent = ({ 
-  keyword, 
-  setKeyword,
-  sort,
-  setSort
-}: { 
-  keyword: string, 
-  setKeyword: (val: string) => void,
-  sort: string,
-  setSort: (val: string) => void
-}) => {
-  const sortLabels: Record<string, string> = {
-    newest: "Mới nhất",
-    popular: "Phổ biến nhất",
-    trending: "Thịnh hành",
-  };
+const DEFAULT_SORT = 'newest';
 
-  return (
-  <div className="flex flex-col gap-6">
-    {/* Search (Mobile mainly, but can be shared) */}
-    <div className="relative md:hidden">
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-      <Input
-        type="search"
-        placeholder="Tìm kiếm sách..."
-        className="pl-8"
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        aria-label="Tìm kiếm sách"
-      />
-    </div>
-
-    {/* Sort Options */}
-    <div className="space-y-3">
-      <h3 className="font-semibold text-sm">Sắp xếp</h3>
-      <Select value={sort} onValueChange={(val) => val && setSort(val)}>
-        <SelectTrigger>
-          <span className="flex flex-1 text-left line-clamp-1">{sortLabels[sort] || "Sắp xếp theo..."}</span>
-        </SelectTrigger>
-        <SelectContent alignItemWithTrigger={false} sideOffset={4}>
-          <SelectItem value="newest">Mới nhất</SelectItem>
-          <SelectItem value="popular" disabled>
-            Phổ biến nhất <span className="text-[10px] ml-1 text-muted-foreground">(Chưa có API)</span>
-          </SelectItem>
-          <SelectItem value="trending" disabled>
-            Thịnh hành <span className="text-[10px] ml-1 text-muted-foreground">(Chưa có API)</span>
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-
-    {/* Categories - Disabled */}
-    <div className="space-y-3">
-      <h3 className="font-semibold text-sm flex items-center justify-between">
-        Thể loại
-        <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chưa có API</Badge>
-      </h3>
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground italic">Chưa có API hỗ trợ</p>
-      </div>
-    </div>
-
-    {/* Availability - Disabled */}
-    <div className="space-y-3">
-      <h3 className="font-semibold text-sm flex items-center justify-between">
-        Tình trạng mượn
-        <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chưa có API</Badge>
-      </h3>
-      <RadioGroup disabled>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="all" id="r-all" />
-          <Label htmlFor="r-all" className="text-muted-foreground">Tất cả</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="available" id="r-available" />
-          <Label htmlFor="r-available" className="text-muted-foreground">Có sẵn để mượn</Label>
-        </div>
-      </RadioGroup>
-    </div>
-
-    {/* Language - Disabled */}
-    <div className="space-y-3">
-      <h3 className="font-semibold text-sm flex items-center justify-between">
-        Ngôn ngữ
-        <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chưa có API</Badge>
-      </h3>
-      <div className="space-y-2">
-        {['Tiếng Việt', 'Tiếng Anh'].map((lang) => (
-          <div key={lang} className="flex items-center space-x-2">
-            <Checkbox id={`lang-${lang}`} disabled />
-            <Label htmlFor={`lang-${lang}`} className="text-sm font-normal text-muted-foreground">
-              {lang}
-            </Label>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-  );
+type FilterContentProps = {
+  keyword: string;
+  selectedCategoryId: string;
+  selectedLanguage: string;
+  selectedAvailability: string;
+  selectedSort: string;
+  onKeywordChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
+  onLanguageChange: (value: string, checked: boolean) => void;
+  onAvailabilityChange: (value: string) => void;
+  onSortChange: (value: string | null) => void;
+  onClearFilters: () => void;
 };
 
+function FilterContent({
+  keyword,
+  selectedCategoryId,
+  selectedLanguage,
+  selectedAvailability,
+  selectedSort,
+  onKeywordChange,
+  onCategoryChange,
+  onLanguageChange,
+  onAvailabilityChange,
+  onSortChange,
+  onClearFilters,
+}: FilterContentProps) {
+  const activeSort = BOOK_SORT_OPTIONS.find((option) => option.value === selectedSort) || BOOK_SORT_OPTIONS[0];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="relative md:hidden">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Tìm kiếm sách..."
+          className="pl-8"
+          value={keyword}
+          onChange={(event) => onKeywordChange(event.target.value)}
+          aria-label="Tìm kiếm sách"
+        />
+      </div>
+
+      <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+        Bộ lọc đang dùng dữ liệu lựa chọn tạm thời ở frontend. Kết quả thật phụ thuộc API Books hỗ trợ
+        các tham số lọc tương ứng.
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-semibold text-sm">Sắp xếp</h3>
+        <Select value={selectedSort} onValueChange={onSortChange}>
+          <SelectTrigger className="w-full" aria-label="Sắp xếp sách">
+            <span className="flex flex-1 text-left line-clamp-1">{activeSort.label}</span>
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false} sideOffset={4}>
+            {BOOK_SORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <span>{option.label}</span>
+                {option.backendPending && (
+                  <span className="text-[10px] text-muted-foreground">Chờ BE</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-semibold text-sm flex items-center justify-between">
+          Thể loại
+          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Mock options</Badge>
+        </h3>
+        <RadioGroup value={selectedCategoryId || 'all'} onValueChange={onCategoryChange}>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="all" id="category-all" />
+            <Label htmlFor="category-all" className="text-sm font-normal">Tất cả thể loại</Label>
+          </div>
+          {BOOK_CATEGORY_FILTERS.map((category) => (
+            <div key={category.value} className="flex items-center space-x-2">
+              <RadioGroupItem value={category.value} id={`category-${category.value}`} />
+              <Label htmlFor={`category-${category.value}`} className="text-sm font-normal">
+                {category.label}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-semibold text-sm flex items-center justify-between">
+          Tình trạng
+          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chờ BE</Badge>
+        </h3>
+        <RadioGroup value={selectedAvailability || 'all'} onValueChange={onAvailabilityChange}>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="all" id="availability-all" />
+            <Label htmlFor="availability-all" className="text-sm font-normal">Tất cả</Label>
+          </div>
+          {BOOK_AVAILABILITY_FILTERS.map((option) => (
+            <div key={option.value} className="flex items-center space-x-2">
+              <RadioGroupItem value={option.value} id={`availability-${option.value}`} />
+              <Label htmlFor={`availability-${option.value}`} className="text-sm font-normal">
+                {option.label}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-semibold text-sm flex items-center justify-between">
+          Ngôn ngữ
+          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chờ BE</Badge>
+        </h3>
+        <div className="space-y-2">
+          {BOOK_LANGUAGE_FILTERS.map((language) => (
+            <div key={language.value} className="flex items-center space-x-2">
+              <Checkbox
+                id={`language-${language.value}`}
+                checked={selectedLanguage === language.value}
+                onCheckedChange={(checked) => onLanguageChange(language.value, checked === true)}
+              />
+              <Label htmlFor={`language-${language.value}`} className="text-sm font-normal">
+                {language.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Button type="button" variant="outline" onClick={onClearFilters}>
+        Xoá bộ lọc
+      </Button>
+    </div>
+  );
+}
+
 /**
- * BookSearchAndFilters - Hiển thị khung tìm kiếm, bộ lọc và sắp xếp danh sách sách.
- * 
- * Quản lý giá trị Keyword bằng local state để tạo độ trễ (debounce) trước khi đẩy lên URL.
- * Các chức năng lọc và sắp xếp nâng cao hiện đang bị vô hiệu hóa vì Backend chưa hỗ trợ.
- * 
- * @param initialKeyword - Từ khóa tìm kiếm ban đầu lấy từ URL
+ * BookSearchAndFilters - Hiển thị tìm kiếm, bộ lọc và sắp xếp danh sách sách.
+ *
+ * State được đồng bộ lên URL để có thể chia sẻ link. Dữ liệu option của filter là mock frontend
+ * vì backend chưa có API metadata riêng cho Reader Portal.
  */
 export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
-  const [keyword, setKeyword] = useState(initialKeyword);
-  const [sort, setSort] = useState(searchParams.get('SortBy') || 'newest');
 
-  // Đồng bộ từ khóa tìm kiếm lên URL sau khi người dùng ngừng gõ phím 500ms.
-  // Chỉ thực hiện router.replace nếu từ khóa thực sự khác với giá trị hiện tại trên URL
-  // để tránh việc re-render vòng lặp và dội request lên server.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const currentKeyword = searchParams.get('Keyword') || '';
-      if (keyword !== currentKeyword) {
-        const params = new URLSearchParams(searchParams);
-        if (keyword) {
-          params.set('Keyword', keyword);
-        } else {
-          params.delete('Keyword');
-        }
-        params.delete('Page'); // Reset to page 1 on search
-        router.replace(`${pathname}?${params.toString()}`);
+  const selectedCategoryId = searchParams.get('CategoryId') || '';
+  const selectedLanguage = searchParams.get('Language') || '';
+  const selectedAvailability = searchParams.get('AccessType') || '';
+  const selectedSort = searchParams.get('Sort') || DEFAULT_SORT;
+
+  const activeFilterCount = useMemo(() => {
+    return [selectedCategoryId, selectedLanguage, selectedAvailability, selectedSort !== DEFAULT_SORT ? selectedSort : '']
+      .filter(Boolean)
+      .length;
+  }, [selectedAvailability, selectedCategoryId, selectedLanguage, selectedSort]);
+
+  const replaceParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
       }
-    }, 500);
+    });
 
-    return () => clearTimeout(timer);
-  }, [keyword, pathname, router, searchParams]);
+    params.delete('Page');
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }, [pathname, router, searchParams]);
+
+  const handleSortChange = (value: string | null) => {
+    const safeValue = value || DEFAULT_SORT;
+    const sortOption = BOOK_SORT_OPTIONS.find((option) => option.value === safeValue) || BOOK_SORT_OPTIONS[0];
+
+    replaceParams({
+      Sort: safeValue === DEFAULT_SORT ? null : safeValue,
+      SortBy: safeValue === DEFAULT_SORT ? null : sortOption.sortBy,
+      SortOrder: safeValue === DEFAULT_SORT ? null : sortOption.sortOrder,
+    });
+  };
+
+  const handleClearFilters = () => {
+    replaceParams({
+      Keyword: null,
+      CategoryId: null,
+      Language: null,
+      AccessType: null,
+      Sort: null,
+      SortBy: null,
+      SortOrder: null,
+    });
+  };
+
+  const filterContent = (
+    <FilterContent
+      keyword={initialKeyword}
+      selectedCategoryId={selectedCategoryId}
+      selectedLanguage={selectedLanguage}
+      selectedAvailability={selectedAvailability}
+      selectedSort={selectedSort}
+      onKeywordChange={(value) => replaceParams({ Keyword: value.trim() || null })}
+      onCategoryChange={(value) => replaceParams({ CategoryId: value === 'all' ? null : value })}
+      onLanguageChange={(value, checked) => replaceParams({ Language: checked ? value : null })}
+      onAvailabilityChange={(value) => replaceParams({ AccessType: value === 'all' ? null : value })}
+      onSortChange={handleSortChange}
+      onClearFilters={handleClearFilters}
+    />
+  );
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-4">
+      <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-4 self-start">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Tìm kiếm sách..."
             className="pl-8"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            defaultValue={initialKeyword}
+            onChange={(event) => replaceParams({ Keyword: event.target.value.trim() || null })}
             aria-label="Tìm kiếm sách"
           />
         </div>
-        <div className="border rounded-lg p-4 bg-card">
-          <FilterContent keyword={keyword} setKeyword={setKeyword} sort={sort} setSort={setSort} />
-        </div>
+        <div className="border rounded-lg p-4 bg-card">{filterContent}</div>
       </div>
 
-      {/* Mobile Drawer Trigger */}
       <div className="md:hidden flex items-center gap-2 mb-4">
         <Sheet>
           <SheetTrigger
@@ -190,6 +270,7 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
               <Button variant="outline" className="w-full flex justify-center gap-2" aria-label="Mở bộ lọc">
                 <SlidersHorizontal className="w-4 h-4" />
                 Bộ lọc & Sắp xếp
+                {activeFilterCount > 0 && <Badge variant="secondary">{activeFilterCount}</Badge>}
               </Button>
             }
           />
@@ -197,10 +278,10 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
             <SheetHeader className="text-left mb-6">
               <SheetTitle>Bộ lọc sách</SheetTitle>
               <SheetDescription>
-                Tìm kiếm và lọc sách. Một số tính năng chưa được hỗ trợ.
+                Tìm kiếm, lọc và sắp xếp sách. Một số bộ lọc sẽ có hiệu lực đầy đủ khi backend hỗ trợ.
               </SheetDescription>
             </SheetHeader>
-            <FilterContent keyword={keyword} setKeyword={setKeyword} sort={sort} setSort={setSort} />
+            {filterContent}
           </SheetContent>
         </Sheet>
       </div>

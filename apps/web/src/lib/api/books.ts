@@ -38,31 +38,62 @@ export interface PaginatedBookResponse {
   hasNext: boolean;
 }
 
-/**
- * Tìm kiếm và lọc danh sách sách (Reader Portal).
- * API trả về danh sách phân trang.
- */
-export async function searchBooks(params: {
+export interface SearchBooksParams {
   Keyword?: string;
   Page?: number;
   Limit?: number;
-}): Promise<PaginatedBookResponse> {
-  const url = new URL(`${API_URL}/Books`);
-  
-  // Implicit rule: Only show published books in Reader Portal
-  url.searchParams.append('Status', 'PUBLISHED');
-  
-  if (params.Keyword) {
-    url.searchParams.append('Keyword', params.Keyword);
-  }
-  
-  url.searchParams.append('Page', (params.Page || 1).toString());
-  url.searchParams.append('Limit', (params.Limit || 12).toString());
+  CategoryId?: string;
+  Language?: string;
+  AccessType?: string;
+  SortBy?: string;
+  SortOrder?: 'asc' | 'desc';
+}
 
-  // Removed SortBy and SortOrder as they are deferred and currently ignored by backend
+type RawBook = {
+  id?: string;
+  bookId?: string;
+  title?: string;
+  authorNames?: string[];
+  AuthorNames?: string[];
+  coverImage?: string;
+  coverImageUrl?: string;
+  rating?: number;
+  status?: string;
+  createdAt?: string;
+};
+
+function normalizeRawBook(item: RawBook): Book {
+  return {
+    id: item.id || item.bookId || '',
+    title: item.title || 'Chưa có tiêu đề',
+    author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
+    coverImage: item.coverImage || item.coverImageUrl || '',
+    rating: item.rating || 0,
+    status: item.status || 'PUBLISHED',
+    createdAt: item.createdAt,
+  };
+}
+
+/**
+ * Tìm kiếm và lọc danh sách sách (Reader Portal).
+ *
+ * Frontend gửi đủ query param để URL/share link ổn định. Một số param như
+ * `Language`, `AccessType`, `SortBy=viewCount` đang phụ thuộc backend áp dụng thật.
+ */
+export async function searchBooks(params: SearchBooksParams): Promise<PaginatedBookResponse> {
+  const url = new URL(`${API_URL}/Books`);
+
+  // Reader Portal chỉ hiển thị sách đã xuất bản, nên luôn ép Status ở tầng frontend.
+  url.searchParams.append('Status', 'PUBLISHED');
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      url.searchParams.append(key, value.toString());
+    }
+  });
 
   const res = await fetch(url.toString(), {
-    // Disable cache for search results to ensure freshness, or use a short revalidate
+    // Kết quả search/filter cần phản ánh query URL hiện tại, không dùng cache ISR.
     cache: 'no-store',
   });
 
@@ -72,18 +103,8 @@ export async function searchBooks(params: {
 
   const payload = await res.json();
   const data = payload.data || payload;
-  const rawItems = data.items || data || [];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const items: Book[] = rawItems.map((item: any) => ({
-    id: item.id || item.bookId,
-    title: item.title,
-    author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
-    coverImage: item.coverImage || item.coverImageUrl || '',
-    rating: item.rating || 0,
-    status: item.status || 'PUBLISHED',
-    createdAt: item.createdAt,
-  }));
+  const rawItems: RawBook[] = data.items || data || [];
+  const items = rawItems.map(normalizeRawBook);
 
   return {
     items,

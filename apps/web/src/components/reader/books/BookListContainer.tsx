@@ -106,7 +106,7 @@ export function BookListContainer({ books }: BookListContainerProps) {
                 <div className="flex items-center justify-between mt-4">
                   <StarRating rating={book.rating || 0} />
                   <Link href={`/books/${book.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                    Chi tiết
+                    Đọc ngay
                   </Link>
                 </div>
               </div>
