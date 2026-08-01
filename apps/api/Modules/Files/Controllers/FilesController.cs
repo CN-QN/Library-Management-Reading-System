@@ -30,7 +30,7 @@ namespace api.Modules.Files.Controllers
         [HttpPost("upload")]
         [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadFile(
-            [FromForm] IFormFile file,
+            IFormFile file,
             [FromForm] string? bookId,
             [FromForm] string? chapterId,
             [FromForm] string fileType,
@@ -74,7 +74,7 @@ namespace api.Modules.Files.Controllers
         [HttpPost("upload-multiple")]
         [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadMultipleFiles(
-            [FromForm] List<IFormFile> files,
+            List<IFormFile> files,
             [FromForm] string? bookId,
             [FromForm] string? chapterId,
             [FromForm] string fileType,
@@ -119,7 +119,7 @@ namespace api.Modules.Files.Controllers
         [RequirePermission(Permissions.FileManage)]  
         public async Task<IActionResult> UploadCover(
             string bookId,
-            [FromForm] IFormFile file)
+            IFormFile file)
         {
             try
             {
@@ -158,7 +158,7 @@ namespace api.Modules.Files.Controllers
         [RequirePermission(Permissions.FileManage)] 
         public async Task<IActionResult> UploadContent(
             string bookId,
-            [FromForm] IFormFile file,
+            IFormFile file,
             [FromForm] string contentType = "PDF") // PDF hoặc EPUB
         {
             try
