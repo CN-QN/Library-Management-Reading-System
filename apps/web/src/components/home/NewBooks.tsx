@@ -1,5 +1,5 @@
 import { getNewReleases } from '@/lib/api/books';
-import { BookCard } from './BookCard';
+import { BookCard } from '@/components/shared/BookCard';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 

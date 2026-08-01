@@ -75,11 +75,7 @@ export function BookListContainer({ books }: BookListContainerProps) {
           {books.map((book) => (
             <BookCard
               key={book.id}
-              id={book.id}
-              title={book.title}
-              author={book.author}
-              coverImage={book.coverImage}
-              rating={book.rating}
+              book={book}
             />
           ))}
         </div>
