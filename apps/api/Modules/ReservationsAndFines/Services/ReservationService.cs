@@ -81,6 +81,19 @@ namespace api.Modules.ReservationsAndFines.Services
             var status = "WAITING";
             DateTime? readyUntil = null;
 
+            // 5. Calculate queue position & check copy availability
+            var nextQueuePos = await _reservationRepository.GetNextQueuePositionAsync(dto.BookId);
+            var availableCopiesCount = await _copyRepository.CountAvailableByBookIdAsync(dto.BookId);
+
+            var status = "WAITING";
+            DateTime? readyUntil = null;
+
+            if (availableCopiesCount > 0 && nextQueuePos == 1)
+            {
+                status = "READY";
+                readyUntil = DateTime.UtcNow.AddHours(48); // 48-hour hold limit
+            }
+
             var reservation = new Reservation
             {
                 UserId = dto.UserId,

@@ -14,6 +14,11 @@ using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
 using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
+using api.Modules.Reading.Services;
+using api.Modules.SearchAndRecommendation.Services;
+using api.Workers;
+using api.Modules.Notifications.Services;
+using api.Modules.Files.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
 using FluentValidation;
@@ -21,7 +26,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
-using MongoDB.Driver;  // ← THÊM DÒNG NÀY
+using MongoDB.Driver;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -30,46 +36,49 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     Log.Information("Starting Web Host...");
-    
+
     var builder = WebApplication.CreateBuilder(args);
 
-    // Setup Serilog
     builder.Host.UseSerilog((ctx, lc) => lc
         .WriteTo.Console()
         .ReadFrom.Configuration(ctx.Configuration));
 
-    // Bind Configuration Sections
     builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDb"));
     builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection("Redis"));
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
-    // Register Db Contexts
     builder.Services.AddSingleton<MongoDbContext>();
     builder.Services.AddSingleton<RedisContext>();
 
-    // ===== ĐĂNG KÝ IMongoDatabase CHO REPOSITORIES =====
     builder.Services.AddSingleton<IMongoDatabase>(sp =>
     {
         var context = sp.GetRequiredService<MongoDbContext>();
         return context.Database;
     });
 
-    // Register Index & Seed helpers
     builder.Services.AddScoped<IndexCreator>();
     builder.Services.AddScoped<SeedRunner>();
 
-    // Register App Services
+    builder.Services.AddScoped<IFileService, FileService>();
+
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis")
+            ?? "localhost:6379";
+        options.InstanceName = "LibraryHub_";
+    });
+
+    builder.Services.AddAuthorization();
+
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<RolesService>();
-    
-    // ===== CATALOG MODULE =====
+builder.Services.AddScoped<
+    api.Modules.Circulation.Services.IBorrowingService,
+    api.Modules.Circulation.Services.BorrowingService
+>();
     builder.Services.AddScoped<IBookService, BookService>();
-    // builder.Services.AddScoped<IAuthorService, AuthorService>(); // Khi có
-    // builder.Services.AddScoped<ICategoryService, CategoryService>(); // Khi có
-
-    // ===== DIGITAL CONTENT MODULE =====
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
     // ===== REDIS HELPERS =====
@@ -83,7 +92,19 @@ try
     builder.Services.AddScoped<IFineService, FineService>();
     builder.Services.AddHostedService<ReservationExpiryWorker>(); // Background worker: xử lý đặt trước hết hạn mỗi 30 phút
 
-    // ===== REPOSITORIES =====
+    // ===== READING MODULE (M09) =====
+    builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
+    builder.Services.AddHostedService<ReadingProgressSyncWorker>();
+
+    // ===== SEARCH & RECOMMENDATION MODULE (M12) =====
+    builder.Services.AddScoped<ISearchRecommendationService, SearchRecommendationService>();
+    builder.Services.AddScoped<ISearchRecommendationRepository, SearchRecommendationRepository>();
+
+    // ===== NOTIFICATION MODULE (M13) =====
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+    builder.Services.AddScoped<ICopyService, CopyService>();
+
     builder.Services.AddScoped<IBookRepository, BookRepository>();
     builder.Services.AddScoped<IChapterRepository, ChapterRepository>();
     builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
@@ -96,6 +117,12 @@ try
 
     // JWT Bearer Auth Setup
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 
+    builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+    builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
+    builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
+    builder.Services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
+
+    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
         ?? throw new InvalidOperationException("JWT settings are not configured.");
     var key = Encoding.ASCII.GetBytes(jwtSettings.Secret);
 
@@ -133,9 +160,6 @@ try
         };
     });
 
-    builder.Services.AddAuthorization();
-
-    // CORS Setup
     var corsOrigins = builder.Configuration.GetValue<string>("CORS_ORIGINS") ?? "*";
     var originsList = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries);
 
@@ -166,15 +190,14 @@ try
     {
         options.Filters.Add<FluentValidationFilter>();
     });
-    
-    // Add Swagger with Security options
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
         options.SwaggerDoc("v1", new OpenApiInfo { Title = "LibraryHub API", Version = "v1" });
         options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
-            Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below. Example: 'Bearer 12345abcdef'",
+            Description = "JWT Authorization header using the Bearer scheme.",
             Name = "Authorization",
             In = ParameterLocation.Header,
             Type = SecuritySchemeType.ApiKey,
@@ -194,7 +217,6 @@ try
 
     var app = builder.Build();
 
-    // Startup Tasks: Run Index Creator & Seed Runner
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
@@ -202,7 +224,7 @@ try
         {
             var indexCreator = services.GetRequiredService<IndexCreator>();
             var seedRunner = services.GetRequiredService<SeedRunner>();
-            
+
             await indexCreator.CreateIndexesAsync();
             await seedRunner.RunSeedAsync();
         }
@@ -212,7 +234,6 @@ try
         }
     }
 
-    // Configure request pipeline
     app.UseMiddleware<TraceIdMiddleware>();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseMiddleware<RateLimitMiddleware>();
@@ -229,7 +250,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    app.Run();
+    await app.RunAsync();
 }
 catch (Exception ex)
 {

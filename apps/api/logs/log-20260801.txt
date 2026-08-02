@@ -1,0 +1,260 @@
+[2026-08-01 11:38:21 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:21 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:21 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:21 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:43 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:43 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 11:38:43 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 11:38:43 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:22 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 13:31:23 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 13:31:23 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:23 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 13:31:23 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 13:31:59 INF] ReadingProgressSyncWorker stopped. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 15:04:47 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:04:47 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:04:47 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:04:47 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:05:31 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:05:31 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:05:31 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:05:31 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:06:05 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:06:05 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:06:05 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:06:05 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:06:05 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 15:24:53 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:24:54 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:24:54 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:24:54 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:25:16 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:25:16 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:25:16 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:25:16 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:25:17 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 15:25:18 ERR] Unhandled exception occurred. TraceId: 0feef1ef232a44b280fbe674d5952158 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000002","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at System.Linq.Enumerable.IteratorSelectIterator`2.MoveNext()
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:21 ERR] Unhandled exception occurred. TraceId: 32eca3c9b5734eeea373471bb83a63db {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000005","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at System.Linq.Enumerable.IteratorSelectIterator`2.MoveNext()
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:22 ERR] Unhandled exception occurred. TraceId: e39875008b8847458a7ab85dd8852e50 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000008","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at System.Linq.Enumerable.IteratorSelectIterator`2.MoveNext()
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:22 ERR] Unhandled exception occurred. TraceId: 566e515a511b4051998ca9fe081c3871 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000000B","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at System.Linq.Enumerable.IteratorSelectIterator`2.MoveNext()
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:28 ERR] Unhandled exception occurred. TraceId: fabda8b8844a46bab764964697afb953 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000000E","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at System.Linq.Enumerable.IteratorSelectIterator`2.MoveNext()
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:28 ERR] Unhandled exception occurred. TraceId: 3ce3b1d93cb547748735b5704d7de20f {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000011","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:29 ERR] Unhandled exception occurred. TraceId: 5e5e90ee910d486cab74de052f38cfbd {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000014","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:29 ERR] Unhandled exception occurred. TraceId: c764b0659c7a4ee9ba9937762fe64c8e {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000017","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:29 ERR] Unhandled exception occurred. TraceId: e7907ba4bb0e4a659f45b2ddceb94bb2 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000001A","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:29 ERR] Unhandled exception occurred. TraceId: 52ec02cbf79140e7b57fddf3dbba4920 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000001D","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:29 ERR] Unhandled exception occurred. TraceId: 0ab068bcb9994e2abe1ed5ef3d2d52de {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000020","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:30 ERR] Unhandled exception occurred. TraceId: 2df2708e45e740028e67473792c734df {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000023","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:30 ERR] Unhandled exception occurred. TraceId: 8320ea472ebe4724ae2250761e95a7ec {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000026","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:30 ERR] Unhandled exception occurred. TraceId: d0bcbd6d05bd4b4c9f38cde9c5369812 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000029","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:30 ERR] Unhandled exception occurred. TraceId: 363037dd282f48bebbfa5f16f060a9d6 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000002C","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:31 ERR] Unhandled exception occurred. TraceId: bb0e8aedb7fe46d0bd3f040a0e67fae0 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:0000002F","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:25:31 ERR] Unhandled exception occurred. TraceId: bce127ed30c3452baed943a5664b5aa3 {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFKPLR74RA:00000032","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFKPLR74RA"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Conflicting method/path combination "POST api/Borrowings" for actions - api.Modules.Circulation.Controllers.BorrowingsController.Create (api), api.Modules.Borrowings.Controllers.BorrowingsController.BorrowBook (api). Actions require a unique method/path combination for Swagger/OpenAPI 2.0 and 3.0. Use ConflictingActionsResolver as a workaround or provide your own implementation of PathGroupSelector.
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.PrepareGenerateOperation(IGrouping`2 group)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:35:45 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:35:45 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:35:45 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:35:45 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:35:45 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 15:38:56 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:38:57 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:38:57 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:38:57 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:38:57 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}
+[2026-08-01 15:39:17 ERR] Unhandled exception occurred. TraceId: 06dfe04c3ebf47ceb7d02af4b3d3364c {"SourceContext":"api.Middleware.ExceptionHandlingMiddleware","RequestId":"0HNNFL1C2S44J:00000001","RequestPath":"/swagger/v1/swagger.json","ConnectionId":"0HNNFL1C2S44J"}
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - api.Modules.Files.Controllers.FilesController.UploadFile (api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action api.Modules.Files.Controllers.FilesController.UploadFile (api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParametersAsync(ApiDescription apiDescription, SchemaRepository schemaRespository, Func`3 parameterGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParametersAsync(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationAsync(ApiDescription apiDescription, SchemaRepository schemaRepository, Func`3 parametersGenerator, Func`3 bodyGenerator, Func`3 applyFilters)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationAsync(ApiDescription apiDescription, SchemaRepository schemaRepository, Func`3 parametersGenerator, Func`3 bodyGenerator, Func`3 applyFilters)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationAsync(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperationsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository, Func`3 operationsGenerator)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePathsAsync(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at api.Middleware.AuditLogMiddleware.InvokeAsync(HttpContext context, MongoDbContext dbContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\AuditLogMiddleware.cs:line 24
+   at api.Middleware.RateLimitMiddleware.InvokeAsync(HttpContext context, RedisContext redisContext) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\RateLimitMiddleware.cs:line 92
+   at api.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in D:\workspaces\Projects\LibraryHub\apps\api\Middleware\ExceptionHandlingMiddleware.cs:line 32
+[2026-08-01 15:39:54 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:39:54 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-08-01 15:39:54 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:39:54 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-08-01 15:39:54 INF] ReadingProgressSyncWorker started. {"SourceContext":"api.Workers.ReadingProgressSyncWorker"}

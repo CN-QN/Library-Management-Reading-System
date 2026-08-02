@@ -1,0 +1,70 @@
+@api_HostAddress = http://localhost:5000
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@studentToken = YOUR_STUDENT_TOKEN_HERE
+@studentUserId = STUDENT_USER_ID_HERE
+@notificationId = NOTIFICATION_ID_HERE
+
+### 1. Đăng nhập tài khoản Admin (để lấy Token gửi/phát thông báo)
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 2. Đăng nhập tài khoản Sinh viên (để lấy Token nhận thông báo)
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 3. Admin gửi thông báo đơn lẻ tới Sinh viên
+POST {{api_HostAddress}}/api/notifications/send
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "userId": "{{studentUserId}}",
+  "title": "Nhắc nhở trả sách quá hạn",
+  "message": "Sách 'Số đỏ' của bạn đã quá hạn mượn 3 ngày. Vui lòng trả sách sớm hoặc thực hiện gia hạn để tránh phát sinh tiền phạt.",
+  "type": "BORROWING"
+}
+
+### 4. Admin phát thông báo hệ thống toàn quốc (Broadcast)
+POST {{api_HostAddress}}/api/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "title": "Thông báo: Bảo trì hệ thống",
+  "message": "Hệ thống đọc sách trực tuyến sẽ bảo trì định kỳ từ 01:00 đến 03:00 ngày mai. Rất xin lỗi vì sự bất tiện này.",
+  "type": "SYSTEM"
+}
+
+### 5. Sinh viên lấy danh sách thông báo chưa đọc
+GET {{api_HostAddress}}/api/notifications?isRead=false&page=1&limit=10
+Authorization: Bearer {{studentToken}}
+
+### 6. Sinh viên lấy tất cả thông báo (Đã đọc + Chưa đọc)
+GET {{api_HostAddress}}/api/notifications?page=1&limit=10
+Authorization: Bearer {{studentToken}}
+
+### 7. Sinh viên lấy số lượng thông báo chưa đọc
+GET {{api_HostAddress}}/api/notifications/unread-count
+Authorization: Bearer {{studentToken}}
+
+### 8. Sinh viên đánh dấu một thông báo là đã đọc
+POST {{api_HostAddress}}/api/notifications/{{notificationId}}/read
+Authorization: Bearer {{studentToken}}
+
+### 9. Sinh viên đánh dấu tất cả thông báo là đã đọc
+POST {{api_HostAddress}}/api/notifications/read-all
+Authorization: Bearer {{studentToken}}
+
+### 10. Sinh viên xóa một thông báo
+DELETE {{api_HostAddress}}/api/notifications/{{notificationId}}
+Authorization: Bearer {{studentToken}}
