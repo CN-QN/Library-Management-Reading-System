@@ -12,6 +12,7 @@ export interface Book {
   language: string;
   accessType: string;
   status: string;
+  coverAssetId?: string | null;
   totalChapters: number;
   viewCount: number;
   rating: number;

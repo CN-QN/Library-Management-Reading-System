@@ -16,6 +16,7 @@ namespace api.Modules.Catalog.DTOs.Responses  // Đổi thành namespace này
         public string Language { get; set; } = "vi";
         public string AccessType { get; set; } = "FREE";
         public string Status { get; set; } = "DRAFT";
+        public string? CoverAssetId { get; set; }
         public int TotalChapters { get; set; }
         public int ViewCount { get; set; }
         public double Rating { get; set; }

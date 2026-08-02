@@ -57,6 +57,7 @@ type RawBook = {
   AuthorNames?: string[];
   coverImage?: string;
   coverImageUrl?: string;
+  coverAssetId?: string;
   rating?: number;
   status?: string;
   createdAt?: string;
@@ -67,7 +68,7 @@ function normalizeRawBook(item: RawBook): Book {
     id: item.id || item.bookId || '',
     title: item.title || 'Chưa có tiêu đề',
     author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
-    coverImage: item.coverImage || item.coverImageUrl || '',
+    coverImage: item.coverImage || item.coverImageUrl || item.coverAssetId || '',
     rating: item.rating || 0,
     status: item.status || 'PUBLISHED',
     createdAt: item.createdAt,

@@ -73,7 +73,7 @@ export default function BooksListPage() {
       ),
       render: (book) => (
         <div className="flex items-center gap-3">
-          <BookCover title={book.title} size={32} />
+          <BookCover title={book.title} size={32} coverUrl={book.coverAssetId} />
           <div className="min-w-0">
             <p className="truncate font-medium text-slate-900">{book.title}</p>
             <p className="truncate text-xs text-slate-400">{book.isbn ?? "Chưa có ISBN"}</p>

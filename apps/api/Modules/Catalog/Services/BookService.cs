@@ -196,6 +196,7 @@ namespace api.Modules.Catalog.Services
                 AccessType = book.AccessType,
                 Status = book.Status,
                 TotalChapters = book.TotalChapters,
+                CoverAssetId = book.CoverAssetId,
                 ViewCount = book.Stats?.ViewCount ?? 0,
                 Rating = book.Stats?.Rating ?? 0,
                 CreatedAt = book.CreatedAt,
