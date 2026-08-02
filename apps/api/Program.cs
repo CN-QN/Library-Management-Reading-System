@@ -90,6 +90,7 @@ builder.Services.AddScoped<
     // ===== RESERVATIONS & FINES MODULE (M07) =====
     builder.Services.AddScoped<IReservationService, ReservationService>();
     builder.Services.AddScoped<IFineService, FineService>();
+    builder.Services.AddHostedService<ReservationExpiryWorker>(); // Background worker: xử lý đặt trước hết hạn mỗi 30 phút
 
     // ===== READING MODULE (M09) =====
     builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
@@ -112,6 +113,7 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
+    builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 
     // JWT Bearer Auth Setup
     var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 

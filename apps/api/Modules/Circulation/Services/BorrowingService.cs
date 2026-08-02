@@ -311,6 +311,8 @@ namespace api.Modules.Circulation.Services
 
                 if (copy.Price > 0)
                 {
+                    fineAmount = dto.Status == "LOST" ? copy.Price : Math.Round(copy.Price * 0.5m, 0);
+                }
                     var baseFine = dto.Status == "LOST" ? copy.Price : copy.Price * 0.5m;
                     fineAmount = Math.Max(150000m, Math.Round(baseFine, 0));
                 }
