@@ -1,10 +1,16 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search, Sparkles, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+/**
+ * Component Tìm kiếm chính (Hero Search) đặt tại trang chủ.
+ * Chứa lời kêu gọi hành động (Call to Action) lớn nhằm điều hướng người dùng
+ * sang trang Khám phá sách (`/books`) với từ khóa nhập sẵn hoặc toàn bộ thư viện.
+ */
 export function HeroSearch() {
   const [query, setQuery] = useState('');
 
@@ -13,7 +19,9 @@ export function HeroSearch() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+      router.push(`/books?Keyword=${encodeURIComponent(query.trim())}`);
+    } else {
+      router.push(`/books`);
     }
   };
 
@@ -43,6 +51,21 @@ export function HeroSearch() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </form>
+
+          {/* Premium Discover CTA */}
+          <div className="mt-10 flex justify-center">
+            <Link 
+              href="/books"
+              className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 text-base font-semibold text-primary-foreground transition-all duration-300 bg-primary rounded-full hover:bg-primary/90 shadow-sm hover:shadow-[0_0_30px_-5px_rgba(var(--primary),0.6)] hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-150%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(150%)]">
+                <div className="relative h-full w-10 bg-white/20" />
+              </div>
+              <Sparkles className="w-5 h-5 relative z-10" />
+              <span className="relative z-10">Khám phá toàn bộ thư viện</span>
+              <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

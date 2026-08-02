@@ -2,8 +2,8 @@ import { getReadingProgress } from '@/lib/api/mocks/reading-progress.mocks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
+import { ContinueReadingCard } from '@/components/shared/ContinueReadingCard';
 
 export async function ContinueReading() {
   const progressList = await getReadingProgress();
@@ -44,45 +44,7 @@ export async function ContinueReading() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {progressList.map((item) => (
-          <Link key={item.bookId} href={`/read/${item.bookId}`} className="group block">
-            <Card className="overflow-hidden hover:shadow-md transition-all border-muted">
-              <CardContent className="p-0 flex items-center h-32">
-                <div className="relative h-full w-24 shrink-0 bg-muted">
-                  {item.book.coverImage && (
-                    <Image
-                      src={item.book.coverImage}
-                      alt={item.book.title}
-                      fill
-                      className="object-cover"
-                      sizes="96px"
-                    />
-                  )}
-                </div>
-                <div className="flex flex-col flex-1 p-4 h-full justify-between overflow-hidden">
-                  <div>
-                    <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">
-                      {item.book.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
-                      {item.currentChapterTitle || 'Đang đọc'}
-                    </p>
-                  </div>
-                  
-                  <div className="mt-auto space-y-2">
-                    <div className="flex items-center justify-between text-xs font-medium">
-                      <span className="text-muted-foreground">{item.progressPercentage}% đã đọc</span>
-                    </div>
-                    <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-primary h-full rounded-full transition-all duration-500 ease-in-out" 
-                        style={{ width: `${item.progressPercentage}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <ContinueReadingCard key={item.bookId} item={item} />
         ))}
       </div>
     </section>
