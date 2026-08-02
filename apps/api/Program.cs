@@ -115,9 +115,6 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 
-    // JWT Bearer Auth Setup
-    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() 
-    builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
     builder.Services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
