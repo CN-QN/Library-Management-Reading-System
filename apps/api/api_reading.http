@@ -1,0 +1,52 @@
+@api_HostAddress = http://localhost:5000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+@sessionId = SESSION_ID_HERE
+@bookId = BOOK_ID_HERE
+@chapterId = CHAPTER_ID_HERE
+
+### 1. Đăng nhập để lấy Access Token (Độc giả hoặc Sinh viên)
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student1@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 2. Khởi tạo phiên đọc sách mới (Start Reading Session)
+POST {{api_HostAddress}}/api/reading/sessions/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "bookId": "{{bookId}}",
+  "chapterId": "{{chapterId}}",
+  "device": "Web"
+}
+
+### 3. Gửi heartbeat duy trì phiên đọc (Send Session Heartbeat)
+POST {{api_HostAddress}}/api/reading/sessions/{{sessionId}}/heartbeat
+Authorization: Bearer {{accessToken}}
+
+### 4. Autosave tiến trình đọc sách (Save Reading Progress)
+POST {{api_HostAddress}}/api/reading/progress
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "bookId": "{{bookId}}",
+  "chapterId": "{{chapterId}}",
+  "chapterNumber": 1,
+  "scrollPosition": 45.2,
+  "percentage": 15.5,
+  "version": 1,
+  "status": "READING"
+}
+
+### 5. Lấy vị trí đọc gần nhất của cuốn sách (Get Reading Progress)
+GET {{api_HostAddress}}/api/reading/progress/{{bookId}}
+Authorization: Bearer {{accessToken}}
+
+### 6. Kết thúc phiên đọc sách (End Reading Session)
+POST {{api_HostAddress}}/api/reading/sessions/{{sessionId}}/end
+Authorization: Bearer {{accessToken}}

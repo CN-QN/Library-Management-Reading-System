@@ -1,0 +1,4 @@
+[2026-07-31 22:44:24 INF] Starting database index creation... {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-07-31 22:44:25 INF] Database index creation completed successfully. {"SourceContext":"api.Database.Indexes.IndexCreator"}
+[2026-07-31 22:44:25 INF] Starting database seeding process... {"SourceContext":"api.Database.Seed.SeedRunner"}
+[2026-07-31 22:44:25 INF] Database seeding process completed successfully. {"SourceContext":"api.Database.Seed.SeedRunner"}

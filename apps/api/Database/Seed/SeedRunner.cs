@@ -376,13 +376,23 @@ public class SeedRunner
                     BookId = book.Id,
                     Number = i,
                     Title = $"Chương {i}: {GenerateChapterTitle(random)}",
-                    ContentJson = GenerateChapterContent(random),
+                    // [SỬA] Dùng Content thay vì ContentJson
+                    Content = new ChapterContent
+                    {
+                        Introduction = $"Giới thiệu chương {i}",
+                        Paragraphs = new List<Paragraph>
+                        {
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 1 },
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 2 },
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 3 }
+                        },
+                        Conclusion = $"Kết luận chương {i}"
+                    },
                     WordCount = random.Next(500, 3000),
                     Status = isPublished ? "PUBLISHED" : "DRAFT",
-                    Version = 1,
+                    // [SỬA] Xóa Version và UpdatedBy
                     PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
                     CreatedBy = "system",
-                    UpdatedBy = "system",
                     CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -407,7 +417,6 @@ public class SeedRunner
             }
         }
     }
-
     #endregion
 
     #region Inventory Seed Methods (M05)
@@ -479,7 +488,23 @@ public class SeedRunner
         };
         return titles[random.Next(titles.Length)];
     }
-
+    private string GenerateParagraphText(Random random)
+    {
+        var texts = new[]
+        {
+            "Trời hôm nay thật đẹp, nắng vàng rải nhẹ trên những tán cây xanh mướt.",
+            "Cơn gió nhẹ nhàng thổi qua, mang theo hương thơm của những bông hoa dại.",
+            "Tiếng chim hót líu lo như bản nhạc du dương của buổi sớm mai.",
+            "Trong không gian yên tĩnh, chỉ còn tiếng lá rơi xào xạc.",
+            "Ánh đèn vàng hắt ra từ căn phòng nhỏ, ấm áp và bình yên.",
+            "Những giọt mưa lăn dài trên cửa kính, như những giọt lệ của bầu trời.",
+            "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
+            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
+            "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
+            "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
+        };
+        return texts[random.Next(texts.Length)];
+    }
     private string GenerateChapterContent(Random random)
     {
         var paragraphs = new[]

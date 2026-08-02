@@ -1,0 +1,70 @@
+@api_HostAddress = http://localhost:5000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Đăng nhập Lấy Access Token
+POST {{api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "librarian@libraryhub.com",
+  "password": "Test@123456"
+}
+
+### 2. Tạo lượt đặt trước sách (Create Reservation)
+POST {{api_HostAddress}}/api/reservations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": "666000000000000000000006",
+  "bookId": "666000000000000000000010",
+  "branchId": "666000000000000000000001",
+  "note": "Đặt trước sách sắp phát hành"
+}
+
+### 3. Tra cứu danh sách lượt đặt trước (Search Reservations)
+GET {{api_HostAddress}}/api/reservations?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 4. Lấy chi tiết lượt đặt trước (Get Reservation By Id)
+GET {{api_HostAddress}}/api/reservations/RESERVATION_ID_HERE
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 5. Hủy lượt đặt trước sách (Cancel Reservation)
+POST {{api_HostAddress}}/api/reservations/RESERVATION_ID_HERE/cancel
+Authorization: Bearer {{accessToken}}
+
+### 6. Hoàn thành lượt đặt trước (Fulfill Reservation)
+POST {{api_HostAddress}}/api/reservations/RESERVATION_ID_HERE/fulfill
+Authorization: Bearer {{accessToken}}
+
+### 7. Tra cứu danh sách tiền phạt (Search Fines)
+GET {{api_HostAddress}}/api/fines?status=UNPAID&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 8. Lấy chi tiết khoản phạt (Get Fine By Id)
+GET {{api_HostAddress}}/api/fines/FINE_ID_HERE
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### 9. Thanh toán tiền phạt tại quầy (Pay Fine)
+POST {{api_HostAddress}}/api/fines/FINE_ID_HERE/pay
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "note": "Đã thanh toán tiền mặt tại quầy thủ thư"
+}
+
+### 10. Miễn giảm tiền phạt (Waive Fine)
+POST {{api_HostAddress}}/api/fines/FINE_ID_HERE/waive
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "Miễn phạt cho sinh viên có hoàn cảnh đặc biệt",
+  "note": "Phê duyệt bởi Trưởng thư viện"
+}

@@ -48,6 +48,7 @@ public class MongoDbContext
     public IMongoCollection<Borrowing> Borrowings => _database.GetCollection<Borrowing>("borrowings");
     public IMongoCollection<BorrowingItem> BorrowingItems => _database.GetCollection<BorrowingItem>("borrowing_items");
     public IMongoCollection<Fine> Fines => _database.GetCollection<Fine>("fines");
+    public IMongoCollection<Reservation> Reservations => _database.GetCollection<Reservation>("reservations");
 
     // ===== READING (M09) =====
     public IMongoCollection<ReadingProgress> ReadingProgresses => _database.GetCollection<ReadingProgress>("reading_progress");
@@ -55,6 +56,9 @@ public class MongoDbContext
 
     // ===== ANALYTICS =====
     public IMongoCollection<ViewEvent> ViewEvents => _database.GetCollection<ViewEvent>("view_events");
+
+    // ===== NOTIFICATIONS (M13) =====
+    public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("notifications");
 
     // Generic helper to get any collection by name
     public IMongoCollection<T> GetCollection<T>(string name)

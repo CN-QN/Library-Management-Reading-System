@@ -52,5 +52,15 @@ namespace api.Repositories.Implementations
             var filter = Builders<Author>.Filter.Eq(a => a.Slug, slug);
             return await _collection.Find(filter).AnyAsync();
         }
+
+        // [THÊM MỚI] Lấy nhiều tác giả theo danh sách ID
+        public async Task<List<Author>> GetByIdsAsync(List<string> ids)
+        {
+            if (ids == null || !ids.Any())
+                return new List<Author>();
+
+            var filter = Builders<Author>.Filter.In(a => a.Id, ids);
+            return await _collection.Find(filter).ToListAsync();
+        }
     }
 }
