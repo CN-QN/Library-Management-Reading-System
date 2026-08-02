@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Modules.ReservationsAndFines.DTOs;
 using api.Modules.ReservationsAndFines.Services;
@@ -133,6 +135,7 @@ namespace api.Modules.ReservationsAndFines.Controllers
         /// Hoàn thành lượt đặt trước (Thủ thư giao sách)
         /// </summary>
         [HttpPost("{id}/fulfill")]
+        [RequirePermission(Permissions.ReservationApprove)]
         public async Task<IActionResult> Fulfill(string id)
         {
             try

@@ -81,6 +81,7 @@ try
     // ===== RESERVATIONS & FINES MODULE (M07) =====
     builder.Services.AddScoped<IReservationService, ReservationService>();
     builder.Services.AddScoped<IFineService, FineService>();
+    builder.Services.AddHostedService<ReservationExpiryWorker>(); // Background worker: xử lý đặt trước hết hạn mỗi 30 phút
 
     // ===== REPOSITORIES =====
     builder.Services.AddScoped<IBookRepository, BookRepository>();
