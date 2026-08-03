@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { BookOpen, ArrowLeft, Eye, Star, Calendar, Globe, BookMarked, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/shared/StarRating';
-import { BookDetailInteractive } from '@/components/reader/book-detail/BookDetailInteractive';
+import { BookHeroActions } from '@/components/reader/book-detail/BookHeroActions';
+import { ChapterList } from '@/components/reader/book-detail/ChapterList';
+import { BookRecommendations } from '@/components/reader/book-detail/BookRecommendations';
+import { ReviewsSection } from '@/components/reader/book-detail/ReviewsSection';
 import { BOOK_DETAIL_COPY } from '@/components/reader/book-detail/BookDetailCopy';
 import {
   getBookBySlug,
@@ -250,19 +253,35 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             </p>
           </div>
 
-          {/* Khối Tương tác Client (CTA Đọc, Bookmark, Chương, Gợi ý, Review) */}
-          <BookDetailInteractive
+          {/* Khối Hành động CTA chính & Tiến độ đọc trong Hero */}
+          <BookHeroActions
             book={book}
             firstChapter={firstChapter}
             progress={progress}
-            progressError={progressError}
-            recommendations={recommendations}
-            chapters={chapters}
-            chaptersError={chaptersError}
-            contentFile={contentFile}
           />
         </div>
       </div>
+
+      {/* Phần Danh sách chương trở xuống: Trải rộng toàn bộ container max-w-6xl, căn giữa màn hình */}
+      {/* Danh sách chương */}
+      <ChapterList
+        bookSlug={book.slug}
+        chapters={chapters}
+        error={chaptersError}
+        contentFile={contentFile}
+      />
+
+      {/* Gợi ý cho bạn */}
+      <BookRecommendations
+        recommendations={recommendations}
+        currentBookId={book.id}
+        currentBookSlug={book.slug}
+      />
+
+      {/* Khu vực Đánh giá & Bình luận */}
+      <ReviewsSection
+        bookId={book.id}
+      />
     </main>
   );
 }

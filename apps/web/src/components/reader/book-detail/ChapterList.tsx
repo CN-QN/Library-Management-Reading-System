@@ -29,7 +29,7 @@ export function ChapterList({ bookSlug, chapters, error, contentFile }: ChapterL
   const router = useRouter();
 
   return (
-    <section className="space-y-6 pt-6 border-t" aria-labelledby="chapters-heading">
+    <section className="space-y-6 pt-8 border-t" aria-labelledby="chapters-heading">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 id="chapters-heading" className="text-xl font-bold tracking-tight">
