@@ -1,4 +1,5 @@
-import apiClient, { API_URL } from '../api-client';
+import axios from 'axios';
+import apiClient from '../api-client';
 import type {
   Review,
   ReviewStats,
@@ -9,75 +10,44 @@ import type {
 } from '@/types/Review';
 
 /**
- * Lấy danh sách bài đánh giá của một cuốn sách từ Backend API real.
+ * Lấy danh sách bài đánh giá có phân trang từ Backend API.
+ * Xây dựng query string gồm BookId, Page, Limit, Rating (nếu chọn lọc sao), SortBy để gửi tới `/Reviews`.
+ *
+ * @param params Tham số tìm kiếm và phân trang (bookId, page, limit, ratingFilter, sortBy)
+ * @returns Hứa hẹn trả về PaginatedReviewsResponse chứa danh sách đánh giá
  */
 export async function getReviews(params: GetReviewsParams): Promise<PaginatedReviewsResponse> {
   const { bookId, page = 1, limit = 5, ratingFilter = 'all', sortBy = 'newest' } = params;
 
+  const queryParams = new URLSearchParams();
+  queryParams.append('BookId', bookId);
+  queryParams.append('Page', page.toString());
+  queryParams.append('Limit', limit.toString());
+  if (ratingFilter !== 'all') {
+    queryParams.append('Rating', ratingFilter.toString());
+  }
+  queryParams.append('SortBy', sortBy);
+
   try {
-    const urlParams = new URLSearchParams({
-      bookId,
-      page: page.toString(),
-      pageSize: limit.toString(),
-      sortBy,
-    });
-
-    if (ratingFilter !== 'all') {
-      urlParams.append('ratingFilter', ratingFilter.toString());
-    }
-
-    const res = await apiClient.get(`/Reviews?${urlParams.toString()}`);
-    const payload = res.data.data || res.data;
-
-    const items: Review[] = (payload.items || payload || []).map((item: any) => ({
-      id: item.id,
-      bookId: item.bookId,
-      userId: item.userId,
-      userFullName: item.userFullName || 'Độc giả',
-      userEmail: item.userEmail || '',
-      userAvatarUrl: item.userAvatarUrl || null,
-      rating: item.rating,
-      comment: item.comment,
-      isEdited: item.isEdited || false,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    }));
-
-    return {
-      items,
-      page: payload.page || page,
-      limit: payload.limit || limit,
-      totalItems: payload.totalItems || payload.totalCount || items.length,
-      totalPages: payload.totalPages || Math.ceil((payload.totalItems || items.length) / limit) || 1,
-    };
-  } catch (error) {
-    console.warn('Error fetching reviews from backend:', error);
-    return {
-      items: [],
-      page: 1,
-      limit,
-      totalItems: 0,
-      totalPages: 1,
-    };
+    const res = await apiClient.get(`/Reviews?${queryParams.toString()}`);
+    return res.data.data;
+  } catch (error: unknown) {
+    throw new Error('Không thể tải danh sách bài đánh giá.');
   }
 }
 
 /**
- * Lấy thống kê điểm trung bình và phân bổ 1-5 sao của sách từ Backend API real.
+ * Lấy thống kê điểm đánh giá trung bình và phân bổ 1-5 sao của một cuốn sách từ Backend API.
+ * Gọi `/Reviews/stats?bookId=...`. Nếu xảy ra lỗi, trả về giá trị mặc định với số điểm và lượt đánh giá bằng 0.
+ *
+ * @param bookId Mã ID của cuốn sách
+ * @returns Hứa hẹn trả về ReviewStats
  */
 export async function getReviewStats(bookId: string): Promise<ReviewStats> {
   try {
-    const res = await apiClient.get(`/Reviews/stats?bookId=${encodeURIComponent(bookId)}`);
-    const data = res.data.data || res.data;
-
-    return {
-      averageRating: data.averageRating || 0,
-      totalReviews: data.totalReviews || 0,
-      distribution: data.distribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-      percentages: data.percentages || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    };
-  } catch (error) {
-    console.warn('Error fetching review stats:', error);
+    const res = await apiClient.get(`/Reviews/stats?bookId=${bookId}`);
+    return res.data.data;
+  } catch (error: unknown) {
     return {
       averageRating: 0,
       totalReviews: 0,
@@ -88,137 +58,94 @@ export async function getReviewStats(bookId: string): Promise<ReviewStats> {
 }
 
 /**
- * Lấy bài đánh giá của người dùng hiện tại đối với cuốn sách.
+ * Lấy bài đánh giá cá nhân của người dùng hiện tại đối với cuốn sách từ Backend API.
+ * Gọi `/Reviews/mine?bookId=...`. Nếu lỗi 404 (chưa có đánh giá), trả về null.
+ *
+ * @param bookId Mã ID của cuốn sách
+ * @param userId Mã ID của người dùng hiện tại
+ * @returns Hứa hẹn trả về Review nếu có hoặc null nếu chưa có/lỗi 404
  */
 export async function getUserReview(bookId: string, userId: string): Promise<Review | null> {
   if (!userId) return null;
   try {
-    const res = await apiClient.get(`/Reviews/mine?bookId=${encodeURIComponent(bookId)}`);
-    const item = res.data.data || res.data;
-    if (!item) return null;
-
-    return {
-      id: item.id,
-      bookId: item.bookId,
-      userId: item.userId,
-      userFullName: item.userFullName || 'Độc giả',
-      userEmail: item.userEmail || '',
-      userAvatarUrl: item.userAvatarUrl || null,
-      rating: item.rating,
-      comment: item.comment,
-      isEdited: item.isEdited || false,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    };
-  } catch {
-    return null;
+    const res = await apiClient.get(`/Reviews/mine?bookId=${bookId}`);
+    return res.data.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw new Error('Không thể tải bài đánh giá cá nhân.');
   }
 }
 
 /**
- * Gửi bài đánh giá mới tới Backend API real.
+ * Gửi bài đánh giá mới tới Backend API.
+ * Thực hiện HTTP POST `/Reviews` với dữ liệu gồm bookId, rating, comment.
+ * 
+ * @param payload Dữ liệu bài đánh giá gồm bookId, rating và nội dung bình luận
+ * @returns Hứa hẹn trả về đối tượng bài đánh giá Review mới được tạo
  */
 export async function createReview(payload: CreateReviewPayload): Promise<Review> {
-  const trimmedComment = payload.comment.trim();
-
-  if (!payload.userId) {
-    throw new Error('Vui lòng đăng nhập để gửi đánh giá.');
-  }
-
-  if (payload.rating < 1 || payload.rating > 5) {
-    throw new Error('Vui lòng chọn số sao đánh giá từ 1 đến 5.');
-  }
-
-  if (trimmedComment.length < 10) {
-    throw new Error('Nội dung nhận xét phải có ít nhất 10 ký tự.');
-  }
-
-  if (trimmedComment.length > 1000) {
-    throw new Error('Nội dung nhận xét không được vượt quá 1000 ký tự.');
-  }
-
   try {
-    const res = await apiClient.post('/Reviews', {
-      bookId: payload.bookId,
-      rating: payload.rating,
-      comment: trimmedComment,
+    const res = await apiClient.post('/Reviews', { 
+      bookId: payload.bookId, 
+      rating: payload.rating, 
+      comment: payload.comment 
     });
-
-    const item = res.data.data || res.data;
-    return {
-      id: item.id,
-      bookId: item.bookId,
-      userId: item.userId,
-      userFullName: item.userFullName || payload.userFullName || 'Độc giả',
-      userEmail: item.userEmail || payload.userEmail || '',
-      userAvatarUrl: item.userAvatarUrl || payload.userAvatarUrl || null,
-      rating: item.rating,
-      comment: item.comment,
-      isEdited: false,
-      createdAt: item.createdAt,
-    };
-  } catch (error: any) {
-    const msg = error.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại sau.';
-    throw new Error(msg);
+    return res.data.data;
+  } catch (error: unknown) {
+    // Trích xuất thông điệp lỗi chi tiết từ phản hồi backend API nếu có, để hiển thị lỗi chính xác cho người dùng
+    const message = axios.isAxiosError(error) && error.response?.data?.message
+      ? error.response.data.message
+      : 'Lỗi khi gửi đánh giá.';
+    throw new Error(message);
   }
 }
 
 /**
- * Chỉnh sửa bài đánh giá đã có.
+ * Chỉnh sửa bài đánh giá đã có qua Backend API.
+ * Thực hiện HTTP PUT `/Reviews/${reviewId}` với rating và comment mới.
+ * 
+ * @param reviewId Mã ID của bài đánh giá cần cập nhật
+ * @param payload Dữ liệu cập nhật gồm rating và comment mới
+ * @returns Hứa hẹn trả về đối tượng bài đánh giá Review sau khi cập nhật thành công
  */
-export async function updateReview(
-  reviewId: string,
-  payload: UpdateReviewPayload
-): Promise<Review> {
-  const trimmedComment = payload.comment.trim();
-
-  if (!payload.userId) {
-    throw new Error('Vui lòng đăng nhập để cập nhật đánh giá.');
-  }
-
-  if (payload.rating < 1 || payload.rating > 5) {
-    throw new Error('Vui lòng chọn số sao đánh giá từ 1 đến 5.');
-  }
-
-  if (trimmedComment.length < 10) {
-    throw new Error('Nội dung nhận xét phải có ít nhất 10 ký tự.');
-  }
-
+export async function updateReview(reviewId: string, payload: UpdateReviewPayload): Promise<Review> {
   try {
-    const res = await apiClient.put(`/Reviews/${reviewId}`, {
-      rating: payload.rating,
-      comment: trimmedComment,
+    const res = await apiClient.put(`/Reviews/${reviewId}`, { 
+      rating: payload.rating, 
+      comment: payload.comment 
     });
-
-    const item = res.data.data || res.data;
-    return {
-      id: item.id,
-      bookId: item.bookId,
-      userId: item.userId,
-      userFullName: item.userFullName || 'Độc giả',
-      userEmail: item.userEmail || '',
-      userAvatarUrl: item.userAvatarUrl || null,
-      rating: item.rating,
-      comment: item.comment,
-      isEdited: true,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    };
-  } catch (error: any) {
-    const msg = error.response?.data?.message || 'Không thể cập nhật đánh giá.';
-    throw new Error(msg);
+    return res.data.data;
+  } catch (error: unknown) {
+    // Xử lý bắt lỗi Axios an toàn không dùng `any` và trích xuất message từ backend API trả về
+    const message = axios.isAxiosError(error) && error.response?.data?.message
+      ? error.response.data.message
+      : 'Lỗi khi cập nhật đánh giá.';
+    throw new Error(message);
   }
 }
 
 /**
- * Xóa bài đánh giá.
+ * Xóa bài đánh giá qua Backend API.
+ * Thực hiện HTTP DELETE `/Reviews/${reviewId}`. Các tham số bookId và userId giữ lại trong signature
+ * để đảm bảo tương thích ngược với các caller ở UI.
+ * 
+ * @param reviewId Mã ID của bài đánh giá cần xóa
+ * @param bookId Mã ID của cuốn sách (không gửi lên API)
+ * @param userId Mã ID của người dùng (không gửi lên API)
+ * @returns Hứa hẹn trả về true khi xóa thành công
  */
 export async function deleteReview(reviewId: string, bookId: string, userId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/Reviews/${reviewId}`);
     return true;
-  } catch (error: any) {
-    const msg = error.response?.data?.message || 'Không thể xóa bài đánh giá.';
-    throw new Error(msg);
+  } catch (error: unknown) {
+    // Trích xuất message lỗi từ backend response nếu có, fallback về thông báo lỗi tiếng Việt chuẩn
+    const message = axios.isAxiosError(error) && error.response?.data?.message
+      ? error.response.data.message
+      : 'Lỗi khi xóa bài đánh giá.';
+    throw new Error(message);
   }
 }
+
