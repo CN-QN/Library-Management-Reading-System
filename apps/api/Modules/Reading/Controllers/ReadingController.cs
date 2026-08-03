@@ -60,34 +60,6 @@ namespace api.Modules.Reading.Controllers
             }
         }
 
-        /// <summary>
-        /// Lấy vị trí đọc gần nhất (tiến trình đọc) của một cuốn sách
-        /// </summary>
-        [HttpGet("progress/{bookId}")]
-        public async Task<IActionResult> GetProgress(string bookId)
-        {
-            try
-            {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Unauthorized(ApiResponse<object>.ErrorResponse(401, "Không xác định được danh tính người dùng."));
-                }
-
-                var result = await _progressService.GetProgressAsync(userId, bookId);
-                if (result == null)
-                {
-                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Chưa có tiến trình đọc cho cuốn sách này."));
-                }
-
-                return Ok(ApiResponse<ReadingProgressResponseDto>.SuccessResponse(result, "Lấy tiến trình đọc sách thành công."));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy tiến trình đọc sách {BookId}", bookId);
-                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi truy vấn tiến trình đọc."));
-            }
-        }
 
         /// <summary>
         /// Khởi tạo phiên đọc mới

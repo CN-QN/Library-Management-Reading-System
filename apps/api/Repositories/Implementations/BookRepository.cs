@@ -55,19 +55,23 @@ namespace api.Repositories.Implementations
             await _collection.DeleteOneAsync(filter);
         }
 
-        // [SỬA LỖI] Cập nhật SearchAsync để lọc theo CategoryId và AuthorId
+        // [SỬA LỖI] Cập nhật SearchAsync để lọc theo CategoryId, AuthorId, AccessType, Availability và sắp xếp động
         public async Task<(List<Book> Items, long Total)> SearchAsync(
             string? keyword, 
             string? categoryId, 
             string? authorId, 
             string? status, 
+            string? availability,
+            string? accessType,
             int page, 
-            int limit)
+            int limit,
+            string sortBy = "createdAt",
+            string sortOrder = "desc")
         {
             var filterBuilder = Builders<Book>.Filter;
             var filters = new List<FilterDefinition<Book>>();
 
-            // [SỬA LỖI 1] Lọc theo keyword - Sử dụng Regex thay vì Text Search
+            // Lọc theo keyword - Sử dụng Regex thay vì Text Search
             if (!string.IsNullOrEmpty(keyword))
             {
                 var keywordFilter = filterBuilder.Regex(b => b.Title, new BsonRegularExpression(keyword, "i")) |
@@ -75,13 +79,13 @@ namespace api.Repositories.Implementations
                 filters.Add(keywordFilter);
             }
 
-            // [SỬA LỖI 2] Lọc theo CategoryId - THÊM MỚI
+            // Lọc theo CategoryId
             if (!string.IsNullOrEmpty(categoryId))
             {
                 filters.Add(filterBuilder.AnyEq(b => b.CategoryIds, categoryId));
             }
 
-            // [SỬA LỖI 3] Lọc theo AuthorId - THÊM MỚI
+            // Lọc theo AuthorId
             if (!string.IsNullOrEmpty(authorId))
             {
                 filters.Add(filterBuilder.AnyEq(b => b.AuthorIds, authorId));
@@ -93,18 +97,54 @@ namespace api.Repositories.Implementations
                 filters.Add(filterBuilder.Eq(b => b.Status, status));
             }
 
+            // Lọc theo accessType
+            if (!string.IsNullOrEmpty(accessType))
+            {
+                filters.Add(filterBuilder.Eq(b => b.AccessType, accessType));
+            }
+
+            // Lọc theo tình trạng bản sao dựa vào book_copies
+            if (!string.IsNullOrEmpty(availability))
+            {
+                var copiesCollection = _collection.Database.GetCollection<BookCopy>("book_copies");
+                
+                // Lấy tất cả book ID có ít nhất 1 bản sao AVAILABLE
+                var availableBookIds = await copiesCollection
+                    .Distinct<string>("bookId", Builders<BookCopy>.Filter.Eq(c => c.Status, "AVAILABLE"))
+                    .ToListAsync();
+
+                if (availability.ToUpper() == "AVAILABLE")
+                {
+                    filters.Add(filterBuilder.In(b => b.Id, availableBookIds));
+                }
+                else if (availability.ToUpper() == "UNAVAILABLE")
+                {
+                    filters.Add(!filterBuilder.In(b => b.Id, availableBookIds));
+                }
+            }
+
             // Kết hợp tất cả filters
             var filter = filters.Any() ? filterBuilder.And(filters) : filterBuilder.Empty;
             
             // Đếm tổng số bản ghi
             var total = await _collection.CountDocumentsAsync(filter);
 
+            // Xây dựng dynamic sort
+            var isAsc = sortOrder.ToLower() == "asc";
+            SortDefinition<Book> sort = sortBy.ToLower() switch
+            {
+                "title"     => isAsc ? Builders<Book>.Sort.Ascending(b => b.Title)     : Builders<Book>.Sort.Descending(b => b.Title),
+                "viewcount" => isAsc ? Builders<Book>.Sort.Ascending(b => b.Stats!.ViewCount) : Builders<Book>.Sort.Descending(b => b.Stats!.ViewCount),
+                "rating"    => isAsc ? Builders<Book>.Sort.Ascending(b => b.Stats!.Rating)    : Builders<Book>.Sort.Descending(b => b.Stats!.Rating),
+                _           => isAsc ? Builders<Book>.Sort.Ascending(b => b.CreatedAt) : Builders<Book>.Sort.Descending(b => b.CreatedAt),
+            };
+
             // Phân trang và sắp xếp
             var skip = (page - 1) * limit;
             var items = await _collection.Find(filter)
+                .Sort(sort)
                 .Skip(skip)
                 .Limit(limit)
-                .Sort(Builders<Book>.Sort.Descending(b => b.CreatedAt))
                 .ToListAsync();
 
             return (items, total);

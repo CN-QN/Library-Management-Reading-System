@@ -22,6 +22,14 @@ namespace api.Repositories.Implementations
             return await _progressesCollection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public async Task<List<ReadingProgress>> GetByUserIdAsync(string userId)
+        {
+            var filter = Builders<ReadingProgress>.Filter.Eq(p => p.UserId, userId);
+            return await _progressesCollection.Find(filter)
+                .Sort(Builders<ReadingProgress>.Sort.Descending(p => p.LastReadAt))
+                .ToListAsync();
+        }
+
         public async Task UpsertAsync(ReadingProgress progress)
         {
             var filter = Builders<ReadingProgress>.Filter.And(

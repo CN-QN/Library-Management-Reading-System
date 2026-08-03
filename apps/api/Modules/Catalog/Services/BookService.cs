@@ -48,8 +48,12 @@ namespace api.Modules.Catalog.Services
                 query.CategoryId,
                 query.AuthorId,
                 query.Status,
+                query.Availability,
+                query.AccessType,
                 query.Page,
-                query.Limit
+                query.Limit,
+                query.SortBy,
+                query.SortOrder
             );
 
             var items = new List<BookResponseDto>();
