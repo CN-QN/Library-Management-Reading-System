@@ -15,11 +15,18 @@ import {
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function ReaderLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Khi đang ở chế độ đọc sách toàn màn hình (/books/[slug]/read), không render header/footer chung của portal
+  const isReaderPage = pathname ? /\/books\/[^/]+\/read(\/|$)/.test(pathname) : false;
+  if (isReaderPage) {
+    return <>{children}</>;
+  }
 
   const handleLogout = async () => {
     await logout();
