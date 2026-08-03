@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
-import { ReadingProgress } from '@/types';
+import { ReadingProgress } from '@/types/ReadingProgress';
 import { cn } from '@/lib/utils';
 
 export interface ContinueReadingCardProps {
