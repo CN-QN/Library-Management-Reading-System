@@ -60,6 +60,9 @@ public class MongoDbContext
     // ===== NOTIFICATIONS (M13) =====
     public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("notifications");
 
+    // ===== SYSTEM SETTINGS (M15) =====
+    public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("system_settings");
+
     // Generic helper to get any collection by name
     public IMongoCollection<T> GetCollection<T>(string name)
     {
