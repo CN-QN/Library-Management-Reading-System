@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { BookOpen, Bookmark, BookmarkCheck, Sparkles } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { BookCard } from '@/components/shared/BookCard';
 import { ChapterList } from './ChapterList';
@@ -57,6 +57,14 @@ export function BookDetailInteractive({
 
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
 
+  // Ref và state phục vụ tính năng đè chuột kéo ngang (drag-to-scroll) hàng sách gợi ý
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isMouseDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+
   // Khởi tạo trạng thái bookmark từ localStorage phía client bất đồng bộ để tránh cascading render
   useEffect(() => {
     let isMounted = true;
@@ -73,6 +81,58 @@ export function BookDetailInteractive({
   const handleBookmarkToggle = () => {
     const newState = toggleBookmarked(userId, book.id);
     setIsBookmarked(newState);
+  };
+
+  // Logic xử lý đè chuột/chạm lướt ngang danh sách gợi ý bằng Pointer Events (hỗ trợ cả chuột & cảm ứng)
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Chỉ xử lý nút chuột trái (button === 0)
+    if (e.button !== 0 || !scrollRef.current) return;
+
+    isMouseDownRef.current = true;
+    hasDraggedRef.current = false;
+    startXRef.current = e.clientX - scrollRef.current.offsetLeft;
+    scrollLeftRef.current = scrollRef.current.scrollLeft;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isMouseDownRef.current || !scrollRef.current) return;
+    const x = e.clientX - scrollRef.current.offsetLeft;
+    const walk = x - startXRef.current;
+
+    // Xóa sạch mọi vùng bôi đen văn bản của trình duyệt khi người dùng đang đè chuột di chuyển
+    window.getSelection()?.removeAllRanges();
+
+    // Chỉ bật trạng thái lướt nếu người dùng di chuyển > 5px (tránh nhầm lẫn với click chọn)
+    if (Math.abs(walk) > 5) {
+      if (!hasDraggedRef.current) {
+        hasDraggedRef.current = true;
+        setIsDragging(true);
+      }
+      scrollRef.current.scrollLeft = scrollLeftRef.current - walk * 0.8;
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!isMouseDownRef.current) return;
+    isMouseDownRef.current = false;
+    setIsDragging(false);
+
+    // Dán nhãn reset hasDraggedRef sau 50ms để click event hoàn tất việc chuyển trang nếu là click đơn
+    setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 50);
+  };
+
+  const handlePointerCancel = () => {
+    handlePointerUp();
+  };
+
+  // Ngăn chặn sự kiện click mở link sách nếu người dùng đang thực hiện thao tác kéo cuộn
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (hasDraggedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   // Xác định href cho nút Đọc sách / Tiếp tục đọc theo chuẩn Issue #44
@@ -173,19 +233,28 @@ export function BookDetailInteractive({
 
       {/* Gợi ý cho bạn */}
       <section className="space-y-6 pt-8 border-t" aria-labelledby="recommendations-heading">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-500" />
-          <h2 id="recommendations-heading" className="text-xl font-bold tracking-tight">
-            {BOOK_DETAIL_COPY.recommendationsHeading}
-          </h2>
-        </div>
+        <h2 id="recommendations-heading" className="text-xl font-bold tracking-tight">
+          {BOOK_DETAIL_COPY.recommendationsHeading}
+        </h2>
 
         {filteredRecommendations.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
             {BOOK_DETAIL_COPY.noRecommendations}
           </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div
+            ref={scrollRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            onDragStart={(e) => e.preventDefault()}
+            onClickCapture={handleClickCapture}
+            className={cn(
+              'flex flex-nowrap items-stretch overflow-x-auto gap-5 pb-4 select-none [&_*]:select-none transition-colors scrollbar-thin scrollbar-thumb-muted touch-pan-x',
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            )}
+          >
             {filteredRecommendations.map((rec) => {
               const recAsBook: Book = {
                 id: rec.id,
@@ -197,7 +266,11 @@ export function BookDetailInteractive({
                 status: rec.status,
               };
 
-              return <BookCard key={rec.id} book={recAsBook} />;
+              return (
+                <div key={rec.id} className="w-[220px] sm:w-[240px] shrink-0 self-stretch flex flex-col">
+                  <BookCard book={recAsBook} className="h-full flex flex-col" />
+                </div>
+              );
             })}
           </div>
         )}
