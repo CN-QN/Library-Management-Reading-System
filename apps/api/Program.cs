@@ -34,6 +34,9 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    // Nạp cấu hình từ file .env cục bộ nếu có trước khi khởi tạo WebApplication
+    EnvLoader.Load();
+
     Log.Information("Starting Web Host...");
 
     var builder = WebApplication.CreateBuilder(args);
