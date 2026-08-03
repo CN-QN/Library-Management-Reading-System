@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Modules.ReservationsAndFines.DTOs;
 using api.Modules.ReservationsAndFines.Services;
@@ -101,6 +103,7 @@ namespace api.Modules.ReservationsAndFines.Controllers
         /// Miễn giảm khoản phạt (Thủ thư / Admin)
         /// </summary>
         [HttpPost("{id}/waive")]
+        [RequirePermission(Permissions.FineWaive)]
         public async Task<IActionResult> Waive(string id, [FromBody] WaiveFineDto dto)
         {
             try
