@@ -12,8 +12,8 @@ export async function getTrendingBooks(limit: number = 10): Promise<Book[]> {
   });
   if (!res.ok) throw new Error('Failed to fetch trending books');
   const data = await res.json();
-  // Xử lý unwrap data: API trả về { data: [...] } hoặc trực tiếp [...] tuỳ phiên bản backend
-  return data.data || data;
+  const rawItems: RawBook[] = data.data || data;
+  return Array.isArray(rawItems) ? rawItems.map(normalizeRawBook) : [];
 }
 
 /**
@@ -26,7 +26,8 @@ export async function getNewReleases(limit: number = 10): Promise<Book[]> {
   });
   if (!res.ok) throw new Error('Failed to fetch new releases');
   const data = await res.json();
-  return data.data || data;
+  const rawItems: RawBook[] = data.data || data;
+  return Array.isArray(rawItems) ? rawItems.map(normalizeRawBook) : [];
 }
 
 export interface PaginatedBookResponse {
@@ -52,6 +53,8 @@ export interface SearchBooksParams {
 type RawBook = {
   id?: string;
   bookId?: string;
+  slug?: string;
+  Slug?: string;
   title?: string;
   authorNames?: string[];
   AuthorNames?: string[];
@@ -65,6 +68,7 @@ type RawBook = {
 function normalizeRawBook(item: RawBook): Book {
   return {
     id: item.id || item.bookId || '',
+    slug: item.slug || item.Slug,
     title: item.title || 'Chưa có tiêu đề',
     author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
     coverImage: item.coverImage || item.coverImageUrl || '',
