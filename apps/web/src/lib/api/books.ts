@@ -60,6 +60,8 @@ type RawBook = {
   AuthorNames?: string[];
   coverImage?: string;
   coverImageUrl?: string;
+  coverAssetId?: string;
+  CoverAssetId?: string;
   rating?: number;
   status?: string;
   createdAt?: string;
@@ -71,7 +73,7 @@ function normalizeRawBook(item: RawBook): Book {
     slug: item.slug || item.Slug,
     title: item.title || 'Chưa có tiêu đề',
     author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
-    coverImage: item.coverImage || item.coverImageUrl || '',
+    coverImage: item.coverImage || item.coverImageUrl || item.coverAssetId || item.CoverAssetId || '',
     rating: item.rating || 0,
     status: item.status || 'PUBLISHED',
     createdAt: item.createdAt,
@@ -107,7 +109,11 @@ export async function searchBooks(params: SearchBooksParams): Promise<PaginatedB
 
   const payload = await res.json();
   const data = payload.data || payload;
-  const rawItems: RawBook[] = data.items || data || [];
+  const rawItems: RawBook[] = Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data)
+      ? data
+      : [];
   const items = rawItems.map(normalizeRawBook);
 
   return {

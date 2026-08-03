@@ -286,7 +286,7 @@ export async function getRecommendations(limit = 6): Promise<BookRecommendation[
     };
 
     const id = pickRaw<string>(rec, 'id', 'bookId') ?? '';
-    const coverRaw = pickRaw<string>(rec, 'coverImage', 'coverImageUrl');
+    const coverRaw = pickRaw<string>(rec, 'coverImage', 'coverImageUrl', 'coverAssetId', 'CoverAssetId');
 
     return {
       id,
