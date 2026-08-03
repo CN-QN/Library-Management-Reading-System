@@ -4,82 +4,89 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, ArrowLeft, Check, XCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import apiClient from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordRequirements } from './PasswordRequirements';
+
+const registerSchema = z.object({
+  fullName: z.string().min(1, 'Họ và tên là bắt buộc'),
+  studentCode: z.string().optional(),
+  email: z.string().email('Email không đúng định dạng'),
+  password: z
+    .string()
+    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
+    .regex(/[A-Z]/, 'Phải chứa chữ hoa')
+    .regex(/[a-z]/, 'Phải chứa chữ thường')
+    .regex(/[0-9]/, 'Phải chứa chữ số')
+    .regex(/[\W_]/, 'Phải chứa ký tự đặc biệt'),
+  confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Mật khẩu xác nhận không khớp',
+  path: ['confirmPassword'],
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 /**
  * RegisterForm - Form đăng ký tài khoản mới.
  * 
- * Gọi API POST /auth/register.
- * Khi thành công, hiển thị thông báo popup trực tiếp trên form,
- * yêu cầu người dùng nhấn OK để chuyển về trang đăng nhập.
+ * Sử dụng react-hook-form và zod để kiểm tra real-time.
  */
 export function RegisterForm() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    studentCode: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Xử lý bảo mật Open Redirect:
-  // Đảm bảo URL trả về phải là một path nội bộ (bắt đầu bằng '/'),
-  // tránh trường hợp bị tấn công chuyển hướng sang domain khác.
   const rawReturnUrl = searchParams.get('returnUrl') || '/';
   const returnUrl = (rawReturnUrl.startsWith('/') && !rawReturnUrl.startsWith('//')) ? rawReturnUrl : '/';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError('');
-
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự.');
-      return;
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting, touchedFields },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onChange',
+    defaultValues: {
+      fullName: '',
+      studentCode: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
     }
+  });
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.');
-      return;
-    }
+  const currentPassword = watch('password');
+  const currentConfirm = watch('confirmPassword');
 
-    setIsSubmitting(true);
+  const onSubmit = async (data: RegisterFormValues) => {
+    setSubmitError('');
 
     try {
       await apiClient.post('/auth/register', {
-        email: formData.email,
-        password: formData.password,
-        fullName: formData.fullName,
-        studentCode: formData.studentCode || undefined, // Bỏ qua nếu rỗng
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+        studentCode: data.studentCode || undefined,
       });
-      
-      // Thành công -> Đổi state để hiện UI thông báo
       setIsSuccess(true);
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.message || err.response?.data?.title
         : undefined;
-      setError(message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
-    } finally {
-      setIsSubmitting(false);
+      setSubmitError(message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
     }
   };
 
   const handleSuccessOk = () => {
-    // Chuyển hướng về trang đăng nhập, mang theo returnUrl nếu có
     router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
   };
 
@@ -104,6 +111,14 @@ export function RegisterForm() {
     );
   }
 
+  // Component phụ trợ hiển thị Feedback Icon (Tích xanh / Lỗi)
+  // Chỉ hiển thị icon khi field ĐÃ BỊ TOUCHED để tránh aggressive validation
+  const FeedbackIcon = ({ fieldName, hasError }: { fieldName: keyof RegisterFormValues, hasError: boolean }) => {
+    if (!touchedFields[fieldName]) return null;
+    if (hasError) return <XCircle className="w-4 h-4 text-destructive absolute right-3 top-3" />;
+    return <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-3" />;
+  };
+
   return (
     <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
@@ -123,24 +138,23 @@ export function RegisterForm() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-card py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-border">
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-foreground">
                 Họ và tên *
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <Input
                   id="fullName"
-                  name="fullName"
                   type="text"
                   autoComplete="name"
-                  required
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="w-full"
+                  {...register('fullName')}
+                  className={`w-full pr-10 ${(touchedFields.fullName && errors.fullName) ? 'border-destructive' : ''}`}
                   placeholder="Nguyễn Văn A"
                 />
+                <FeedbackIcon fieldName="fullName" hasError={!!errors.fullName} />
               </div>
+              {touchedFields.fullName && errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
             </div>
 
             <div>
@@ -150,10 +164,8 @@ export function RegisterForm() {
               <div className="mt-1">
                 <Input
                   id="studentCode"
-                  name="studentCode"
                   type="text"
-                  value={formData.studentCode}
-                  onChange={handleChange}
+                  {...register('studentCode')}
                   className="w-full"
                   placeholder="VD: 20230001"
                 />
@@ -164,62 +176,66 @@ export function RegisterForm() {
               <label htmlFor="email" className="block text-sm font-medium text-foreground">
                 Email *
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <Input
                   id="email"
-                  name="email"
                   type="email"
                   autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full"
+                  {...register('email')}
+                  className={`w-full pr-10 ${(touchedFields.email && errors.email) ? 'border-destructive' : ''}`}
                   placeholder="email@example.com"
                 />
+                <FeedbackIcon fieldName="email" hasError={!!errors.email} />
               </div>
+              {touchedFields.email && errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground">
                 Mật khẩu *
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <Input
                   id="password"
-                  name="password"
                   type="password"
                   autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full"
+                  {...register('password')}
+                  className={`w-full pr-10 ${(touchedFields.password && errors.password) ? 'border-destructive' : ''}`}
                   placeholder="Tối thiểu 6 ký tự"
                 />
               </div>
+              <PasswordRequirements password={currentPassword} />
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
                 Xác nhận mật khẩu *
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <Input
                   id="confirmPassword"
-                  name="confirmPassword"
                   type="password"
                   autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full"
+                  {...register('confirmPassword')}
+                  className={`w-full pr-10 ${(touchedFields.confirmPassword && errors.confirmPassword) ? 'border-destructive' : ''}`}
                   placeholder="Nhập lại mật khẩu"
                 />
+                {touchedFields.confirmPassword && currentConfirm && currentConfirm === currentPassword && (
+                  <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-3" />
+                )}
+                {touchedFields.confirmPassword && currentConfirm !== currentPassword && (
+                   <XCircle className="w-4 h-4 text-destructive absolute right-3 top-3" />
+                )}
               </div>
+              {touchedFields.confirmPassword && errors.confirmPassword && <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>}
+              {touchedFields.confirmPassword && currentConfirm && currentConfirm === currentPassword && (
+                 <p className="text-xs text-green-500 mt-1 flex items-center gap-1"><Check className="w-3 h-3"/> Mật khẩu đã khớp!</p>
+              )}
             </div>
 
-            {error && (
+            {submitError && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
-                {error}
+                {submitError}
               </div>
             )}
 
