@@ -67,18 +67,20 @@ namespace api.Modules.ReservationsAndFines.Services
                 throw new InvalidOperationException("Bạn đã có lượt đặt trước sách này đang ở trạng thái chờ hoặc sẵn sàng.");
             }
 
-            // 5. Calculate queue position & check copy availability
-            var nextQueuePos = await _reservationRepository.GetNextQueuePositionAsync(dto.BookId);
+            // 5. Kiểm tra bản sao sẵn có – chỉ cho phép đặt trước khi không còn bản sao nào
             var availableCopiesCount = await _copyRepository.CountAvailableByBookIdAsync(dto.BookId);
+            if (availableCopiesCount > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Sách này hiện còn {availableCopiesCount} bản sao sẵn có tại thư viện. " +
+                    "Vui lòng đến quầy mượn trực tiếp thay vì đặt trước.");
+            }
 
+            // 6. Tính vị trí hàng đợi (chỉ đến đây khi sách hết bản sao)
+            var nextQueuePos = await _reservationRepository.GetNextQueuePositionAsync(dto.BookId);
             var status = "WAITING";
             DateTime? readyUntil = null;
 
-            if (availableCopiesCount > 0 && nextQueuePos == 1)
-            {
-                status = "READY";
-                readyUntil = DateTime.UtcNow.AddHours(48); // 48-hour hold limit
-            }
 
             var reservation = new Reservation
             {

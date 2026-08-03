@@ -12,6 +12,7 @@ using api.Common.Redis;
 using api.Modules.Catalog.Services;
 using api.Modules.DigitalContent.Services;
 using api.Modules.Inventory.Services;
+using api.Modules.Circulation.Services;
 using api.Modules.ReservationsAndFines.Services;
 using api.Modules.Reading.Services;
 using api.Modules.SearchAndRecommendation.Services;
@@ -84,10 +85,12 @@ builder.Services.AddScoped<
     builder.Services.AddSingleton<RedisLockHelper>();
 
     // ===== CIRCULATION MODULE (M06) =====
+    builder.Services.AddScoped<IBorrowingService, BorrowingService>();
 
     // ===== RESERVATIONS & FINES MODULE (M07) =====
     builder.Services.AddScoped<IReservationService, ReservationService>();
     builder.Services.AddScoped<IFineService, FineService>();
+    builder.Services.AddHostedService<ReservationExpiryWorker>(); // Background worker: xử lý đặt trước hết hạn mỗi 30 phút
 
     // ===== READING MODULE (M09) =====
     builder.Services.AddScoped<IReadingProgressService, ReadingProgressService>();
@@ -111,6 +114,7 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
     builder.Services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();

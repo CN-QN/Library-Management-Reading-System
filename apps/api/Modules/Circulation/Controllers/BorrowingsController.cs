@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Modules.Circulation.DTOs;
 using api.Modules.Circulation.Services;
@@ -25,6 +27,7 @@ namespace api.Modules.Circulation.Controllers
         /// Tạo phiếu mượn sách mới tại quầy thủ thư
         /// </summary>
         [HttpPost]
+        [RequirePermission(Permissions.LoanCreate)]
         public async Task<IActionResult> Create([FromBody] CreateBorrowingDto dto)
         {
             try
@@ -110,6 +113,7 @@ namespace api.Modules.Circulation.Controllers
         /// Trả sách mượn tại quầy thủ thư
         /// </summary>
         [HttpPost("{id}/return")]
+        [RequirePermission(Permissions.LoanReturn)]
         public async Task<IActionResult> ReturnItems(string id, [FromBody] ReturnItemsDto dto)
         {
             try
@@ -162,6 +166,7 @@ namespace api.Modules.Circulation.Controllers
         /// Báo sách bị hỏng hoặc mất
         /// </summary>
         [HttpPatch("items/{itemId}/status")]
+        [RequirePermission(Permissions.LoanReturn)]
         public async Task<IActionResult> MarkItemStatus(string itemId, [FromBody] MarkItemStatusDto dto)
         {
             try

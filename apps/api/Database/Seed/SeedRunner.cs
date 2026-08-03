@@ -312,6 +312,17 @@ public class SeedRunner
             ("Chúc một ngày tốt lành", "chuc-mot-ngay-tot-lanh", "9786041000050", "Truyện dài Nguyễn Nhật Ánh", 2020)
         };
 
+        var coverUrls = new[]
+        {
+            "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400",
+            "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=400",
+            "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=400",
+            "https://images.unsplash.com/photo-1495640388908-05fa85288e61?q=80&w=400",
+            "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=400",
+            "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=400",
+            "https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=400"
+        };
+
         foreach (var (title, slug, isbn, summary, year) in bookData)
         {
             var book = new Book
@@ -321,7 +332,8 @@ public class SeedRunner
                 ISBN = isbn,
                 Summary = summary,
                 PublicationYear = year,
-                Language = "none",
+                Language = "vi",
+                CoverAssetId = coverUrls[random.Next(coverUrls.Length)],
                 AccessType = random.Next(0, 3) == 0 ? "PREMIUM" : "FREE",
                 Status = "PUBLISHED",
                 TotalChapters = 0,
