@@ -93,7 +93,7 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
               </p>
             )}
           </div>
-          <Badge variant="secondary" className="w-fit text-sm px-3 py-1 font-mono">
+          <Badge variant="secondary" className="w-fit text-sm px-3 py-1">
             {totalItems} cuốn sách
           </Badge>
         </div>
