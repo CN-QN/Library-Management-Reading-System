@@ -22,8 +22,8 @@ apiClient.interceptors.response.use(
     
     // If error is 401 and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Avoid infinite loop if the refresh token endpoint itself fails
-      if (originalRequest.url.includes('/auth/refresh')) {
+      // Tránh lặp vô tận và không ép redirect đăng nhập khi người dùng khách truy cập trang công khai
+      if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/profile')) {
         return Promise.reject(error);
       }
 

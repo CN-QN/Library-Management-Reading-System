@@ -1,221 +1,466 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Star, MessageSquare, CheckCircle2, AlertCircle, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { StarRating } from '@/components/shared/StarRating';
-import { getReviews, submitReview, type Review } from '@/lib/api/mocks/reviews.mocks';
-import { BOOK_DETAIL_COPY } from './BookDetailCopy';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { MessageSquare, LogIn, AlertCircle } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
+import { ReviewSummary } from './reviews/ReviewSummary';
+import { ReviewForm } from './reviews/ReviewForm';
+import { UserReviewCard } from './reviews/UserReviewCard';
+import { ReviewItem } from './reviews/ReviewItem';
+import { ReviewListSkeleton } from './reviews/ReviewListSkeleton';
 
+/**
+ * Thuật toán tính toán dải số trang hiển thị gọn gàng (windowing),
+ * ngăn chặn tràn giao diện khi số trang lớn (ví dụ > 7 trang) bằng cách chèn dấu ba chấm '...'.
+ */
+function getVisiblePages(current: number, total: number): (number | string)[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+import { ReviewEmptyState } from './reviews/ReviewEmptyState';
+import {
+  getReviews,
+  getReviewStats,
+  getUserReview,
+  createReview,
+  updateReview,
+  deleteReview,
+} from '@/lib/api/reviews';
+import { useAuthStore } from '@/store/auth-store';
+import type { Review, ReviewStats } from '@/types/Review';
+
+/**
+ * Thuộc tính đầu vào của component ReviewsSection.
+ */
 export interface ReviewsSectionProps {
-  /** ID cuốn sách */
+  /** ID cuốn sách cần quản lý đánh giá & nhận xét */
   bookId: string;
-  /** ID người dùng hiện tại (nếu đã đăng nhập) */
-  userId: string | null;
-  /** Tên hiển thị người dùng (nếu đã đăng nhập) */
+  /** ID người dùng (optional - ưu tiên tự động lấy từ useAuthStore) */
+  userId?: string | null;
+  /** Tên hiển thị người dùng (optional - ưu tiên tự động lấy từ useAuthStore) */
   userDisplayName?: string | null;
+  /** Callback thông báo điểm số trung bình và tổng lượt đánh giá ngược lên component cha khi có thay đổi */
+  onStatsChange?: (averageRating: number, totalReviews: number) => void;
 }
 
 /**
- * ReviewsSection - Hiển thị danh sách đánh giá và form gửi nhận xét của người dùng.
- * Sử dụng mock storage (localStorage) để hỗ trợ phản hồi tức thì trên giao diện client.
+ * ReviewsSection - Component chính quản lý toàn bộ khu vực Đánh giá & Nhận xét của sách.
+ * 
+ * Chức năng:
+ * 1. Hiển thị bảng tổng quan điểm trung bình và phân bổ số sao (ReviewSummary).
+ * 2. Phân quyền người dùng: 
+ *    - Khách chưa đăng nhập -> Hiển thị banner CTA điều hướng sang trang /login kèm returnUrl.
+ *    - Người dùng đã đăng nhập chưa có review -> Hiển thị form tạo đánh giá mới (ReviewForm).
+ *    - Người dùng đã có review -> Hiển thị thẻ bài đánh giá cá nhân (UserReviewCard) kèm khả năng chỉnh sửa/xóa.
+ * 3. Hiển thị danh sách đánh giá cộng đồng (ReviewItem) kèm bộ lọc số sao, sắp xếp và phân trang.
+ * 4. Phát sự kiện callback `onStatsChange` thông báo lên component cha để cập nhật UI thời gian thực.
+ *
+ * Dùng ở: Trang chi tiết sách của độc giả (`/books/[id]`).
+ *
+ * @param bookId - ID của cuốn sách
+ * @param userId - ID người dùng (optional fallback)
+ * @param userDisplayName - Tên hiển thị người dùng (optional fallback)
+ * @param onStatsChange - Callback cập nhật thống kê rating lên component cha
  */
-export function ReviewsSection({ bookId, userId, userDisplayName }: ReviewsSectionProps) {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [rating, setRating] = useState<number>(0);
-  const [hoverRating, setHoverRating] = useState<number>(0);
-  const [comment, setComment] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+export function ReviewsSection({
+  bookId,
+  userId,
+  userDisplayName,
+  onStatsChange,
+}: ReviewsSectionProps) {
+  // Lấy thông tin xác thực từ Zustand Auth Store
+  const { user, isAuthenticated } = useAuthStore();
 
-  // Khởi tạo danh sách đánh giá từ localStorage khi mount ở client bất đồng bộ để tránh cascading render
+  // Xác định ID và thông tin người dùng active.
+  // Lý do: Ưu tiên dữ liệu chính xác từ useAuthStore, fallback về props nếu props được truyền trực tiếp từ SSR parent component.
+  const activeUserId = user?.id || userId || null;
+  const isUserLoggedIn = isAuthenticated || Boolean(activeUserId);
+  const activeUserName = user
+    ? `${user.firstName} ${user.lastName}`.trim() || user.email
+    : userDisplayName || 'Độc giả';
+  const activeUserEmail = user?.email || '';
+
+  // State lưu trữ dữ liệu thống kê tổng quan (điểm trung bình, phân bổ 1-5 sao)
+  const [stats, setStats] = useState<ReviewStats | null>(null);
+
+  // State lưu trữ danh sách các bài đánh giá ở trang hiện tại
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  // State lưu trữ bài đánh giá của chính người dùng hiện tại đối với cuốn sách này (nếu có)
+  const [userReview, setUserReview] = useState<Review | null>(null);
+
+  // Trạng thái bật/tắt form chỉnh sửa bài đánh giá cá nhân
+  const [isEditingUserReview, setIsEditingUserReview] = useState<boolean>(false);
+
+  // State phân trang
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number>(0);
+
+  // State bộ lọc sao ('all' hoặc 1..5) và tiêu chí sắp xếp ('newest' | 'highest' | 'lowest')
+  const [ratingFilter, setRatingFilter] = useState<1 | 2 | 3 | 4 | 5 | 'all'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'highest' | 'lowest'>('newest');
+
+  // Trạng thái tải dữ liệu bất đồng bộ
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
+  const [, setIsLoadingStats] = useState<boolean>(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  /**
+   * Luồng fetch stats & live stats callback:
+   * Lấy thông tin thống kê điểm trung bình và phân bổ số sao từ API.
+   * Đồng thời gọi callback `onStatsChange` để cập nhật rating trên header trang chi tiết sách mà không cần reload trang.
+   */
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await getReviewStats(bookId);
+      setStats(data);
+      // Live stats callback: Thông báo ngược lên component cha ngay khi thống kê thay đổi
+      if (onStatsChange) {
+        onStatsChange(data.averageRating, data.totalReviews);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê đánh giá:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, [bookId, onStatsChange]);
+
+  /**
+   * Luồng fetch user review:
+   * Lấy bài đánh giá của người dùng hiện tại (nếu đã đăng nhập).
+   * Quyết định xem giao diện sẽ hiển thị `UserReviewCard` hay `ReviewForm`.
+   */
+  const loadUserReview = useCallback(async () => {
+    if (!activeUserId) {
+      setUserReview(null);
+      return;
+    }
+    try {
+      const data = await getUserReview(bookId, activeUserId);
+      setUserReview(data);
+    } catch (error) {
+      console.error('Lỗi khi tải bài đánh giá cá nhân:', error);
+    }
+  }, [bookId, activeUserId]);
+
+  /**
+   * Luồng fetch reviews:
+   * Lấy danh sách các bài đánh giá cộng đồng theo trang, số sao cần lọc và tiêu chí sắp xếp.
+   */
+  const loadReviews = useCallback(async () => {
+    try {
+      const response = await getReviews({
+        bookId,
+        page,
+        limit: 5,
+        ratingFilter,
+        sortBy,
+      });
+      setReviews(response.items);
+      setTotalPages(response.totalPages);
+      setTotalItems(response.totalItems);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Không thể tải danh sách bài đánh giá.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  }, [bookId, page, ratingFilter, sortBy]);
+
+  // useEffect đồng bộ dữ liệu thống kê và bài đánh giá cá nhân khi cuốn sách hoặc tài khoản đăng nhập thay đổi.
   useEffect(() => {
-    let isMounted = true;
+    let ignore = false;
     Promise.resolve().then(() => {
-      if (isMounted) {
-        setReviews(getReviews(bookId));
+      if (!ignore) {
+        setIsLoadingStats(true);
+        loadStats();
+        loadUserReview();
       }
     });
     return () => {
-      isMounted = false;
+      ignore = true;
     };
-  }, [bookId]);
+  }, [loadStats, loadUserReview]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessMsg(null);
+  // useEffect tự động tải lại danh sách đánh giá mỗi khi người dùng đổi trang, bộ lọc số sao hoặc kiểu sắp xếp.
+  useEffect(() => {
+    let ignore = false;
+    Promise.resolve().then(() => {
+      if (!ignore) {
+        setIsLoadingReviews(true);
+        setErrorMessage(null);
+        loadReviews();
+      }
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [loadReviews]);
 
-    // Validate số sao đánh giá
-    if (rating < 1 || rating > 5) {
-      setErrorMsg(BOOK_DETAIL_COPY.validationRatingRequired);
-      return;
-    }
-
-    // Validate nội dung bình luận
-    const trimmed = comment.trim();
-    if (!trimmed || trimmed.length < 3) {
-      setErrorMsg(BOOK_DETAIL_COPY.validationCommentRequired);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const created = submitReview({
-        bookId,
-        userId: userId || 'anonymous',
-        displayName: userDisplayName || 'Độc giả',
-        rating,
-        comment: trimmed,
-      });
-
-      // Cập nhật ngay danh sách hiển thị
-      setReviews((prev) => [created, ...prev]);
-
-      // Reset form
-      setRating(0);
-      setComment('');
-      setSuccessMsg(BOOK_DETAIL_COPY.reviewSuccess);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra.';
-      setErrorMsg(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
+  /**
+   * Luồng reset page on filter change:
+   * Đặt lại trang hiện tại về trang 1 mỗi khi người dùng thay đổi mức sao muốn lọc hoặc đổi kiểu sắp xếp.
+   * Lý do: Tránh lỗi hiển thị trang rỗng khi đang ở trang 3 của danh sách tất cả bài viết nhưng chuyển sang lọc 1 sao chỉ có 1 trang.
+   */
+  const handleFilterChange = (filter: 1 | 2 | 3 | 4 | 5 | 'all') => {
+    setRatingFilter(filter);
+    setPage(1);
   };
 
+  const handleSortChange = (sort: 'newest' | 'highest' | 'lowest') => {
+    setSortBy(sort);
+    setPage(1);
+  };
+
+  /**
+   * Xử lý gửi bài đánh giá mới của độc giả.
+   * Sau khi tạo thành công: Cập nhật state bài viết cá nhân, tải lại thống kê và quay về trang 1 danh sách.
+   */
+  const handleCreateReview = async (data: { rating: number; comment: string }) => {
+    if (!activeUserId) {
+      throw new Error('Vui lòng đăng nhập để gửi đánh giá.');
+    }
+
+    await createReview({
+      bookId,
+      userId: activeUserId,
+      userFullName: activeUserName,
+      userEmail: activeUserEmail,
+      rating: data.rating,
+      comment: data.comment,
+    });
+
+    await loadUserReview();
+    await loadStats();
+    setPage(1);
+    await loadReviews();
+  };
+
+  /**
+   * Xử lý cập nhật bài đánh giá hiện có của độc giả.
+   * Sau khi sửa thành công: Đóng form edit, tải lại review cá nhân và cập nhật danh sách & thống kê.
+   */
+  const handleUpdateReview = async (data: { rating: number; comment: string }) => {
+    if (!userReview || !activeUserId) {
+      throw new Error('Không tìm thấy bài đánh giá cần cập nhật.');
+    }
+
+    await updateReview(userReview.id, {
+      bookId,
+      userId: activeUserId,
+      rating: data.rating,
+      comment: data.comment,
+    });
+
+    setIsEditingUserReview(false);
+    await loadUserReview();
+    await loadStats();
+    await loadReviews();
+  };
+
+  /**
+   * Xử lý xóa bài đánh giá cá nhân.
+   * Sau khi xóa thành công: Reset state userReview, đóng mode edit, làm mới thống kê và danh sách.
+   */
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!activeUserId) return;
+
+    await deleteReview(reviewId, bookId, activeUserId);
+    setUserReview(null);
+    setIsEditingUserReview(false);
+    await loadStats();
+    setPage(1);
+    await loadReviews();
+  };
+
+  // Lấy pathname hiện tại từ hook của Next.js để đồng nhất 100% giữa Server và Client (tránh lỗi React Hydration Mismatch)
+  const pathname = usePathname();
+  const loginUrl = `/login?returnUrl=${encodeURIComponent(pathname || `/books/${bookId}`)}`;
+
+  // Lọc bài viết cá nhân của chính mình ra khỏi danh sách bài viết cộng đồng ở bên dưới.
+  // Lý do: Tránh hiển thị lặp lại bài đánh giá của chính người dùng ở cả 2 nơi trên cùng một trang.
+  const communityReviews = reviews.filter((r) => r.userId !== activeUserId);
+
   return (
-    <section className="space-y-8 pt-8 border-t" aria-labelledby="reviews-heading">
+    <section className="space-y-8 pt-8 border-t font-sans" aria-labelledby="reviews-heading">
       <div className="space-y-1">
-        <h2 id="reviews-heading" className="text-xl font-bold tracking-tight">
-          {BOOK_DETAIL_COPY.reviewsHeading}
+        <h2 id="reviews-heading" className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-primary" />
+          Đánh giá & Bình luận
         </h2>
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5 shrink-0" />
-          {BOOK_DETAIL_COPY.reviewsNotice}
+        <p className="text-xs text-muted-foreground">
+          Chia sẻ nhận xét thực tế từ cộng đồng độc giả giúp bạn lựa chọn cuốn sách phù hợp nhất.
         </p>
       </div>
 
-      {/* Form viết đánh giá mới */}
-      <form onSubmit={handleSubmit} className="p-5 rounded-lg border bg-card space-y-4">
-        <h3 className="font-semibold text-base">Viết đánh giá của bạn</h3>
+      {/* 1. Bảng Tổng quan Thống kê Điểm đánh giá (ReviewSummary) */}
+      {stats && (
+        <ReviewSummary
+          stats={stats}
+          selectedFilter={ratingFilter}
+          onFilterChange={handleFilterChange}
+          selectedSort={sortBy}
+          onSortChange={handleSortChange}
+        />
+      )}
 
-        {/* Chọn số sao đánh giá */}
-        <div className="space-y-1.5">
-          <label id="rating-label" className="text-sm font-medium block">
-            {BOOK_DETAIL_COPY.reviewRatingLabel} <span className="text-destructive">*</span>
-          </label>
-          <div
-            className="flex items-center gap-1"
-            role="radiogroup"
-            aria-labelledby="rating-label"
-            aria-required="true"
-          >
-            {[1, 2, 3, 4, 5].map((starValue) => {
-              const active = (hoverRating || rating) >= starValue;
-              return (
-                <button
-                  key={starValue}
-                  type="button"
-                  role="radio"
-                  aria-checked={rating === starValue}
-                  aria-label={`${starValue} sao`}
-                  onClick={() => {
-                    setRating(starValue);
-                    setErrorMsg(null);
-                  }}
-                  onMouseEnter={() => setHoverRating(starValue)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="p-1 rounded transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <Star
-                    className={cn(
-                      'w-6 h-6 transition-colors',
-                      active ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'
-                    )}
-                  />
-                </button>
-              );
-            })}
-            {rating > 0 && (
-              <span className="text-xs font-semibold ml-2 text-amber-600 dark:text-amber-400">
-                {rating}/5 sao
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Nhập nội dung nhận xét */}
-        <div className="space-y-1.5">
-          <label htmlFor="review-comment" className="text-sm font-medium block">
-            {BOOK_DETAIL_COPY.reviewCommentLabel} <span className="text-destructive">*</span>
-          </label>
-          <textarea
-            id="review-comment"
-            value={comment}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-              setComment(e.target.value);
-              setErrorMsg(null);
-            }}
-            placeholder={BOOK_DETAIL_COPY.reviewCommentPlaceholder}
-            rows={3}
-            aria-invalid={Boolean(errorMsg)}
-            aria-describedby={errorMsg ? 'review-error' : undefined}
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-          />
-        </div>
-
-        {/* Thông báo lỗi / thành công dạng aria-live */}
-        <div aria-live="polite" className="space-y-2">
-          {errorMsg && (
-            <div id="review-error" className="flex items-center gap-2 text-xs font-medium text-destructive">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-          {successMsg && (
-            <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-        </div>
-
-        <Button type="submit" disabled={isSubmitting} size="sm" className="w-full sm:w-auto">
-          <MessageSquare className="w-4 h-4 mr-2" />
-          {isSubmitting ? BOOK_DETAIL_COPY.submittingReview : BOOK_DETAIL_COPY.submitReview}
-        </Button>
-      </form>
-
-      {/* Danh sách các bài đánh giá */}
+      {/* 2. Khu vực Form gửi đánh giá / Thẻ đánh giá cá nhân / Guest CTA Banner */}
       <div className="space-y-4">
-        {reviews.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic text-center py-6">
-            {BOOK_DETAIL_COPY.noReviewsYet}
-          </p>
-        ) : (
-          reviews.map((rev) => (
-            <div key={rev.id} className="p-4 rounded-lg border bg-card/60 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
-                    {rev.displayName.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold leading-none">{rev.displayName}</h4>
-                    <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                      {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
-                  </div>
-                </div>
-                <StarRating rating={rev.rating} size={14} />
-              </div>
-              <p className="text-sm text-foreground/90 pl-10 whitespace-pre-line">{rev.comment}</p>
+        {!isUserLoggedIn ? (
+          /* Luồng Guest banner: Hiển thị banner kêu gọi đăng nhập nếu chưa đăng nhập */
+          <div className="p-6 rounded-xl border border-dashed bg-card/40 text-center space-y-3 shadow-xs">
+            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <LogIn className="w-5 h-5" />
             </div>
-          ))
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Bạn đã đọc cuốn sách này?
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Vui lòng đăng nhập để gửi bài đánh giá, chấm điểm số sao và chia sẻ cảm nhận với cộng đồng độc giả.
+              </p>
+            </div>
+            <Link
+              href={loginUrl}
+              className={cn(
+                buttonVariants({ size: 'sm' }),
+                'inline-flex items-center cursor-pointer font-medium'
+              )}
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Đăng nhập để viết đánh giá
+            </Link>
+          </div>
+        ) : userReview ? (
+          isEditingUserReview ? (
+            /* Luồng Edit review: Đang mở Form sửa bài viết cá nhân */
+            <ReviewForm
+              initialRating={userReview.rating}
+              initialComment={userReview.comment}
+              isEditing={true}
+              onSubmit={handleUpdateReview}
+              onCancel={() => setIsEditingUserReview(false)}
+            />
+          ) : (
+            /* Luồng User existing review card: Đã có đánh giá -> hiển thị UserReviewCard */
+            <UserReviewCard
+              review={userReview}
+              onEdit={() => setIsEditingUserReview(true)}
+              onDelete={handleDeleteReview}
+            />
+          )
+        ) : (
+          /* Luồng Tạo mới: Người dùng đã đăng nhập và chưa từng đánh giá cuốn sách này */
+          <ReviewForm
+            isEditing={false}
+            onSubmit={handleCreateReview}
+          />
+        )}
+      </div>
+
+      {/* Thông báo lỗi nếu gọi API thất bại */}
+      {errorMessage && (
+        <div className="flex items-center gap-2 text-xs text-destructive p-3 rounded-lg bg-destructive/10">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* 3. Danh sách Đánh giá Cộng đồng & Skeleton & Empty State */}
+      <div className="space-y-4 pt-2">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          Đánh giá từ độc giả ({totalItems})
+        </h3>
+
+        {isLoadingReviews ? (
+          /* Trạng thái đang tải dữ liệu từ API */
+          <ReviewListSkeleton />
+        ) : communityReviews.length > 0 ? (
+          /* Danh sách các bài viết đánh giá cộng đồng */
+          <div className="space-y-3">
+            {communityReviews.map((rev) => (
+              <ReviewItem key={rev.id} review={rev} />
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          /* Không có bài đánh giá nào phù hợp (mảng rỗng) */
+          <ReviewEmptyState
+            isFiltered={ratingFilter !== 'all'}
+            onResetFilter={() => handleFilterChange('all')}
+          />
+        ) : (
+          /* Trường hợp bài duy nhất trên trang này là bài của chính người dùng (đã được hiển thị ở UserReviewCard) */
+          <div className="p-6 text-center border border-dashed rounded-xl bg-card/20">
+            <p className="text-xs text-muted-foreground italic">
+              Chưa có thêm đánh giá nào khác từ các độc giả khác.
+            </p>
+          </div>
+        )}
+
+        {/* 4. Thanh điều hướng phân trang (Pagination) bằng shadcn/ui */}
+        {!isLoadingReviews && totalPages > 1 && (
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/40">
+            <span className="text-xs text-muted-foreground font-medium">
+              Hiển thị trang <strong className="text-foreground">{page}</strong> / {totalPages} (Tổng {totalItems} đánh giá)
+            </span>
+
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  />
+                </PaginationItem>
+
+                {/* Render danh sách các nút số trang sử dụng thuật toán thu gọn dải trang */}
+                {getVisiblePages(page, totalPages).map((item, idx) =>
+                  typeof item === 'number' ? (
+                    <PaginationItem key={`page_${item}`}>
+                      <PaginationLink
+                        isActive={item === page}
+                        onClick={() => setPage(item)}
+                      >
+                        {item}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={`ellipsis_${idx}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                )}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </div>
     </section>

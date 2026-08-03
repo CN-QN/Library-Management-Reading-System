@@ -1,14 +1,9 @@
 import ReaderLayout from "@/components/layout/ReaderLayout";
-import ProtectedRoute from "@/components/Protect/ProtectedRoute";
 
 export default function AppReaderLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <ProtectedRoute>
-      <ReaderLayout>{children}</ReaderLayout>
-    </ProtectedRoute>
-  );
+  return <ReaderLayout>{children}</ReaderLayout>;
 }
