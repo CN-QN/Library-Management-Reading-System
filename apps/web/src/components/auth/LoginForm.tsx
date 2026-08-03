@@ -3,6 +3,7 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,13 @@ export function LoginForm() {
                   'Đăng nhập'
                 )}
               </Button>
+            </div>
+
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              Chưa có tài khoản?{' '}
+              <Link href={`/register?returnUrl=${encodeURIComponent(returnUrl)}`} className="text-primary hover:underline font-medium">
+                Đăng ký ngay
+              </Link>
             </div>
           </form>
         </div>
