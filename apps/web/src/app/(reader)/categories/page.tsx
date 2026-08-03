@@ -107,7 +107,7 @@ export default function CategoriesPage() {
                       )}
                     </div>
                     {cat.bookCount !== undefined && (
-                      <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                      <Badge variant="secondary" className="shrink-0 text-xs">
                         {cat.bookCount} sách
                       </Badge>
                     )}
