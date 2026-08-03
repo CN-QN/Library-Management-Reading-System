@@ -83,6 +83,7 @@ builder.Services.AddScoped<
 >();
     builder.Services.AddScoped<IBookService, BookService>();
     builder.Services.AddScoped<IAuthorService, AuthorService>();
+    builder.Services.AddScoped<IReviewService, ReviewService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
     // ===== REDIS HELPERS =====
