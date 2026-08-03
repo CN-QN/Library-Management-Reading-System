@@ -4,9 +4,15 @@ import apiClient from '@/lib/api-client';
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  studentCode?: string;
+  avatar?: string | null;
+  branchId?: string;
+  branchName?: string;
+  role?: string;
+  roles?: string[];
   permissions?: string[];
 }
 
