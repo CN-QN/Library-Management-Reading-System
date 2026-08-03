@@ -11,7 +11,17 @@ namespace api.Repositories.Interfaces
         Task InsertAsync(Book book);
         Task UpdateAsync(string id, Book book);
         Task DeleteAsync(string id);
-        Task<(List<Book> Items, long Total)> SearchAsync(string? keyword, string? categoryId, string? authorId, string? status, int page, int limit);
+        Task<(List<Book> Items, long Total)> SearchAsync(
+            string? keyword,
+            string? categoryId,
+            string? authorId,
+            string? status,
+            string? availability,
+            string? accessType,
+            int page,
+            int limit,
+            string sortBy = "createdAt",
+            string sortOrder = "desc");
         Task<List<Book>> GetTrendingAsync(int limit);
         Task<List<Book>> GetNewReleasesAsync(int limit);
         Task<long> CountByStatusAsync(string status);
