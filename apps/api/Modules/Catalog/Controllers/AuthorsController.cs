@@ -20,7 +20,7 @@ namespace api.Modules.Catalog.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách tác giả (có tìm kiếm & phân trang)
+        /// Lấy danh sách tác giả (có tìm kiếm và phân trang)
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAuthors([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)

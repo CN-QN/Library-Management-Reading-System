@@ -22,7 +22,7 @@ namespace api.Modules.Catalog.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách đánh giá của sách (lọc theo số sao, sắp xếp & phân trang)
+        /// Lấy danh sách đánh giá của sách (lọc theo số sao, sắp xếp và phân trang)
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetReviews(
@@ -48,7 +48,7 @@ namespace api.Modules.Catalog.Controllers
         }
 
         /// <summary>
-        /// Thống kê đánh giá của sách (điểm trung bình, số lượng & phân bổ số sao)
+        /// Thống kê đánh giá của sách (điểm trung bình, số lượng và phân bổ số sao)
         /// </summary>
         [HttpGet("stats")]
         public async Task<IActionResult> GetReviewStats([FromQuery] string bookId)

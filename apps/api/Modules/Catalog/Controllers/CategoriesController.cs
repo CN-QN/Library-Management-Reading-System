@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace api.Modules.Catalog.Controllers
 {
     /// <summary>
-    /// API danh sách & quản lý danh mục sách (Category)
+    /// API danh sách và quản lý danh mục sách (Category)
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
