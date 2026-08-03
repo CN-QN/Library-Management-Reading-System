@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { BookCover } from "@/components/ui/book-cover";
 import { useToast } from "@/components/ui/toast";
+import { useAsync } from "@/hooks/use-async";
 import { slugify } from "@/lib/slugify";
 import { booksApi, type Book, type CreateBookInput, type UpdateBookInput } from "@/lib/api/books";
+import { categoriesApi } from "@/lib/api/categories";
+import { authorsApi } from "@/lib/api/authors";
 
 const ACCESS_TYPES = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
 
@@ -22,8 +26,6 @@ interface CreateFormValues {
   publicationYear: string;
   language: string;
   accessType: string;
-  authorIds: string;
-  categoryIds: string;
 }
 
 interface EditFormValues {
@@ -33,15 +35,6 @@ interface EditFormValues {
   publicationYear: string;
   language: string;
   accessType: string;
-  authorIds: string;
-  categoryIds: string;
-}
-
-function splitIds(value: string): string[] {
-  return value
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
 }
 
 /** Uploads the cover via the real Files API; failure doesn't block the save flow. */
@@ -115,10 +108,25 @@ function CoverPicker({
   );
 }
 
+/** Real Author/Category options, backed by the Catalog CRUD endpoints. */
+function useCatalogOptions() {
+  const fetchCategories = useCallback(() => categoriesApi.list(), []);
+  const fetchAuthors = useCallback(() => authorsApi.search({ page: 1, pageSize: 200 }), []);
+  const { data: categories } = useAsync(fetchCategories);
+  const { data: authorsPage } = useAsync(fetchAuthors);
+  return {
+    categories: categories ?? [],
+    authors: authorsPage?.items ?? [],
+  };
+}
+
 export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void }) {
   const { showToast } = useToast();
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [authorIds, setAuthorIds] = useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const { authors, categories } = useCatalogOptions();
   const {
     register,
     handleSubmit,
@@ -136,8 +144,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       publicationYear: "",
       language: "vi",
       accessType: "FREE",
-      authorIds: "",
-      categoryIds: "",
     },
   });
 
@@ -169,8 +175,8 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
-        authorIds: splitIds(values.authorIds),
-        categoryIds: splitIds(values.categoryIds),
+        authorIds,
+        categoryIds,
       };
 
       const book = await booksApi.create(payload);
@@ -223,20 +229,11 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       <Textarea label="Tóm tắt" {...register("summary")} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Input
-          label="Tác giả (ID, cách nhau bởi dấu phẩy)"
-          placeholder="authorId1, authorId2"
-          {...register("authorIds")}
-        />
-        <Input
-          label="Thể loại (ID, cách nhau bởi dấu phẩy)"
-          placeholder="categoryId1, categoryId2"
-          {...register("categoryIds")}
-        />
+        <MultiSelect label="Tác giả" options={authors} selectedIds={authorIds} onChange={setAuthorIds} />
+        <MultiSelect label="Thể loại" options={categories} selectedIds={categoryIds} onChange={setCategoryIds} />
       </div>
       <p className="-mt-3 text-xs text-slate-400">
-        Backend chưa có API danh sách Tác giả/Thể loại để chọn — nhập tạm ID, sẽ chuyển
-        sang multi-select khi API đó sẵn sàng.
+        Nhà xuất bản vẫn chưa có API danh sách để chọn — nhập tạm ID.
       </p>
 
       <CoverPicker title={title} file={coverFile} onChange={setCoverFile} />
@@ -257,6 +254,9 @@ export function EditBookForm({
 }) {
   const { showToast } = useToast();
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [authorIds, setAuthorIds] = useState<string[]>(book.authorIds);
+  const [categoryIds, setCategoryIds] = useState<string[]>(book.categoryIds);
+  const { authors, categories } = useCatalogOptions();
   const {
     register,
     handleSubmit,
@@ -270,8 +270,6 @@ export function EditBookForm({
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
       language: book.language,
       accessType: book.accessType,
-      authorIds: book.authorIds.join(", "),
-      categoryIds: book.categoryIds.join(", "),
     },
   });
 
@@ -286,8 +284,8 @@ export function EditBookForm({
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
-        authorIds: splitIds(values.authorIds),
-        categoryIds: splitIds(values.categoryIds),
+        authorIds,
+        categoryIds,
       };
       const updated = await booksApi.update(book.id, payload);
       await tryUploadCover(book.id, coverFile, showToast);
@@ -306,7 +304,7 @@ export function EditBookForm({
       </div>
       <p className="text-xs text-slate-400">
         Slug/ISBN chỉ đặt được lúc tạo sách — API cập nhật sách vẫn chưa hỗ trợ sửa 2 trường
-        này (Tác giả/Thể loại/Nhà xuất bản thì sửa được, xem bên dưới).
+        này.
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -332,20 +330,11 @@ export function EditBookForm({
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Input
-          label="Tác giả (ID, cách nhau bởi dấu phẩy)"
-          placeholder="authorId1, authorId2"
-          {...register("authorIds")}
-        />
-        <Input
-          label="Thể loại (ID, cách nhau bởi dấu phẩy)"
-          placeholder="categoryId1, categoryId2"
-          {...register("categoryIds")}
-        />
+        <MultiSelect label="Tác giả" options={authors} selectedIds={authorIds} onChange={setAuthorIds} />
+        <MultiSelect label="Thể loại" options={categories} selectedIds={categoryIds} onChange={setCategoryIds} />
       </div>
       <p className="-mt-3 text-xs text-slate-400">
-        Hiện tại: {book.authorNames.join(", ") || "—"} · {book.categoryNames.join(", ") || "—"}
-        . Backend vẫn chưa có API danh sách Tác giả/Thể loại để chọn — nhập tạm ID.
+        Nhà xuất bản vẫn chưa có API danh sách để chọn — nhập tạm ID.
       </p>
 
       <Textarea label="Tóm tắt" {...register("summary")} />
