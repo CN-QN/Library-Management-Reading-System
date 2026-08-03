@@ -4,7 +4,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, Loader2, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ export function RegisterForm() {
   // Đảm bảo URL trả về phải là một path nội bộ (bắt đầu bằng '/'),
   // tránh trường hợp bị tấn công chuyển hướng sang domain khác.
   const rawReturnUrl = searchParams.get('returnUrl') || '/';
-  const returnUrl = rawReturnUrl.startsWith('/') ? rawReturnUrl : '/';
+  const returnUrl = (rawReturnUrl.startsWith('/') && !rawReturnUrl.startsWith('//')) ? rawReturnUrl : '/';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -107,6 +107,12 @@ export function RegisterForm() {
   return (
     <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
+        <div className="w-full flex justify-start mb-2">
+          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Về trang chủ
+          </Link>
+        </div>
         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
           <UserPlus size={32} />
         </div>
@@ -127,6 +133,7 @@ export function RegisterForm() {
                   id="fullName"
                   name="fullName"
                   type="text"
+                  autoComplete="name"
                   required
                   value={formData.fullName}
                   onChange={handleChange}
@@ -181,6 +188,7 @@ export function RegisterForm() {
                   id="password"
                   name="password"
                   type="password"
+                  autoComplete="new-password"
                   required
                   value={formData.password}
                   onChange={handleChange}
@@ -199,6 +207,7 @@ export function RegisterForm() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}

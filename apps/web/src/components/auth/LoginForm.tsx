@@ -4,7 +4,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { BookOpen, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,12 @@ export function LoginForm() {
   return (
     <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
+        <div className="w-full flex justify-start mb-2">
+          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Về trang chủ
+          </Link>
+        </div>
         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
           <BookOpen size={32} />
         </div>
