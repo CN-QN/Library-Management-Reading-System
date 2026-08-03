@@ -30,5 +30,6 @@ Desktop.ini
 
 # temp/logs
 *.log
+logs/
 docs/extracted.txt
 docs/Ke-hoach-trien-khai-quan-li-thu-vien-va-doc-sach.md

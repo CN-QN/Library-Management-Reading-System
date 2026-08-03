@@ -35,6 +35,9 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    // Nạp cấu hình từ file .env cục bộ nếu có trước khi khởi tạo WebApplication
+    EnvLoader.Load();
+
     Log.Information("Starting Web Host...");
 
     var builder = WebApplication.CreateBuilder(args);
@@ -233,6 +236,7 @@ builder.Services.AddScoped<
     }
 
     app.UseMiddleware<TraceIdMiddleware>();
+    app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseMiddleware<RateLimitMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
@@ -243,7 +247,6 @@ builder.Services.AddScoped<
         app.UseSwaggerUI();
     }
 
-    app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
