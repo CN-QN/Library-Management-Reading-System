@@ -228,6 +228,7 @@ builder.Services.AddScoped<
     }
 
     app.UseMiddleware<TraceIdMiddleware>();
+    app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseMiddleware<RateLimitMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
@@ -238,7 +239,6 @@ builder.Services.AddScoped<
         app.UseSwaggerUI();
     }
 
-    app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();

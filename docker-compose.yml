@@ -123,9 +123,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5210
-      - ConnectionStrings__MongoDb=mongodb://mongodb:27017
+      - ConnectionStrings__MongoDb=mongodb://libraryhub_user:libraryhub_pass@mongodb:27017/libraryhub?authSource=libraryhub
       - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-}
-      - MongoDb__ConnectionString=mongodb://mongodb:27017
+      - MongoDb__ConnectionString=mongodb://libraryhub_user:libraryhub_pass@mongodb:27017/libraryhub?authSource=libraryhub
       - MongoDb__DatabaseName=libraryhub
       - Redis__ConnectionString=redis:6379
       - Jwt__Secret=SuperSecretKeyForLibraryHubManagementSystem2026!
