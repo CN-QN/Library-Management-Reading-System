@@ -1,5 +1,7 @@
 export interface Book {
   id: string;
+  /** Chuỗi định danh URL thân thiện (vd: "co-gai-den-tu-hom-qua") */
+  slug?: string;
   title: string;
   author: string;
   /** URL tuyệt đối đến ảnh bìa sách */

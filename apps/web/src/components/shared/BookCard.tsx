@@ -19,10 +19,12 @@ export interface BookCardProps {
  * Sử dụng chung cho toàn bộ dự án.
  */
 export function BookCard({ book, className }: BookCardProps) {
+  const detailHref = `/books/${encodeURIComponent(book.slug || book.id)}`;
+
   return (
-    <Link href={`/books/${book.id}`} className={cn("group h-full block", className)}>
-      <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-md border-muted/60 bg-card hover:-translate-y-1">
-        <CardContent className="p-0 flex flex-col h-full">
+    <Link href={detailHref} className={cn("group h-full block select-none", className)}>
+      <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-md border-muted/60 bg-card hover:-translate-y-1 select-none">
+        <CardContent className="p-0 flex flex-col flex-1 h-full">
           {/* Ảnh bìa */}
           <div className="relative aspect-[2/3] w-full bg-muted overflow-hidden flex shrink-0">
             {book.coverImage ? (

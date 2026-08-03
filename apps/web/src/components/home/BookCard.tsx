@@ -9,8 +9,10 @@ interface BookCardProps {
 }
 
 export function BookCard({ book }: BookCardProps) {
+  const detailHref = `/books/${encodeURIComponent(book.slug || book.id)}`;
+
   return (
-    <Link href={`/books/${book.id}`} className="group h-full block">
+    <Link href={detailHref} className="group h-full block">
       <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-md border-muted/60 bg-card hover:-translate-y-1">
         <CardContent className="p-0 flex flex-col h-full">
           <div className="relative aspect-[2/3] w-full bg-muted overflow-hidden">
