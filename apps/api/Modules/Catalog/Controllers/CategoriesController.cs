@@ -3,8 +3,6 @@ using api.Auth;
 using api.Common.Models;
 using api.Database.Entities;
 using api.Modules.Catalog.DTOs;
-using api.Common.Models;
-using api.Database.Entities;
 using api.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +10,6 @@ namespace api.Modules.Catalog.Controllers
 {
     /// <summary>
     /// API danh sách & quản lý danh mục sách (Category)
-    /// API danh sách danh mục sách (Category)
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -63,11 +60,6 @@ namespace api.Modules.Catalog.Controllers
                     })
                     .OrderBy(c => c.DisplayOrder)
                     .ThenBy(c => c.Name)
-                        c.ParentId,
-                        c.Path,
-                        c.Status
-                    })
-                    .OrderBy(c => c.Name)
                     .ToList();
 
                 return Ok(ApiResponse<object>.SuccessResponse(result, $"Lấy danh sách {result.Count} danh mục thành công."));
@@ -103,9 +95,6 @@ namespace api.Modules.Catalog.Controllers
                     category.Path,
                     category.Status,
                     category.DisplayOrder,
-                    category.ParentId,
-                    category.Path,
-                    category.Status,
                     Children = children.Select(c => new { c.Id, c.Name, c.Slug })
                 }, "Lấy thông tin danh mục thành công."));
             }
