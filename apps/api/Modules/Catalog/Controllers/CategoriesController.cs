@@ -1,12 +1,15 @@
+using System.Text.RegularExpressions;
+using api.Auth;
 using api.Common.Models;
 using api.Database.Entities;
+using api.Modules.Catalog.DTOs;
 using api.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Modules.Catalog.Controllers
 {
     /// <summary>
-    /// API danh sách danh mục sách (Category)
+    /// API danh sách & quản lý danh mục sách (Category)
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -49,11 +52,14 @@ namespace api.Modules.Catalog.Controllers
                         c.Id,
                         c.Name,
                         c.Slug,
+                        c.Description,
                         c.ParentId,
                         c.Path,
-                        c.Status
+                        c.Status,
+                        c.DisplayOrder
                     })
-                    .OrderBy(c => c.Name)
+                    .OrderBy(c => c.DisplayOrder)
+                    .ThenBy(c => c.Name)
                     .ToList();
 
                 return Ok(ApiResponse<object>.SuccessResponse(result, $"Lấy danh sách {result.Count} danh mục thành công."));
@@ -84,9 +90,11 @@ namespace api.Modules.Catalog.Controllers
                     category.Id,
                     category.Name,
                     category.Slug,
+                    category.Description,
                     category.ParentId,
                     category.Path,
                     category.Status,
+                    category.DisplayOrder,
                     Children = children.Select(c => new { c.Id, c.Name, c.Slug })
                 }, "Lấy thông tin danh mục thành công."));
             }
@@ -95,6 +103,128 @@ namespace api.Modules.Catalog.Controllers
                 _logger.LogError(ex, "Lỗi khi lấy chi tiết danh mục {Id}.", id);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy danh mục."));
             }
+        }
+
+        /// <summary>
+        /// Tạo mới danh mục (Yêu cầu quyền book.create)
+        /// </summary>
+        [HttpPost]
+        [RequirePermission("book.create")]
+        public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
+        {
+            try
+            {
+                var slug = GenerateSlug(dto.Name);
+                if (await _categoryRepository.ExistsBySlugAsync(slug))
+                {
+                    slug = $"{slug}-{Guid.NewGuid().ToString("N")[..6]}";
+                }
+
+                var category = new Category
+                {
+                    Name = dto.Name.Trim(),
+                    Slug = slug,
+                    Description = dto.Description,
+                    ParentId = dto.ParentId,
+                    Status = dto.Status ?? "ACTIVE",
+                    DisplayOrder = dto.DisplayOrder,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _categoryRepository.InsertAsync(category);
+                _logger.LogInformation("Created new category: {CategoryName} (ID: {CategoryId})", category.Name, category.Id);
+
+                return CreatedAtAction(nameof(GetById), new { id = category.Id }, ApiResponse<Category>.SuccessResponse(category, "Tạo danh mục mới thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo danh mục.");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi tạo danh mục."));
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật danh mục (Yêu cầu quyền book.update)
+        /// </summary>
+        [HttpPut("{id}")]
+        [RequirePermission("book.update")]
+        public async Task<IActionResult> Update(string id, [FromBody] UpdateCategoryDto dto)
+        {
+            try
+            {
+                var category = await _categoryRepository.GetByIdAsync(id);
+                if (category == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Không tìm thấy danh mục để cập nhật."));
+
+                category.Name = dto.Name.Trim();
+                category.Description = dto.Description;
+                category.ParentId = dto.ParentId;
+                category.Status = dto.Status ?? "ACTIVE";
+                category.DisplayOrder = dto.DisplayOrder;
+                category.UpdatedAt = DateTime.UtcNow;
+
+                await _categoryRepository.UpdateAsync(id, category);
+                _logger.LogInformation("Updated category: {CategoryId}", id);
+
+                return Ok(ApiResponse<Category>.SuccessResponse(category, "Cập nhật danh mục thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật danh mục {Id}.", id);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi cập nhật danh mục."));
+            }
+        }
+
+        /// <summary>
+        /// Xóa danh mục (Yêu cầu quyền book.delete)
+        /// </summary>
+        [HttpDelete("{id}")]
+        [RequirePermission("book.delete")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            try
+            {
+                var category = await _categoryRepository.GetByIdAsync(id);
+                if (category == null)
+                    return NotFound(ApiResponse<object>.ErrorResponse(404, "Không tìm thấy danh mục để xóa."));
+
+                await _categoryRepository.DeleteAsync(id);
+                _logger.LogInformation("Deleted category: {CategoryId}", id);
+
+                return Ok(ApiResponse<object>.SuccessResponse(new { id }, "Xóa danh mục thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa danh mục {Id}.", id);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi xóa danh mục."));
+            }
+        }
+
+        private static string GenerateSlug(string text)
+        {
+            string str = text.ToLowerInvariant();
+
+            string[] vietnameseSigns = new string[]
+            {
+                "aàảãáạăằẳẵắặâầẩẫấậ", "dđ", "eèẻẽéẹêềểễếệ",
+                "iìỉĩíị", "oòỏõóọôồổỗốộơờởỡớợ",
+                "uùủũúụưừửữứự", "yỳỷỹýỵ"
+            };
+
+            for (int i = 1; i < vietnameseSigns.Length; i++)
+            {
+                for (int j = 0; j < vietnameseSigns[i].Length; j++)
+                {
+                    str = str.Replace(vietnameseSigns[i][j], vietnameseSigns[i][0]);
+                }
+            }
+
+            str = Regex.Replace(str, @"[^a-z0-9\s-]", "");
+            str = Regex.Replace(str, @"\s+", " ").Trim();
+            str = Regex.Replace(str, @"\s", "-");
+
+            return string.IsNullOrWhiteSpace(str) ? "category" : str;
         }
     }
 }

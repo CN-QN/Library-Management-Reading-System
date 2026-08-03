@@ -79,6 +79,7 @@ builder.Services.AddScoped<
     api.Modules.Circulation.Services.BorrowingService
 >();
     builder.Services.AddScoped<IBookService, BookService>();
+    builder.Services.AddScoped<IAuthorService, AuthorService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
     // ===== REDIS HELPERS =====
