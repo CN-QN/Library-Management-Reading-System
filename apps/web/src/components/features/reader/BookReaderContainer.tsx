@@ -90,11 +90,15 @@ export function BookReaderContainer({
   const fontSize = settings.fontSize;
   const lineHeight = settings.lineHeight;
 
+  // XÁC ĐỊNH SỐ LƯỢNG CHƯƠNG ĐỂ TÍNH TIẾN ĐỘ SÁCH
+  const totalChapters = chapters.length > 0 ? chapters.length : book.totalChapters;
+
   // 2. Hook quản lý Tiến độ đọc & Tự động lưu scroll position
   const { scrollPercentage, restoreScroll, saveNow } = useReadingProgress({
     bookId: book.id,
     chapterId: currentChapter.id,
     chapterNumber: currentChapter.number,
+    totalChapters,
     initialProgress,
   });
 

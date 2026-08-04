@@ -1,4 +1,4 @@
-import { API_URL } from '../api-client';
+import apiClient, { API_URL } from '../api-client';
 import { getBookById, getBookCover } from './book-detail';
 import type {
   ReadingProgress,
@@ -185,9 +185,9 @@ export async function saveReadingProgress(
   const normalizedPayload: SaveReadingProgressPayload = {
     bookId: payload.bookId,
     chapterId: payload.chapterId,
-    chapterNumber: Math.floor(payload.chapterNumber),
-    scrollPosition: Math.max(0, Math.round(payload.scrollPosition)),
-    percentage: Math.min(100, Math.max(0, Math.round(payload.percentage))),
+    chapterNumber: Math.floor(payload.chapterNumber || 1),
+    scrollPosition: Math.max(0, Math.round(payload.scrollPosition || 0)),
+    percentage: Math.min(100, Math.max(0, Math.round(payload.percentage || 0))),
     version: Math.max(1, payload.version || 1),
     status: payload.status || 'Reading',
   };
@@ -214,20 +214,26 @@ export async function saveReadingProgress(
   saveGuestProgressToLocalStorage(normalizedPayload);
 
   try {
-    const res = await fetch(`${API_URL}/Reading/progress`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(normalizedPayload),
-      ...(isServer ? {} : { credentials: 'include' as const }),
-    });
+    if (!isServer) {
+      // Dùng apiClient ở phía client để tự động bắt 401 và refresh token
+      const res = await apiClient.post('/Reading/progress', normalizedPayload);
+      const data = unwrapPayload<ReadingProgress>(res.data);
+      return data || createProgressFromPayload(normalizedPayload);
+    } else {
+      const res = await fetch(`${API_URL}/Reading/progress`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(normalizedPayload),
+      });
 
-    if (res.status === 401 || !res.ok) {
-      return createProgressFromPayload(normalizedPayload);
+      if (res.status === 401 || !res.ok) {
+        return createProgressFromPayload(normalizedPayload);
+      }
+
+      const resJson = await res.json();
+      const data = unwrapPayload<ReadingProgress>(resJson);
+      return data || createProgressFromPayload(normalizedPayload);
     }
-
-    const resJson = await res.json();
-    const data = unwrapPayload<ReadingProgress>(resJson);
-    return data || createProgressFromPayload(normalizedPayload);
   } catch {
     return createProgressFromPayload(normalizedPayload);
   }
@@ -247,9 +253,9 @@ export function saveReadingProgressBeacon(payload: SaveReadingProgressPayload): 
   const normalizedPayload: SaveReadingProgressPayload = {
     bookId: payload.bookId,
     chapterId: payload.chapterId,
-    chapterNumber: Math.floor(payload.chapterNumber),
-    scrollPosition: Math.max(0, Math.round(payload.scrollPosition)),
-    percentage: Math.min(100, Math.max(0, Math.round(payload.percentage))),
+    chapterNumber: Math.floor(payload.chapterNumber || 1),
+    scrollPosition: Math.max(0, Math.round(payload.scrollPosition || 0)),
+    percentage: Math.min(100, Math.max(0, Math.round(payload.percentage || 0))),
     version: Math.max(1, payload.version || 1),
     status: payload.status || 'Reading',
   };
@@ -310,23 +316,32 @@ export async function startReadingSession(
   }
 
   try {
-    const res = await fetch(`${API_URL}/Reading/sessions/start`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ bookId, chapterId, device: device || 'Web Browser' }),
-      ...(isServer ? {} : { credentials: 'include' as const }),
-    });
+    if (!isServer) {
+      const res = await apiClient.post('/Reading/sessions/start', { bookId, chapterId, device: device || 'Web Browser' });
+      const data = unwrapPayload<{ sessionId?: string; id?: string } | string>(res.data);
+      if (typeof data === 'string') return data;
+      if (data && typeof data === 'object') {
+        return data.sessionId || data.id || null;
+      }
+      return null;
+    } else {
+      const res = await fetch(`${API_URL}/Reading/sessions/start`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ bookId, chapterId, device: device || 'Web Browser' }),
+      });
 
-    if (!res.ok) return null;
+      if (!res.ok) return null;
 
-    const payload = await res.json();
-    const data = unwrapPayload<{ sessionId?: string; id?: string } | string>(payload);
+      const payload = await res.json();
+      const data = unwrapPayload<{ sessionId?: string; id?: string } | string>(payload);
 
-    if (typeof data === 'string') return data;
-    if (data && typeof data === 'object') {
-      return data.sessionId || data.id || null;
+      if (typeof data === 'string') return data;
+      if (data && typeof data === 'object') {
+        return data.sessionId || data.id || null;
+      }
+      return null;
     }
-    return null;
   } catch {
     return null;
   }
@@ -345,13 +360,16 @@ export async function sendReadingSessionHeartbeat(sessionId: string): Promise<bo
   const isServer = typeof window === 'undefined';
 
   try {
-    const res = await fetch(`${API_URL}/Reading/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      ...(isServer ? {} : { credentials: 'include' as const }),
-    });
-
-    return res.ok;
+    if (!isServer) {
+      const res = await apiClient.post(`/Reading/sessions/${encodeURIComponent(sessionId)}/heartbeat`);
+      return res.status === 200 || res.status === 204;
+    } else {
+      const res = await fetch(`${API_URL}/Reading/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.ok;
+    }
   } catch {
     return false;
   }
@@ -370,13 +388,16 @@ export async function endReadingSession(sessionId: string): Promise<boolean> {
   const isServer = typeof window === 'undefined';
 
   try {
-    const res = await fetch(`${API_URL}/Reading/sessions/${encodeURIComponent(sessionId)}/end`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      ...(isServer ? {} : { credentials: 'include' as const }),
-    });
-
-    return res.ok;
+    if (!isServer) {
+      const res = await apiClient.post(`/Reading/sessions/${encodeURIComponent(sessionId)}/end`);
+      return res.status === 200 || res.status === 204;
+    } else {
+      const res = await fetch(`${API_URL}/Reading/sessions/${encodeURIComponent(sessionId)}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.ok;
+    }
   } catch {
     return false;
   }
