@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using api.Common.Models;
 using api.Repositories.Interfaces;
+using api.Modules.Reading.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,15 +16,18 @@ namespace api.Modules.Reading.Controllers
     public class ReadingProgressController : ControllerBase
     {
         private readonly IReadingProgressRepository _progressRepository;
+        private readonly IReadingProgressService _progressService;
         private readonly IBookRepository _bookRepository;
         private readonly ILogger<ReadingProgressController> _logger;
 
         public ReadingProgressController(
             IReadingProgressRepository progressRepository,
+            IReadingProgressService progressService,
             IBookRepository bookRepository,
             ILogger<ReadingProgressController> logger)
         {
             _progressRepository = progressRepository;
+            _progressService = progressService;
             _bookRepository = bookRepository;
             _logger = logger;
         }
@@ -87,7 +91,7 @@ namespace api.Modules.Reading.Controllers
                 if (string.IsNullOrEmpty(userId))
                     return Unauthorized(ApiResponse<object>.ErrorResponse(401, "Không xác định được người dùng."));
 
-                var progress = await _progressRepository.GetByUserIdAndBookIdAsync(userId, bookId);
+                var progress = await _progressService.GetProgressAsync(userId, bookId);
                 if (progress == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chưa có tiến trình đọc cho sách này."));
 

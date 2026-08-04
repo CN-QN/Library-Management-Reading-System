@@ -1,5 +1,4 @@
 import { cache } from 'react';
-import { cookies } from 'next/headers';
 import { API_URL } from '../api-client';
 import type {
   BookDetail,
@@ -119,6 +118,27 @@ export const getBookBySlug = cache(async (slug: string): Promise<BookDetail> => 
 });
 
 /**
+ * Lấy thông tin chi tiết của một cuốn sách theo ID.
+ */
+export const getBookById = cache(async (id: string): Promise<BookDetail> => {
+  const res = await fetch(`${API_URL}/Books/${encodeURIComponent(id)}`, {
+    next: { revalidate: 3600 },
+  });
+
+  if (res.status === 404) {
+    throw new BookNotFoundError(id);
+  }
+
+  if (!res.ok) {
+    throw new Error(`Lỗi khi lấy thông tin sách (${res.status}): ${res.statusText}`);
+  }
+
+  const payload = await res.json();
+  const raw = unwrapPayload<Record<string, unknown>>(payload);
+  return normalizeBookDetail(raw);
+});
+
+/**
  * Lấy danh sách các chương của cuốn sách theo bookId.
  * Đường dẫn API đúng theo ChaptersController của Backend: GET /api/books/{bookId}/chapters
  * Sắp xếp tăng dần theo số thứ tự chương.
@@ -161,8 +181,16 @@ export async function getChapters(bookId: string): Promise<ChapterSummary[]> {
  * Trả về null nếu chưa đăng nhập (401) hoặc chưa có tiến độ (404).
  */
 export async function getReadingProgress(bookId: string): Promise<ReadingProgressDetail | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('accessToken')?.value;
+  let token: string | undefined = undefined;
+  if (typeof window === 'undefined') {
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      token = cookieStore.get('accessToken')?.value;
+    } catch {
+      // Ignore if not in server context
+    }
+  }
 
   const headers: Record<string, string> = {};
   if (token) {

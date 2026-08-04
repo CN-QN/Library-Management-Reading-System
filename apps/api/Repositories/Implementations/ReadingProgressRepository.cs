@@ -37,16 +37,19 @@ namespace api.Repositories.Implementations
                 Builders<ReadingProgress>.Filter.Eq(p => p.BookId, progress.BookId)
             );
             
-            // Generate id if it's new
-            if (string.IsNullOrEmpty(progress.Id))
-            {
-                progress.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-            }
+            var update = Builders<ReadingProgress>.Update
+                .Set(p => p.ChapterId, progress.ChapterId)
+                .Set(p => p.ChapterNumber, progress.ChapterNumber)
+                .Set(p => p.ScrollPosition, progress.ScrollPosition)
+                .Set(p => p.Percentage, progress.Percentage)
+                .Set(p => p.Status, progress.Status)
+                .Set(p => p.Version, progress.Version)
+                .Set(p => p.LastReadAt, progress.LastReadAt);
 
-            await _progressesCollection.ReplaceOneAsync(
+            await _progressesCollection.UpdateOneAsync(
                 filter,
-                progress,
-                new ReplaceOptions { IsUpsert = true }
+                update,
+                new UpdateOptions { IsUpsert = true }
             );
         }
 
@@ -62,12 +65,16 @@ namespace api.Repositories.Implementations
                     Builders<ReadingProgress>.Filter.Eq(p => p.BookId, progress.BookId)
                 );
 
-                if (string.IsNullOrEmpty(progress.Id))
-                {
-                    progress.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-                }
+                var update = Builders<ReadingProgress>.Update
+                    .Set(p => p.ChapterId, progress.ChapterId)
+                    .Set(p => p.ChapterNumber, progress.ChapterNumber)
+                    .Set(p => p.ScrollPosition, progress.ScrollPosition)
+                    .Set(p => p.Percentage, progress.Percentage)
+                    .Set(p => p.Status, progress.Status)
+                    .Set(p => p.Version, progress.Version)
+                    .Set(p => p.LastReadAt, progress.LastReadAt);
 
-                writes.Add(new ReplaceOneModel<ReadingProgress>(filter, progress)
+                writes.Add(new UpdateOneModel<ReadingProgress>(filter, update)
                 {
                     IsUpsert = true
                 });

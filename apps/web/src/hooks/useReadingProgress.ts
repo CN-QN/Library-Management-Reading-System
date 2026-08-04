@@ -18,6 +18,8 @@ export interface UseReadingProgressOptions {
   initialProgress?: ReadingProgress | null;
   /** Thời gian debounce tự động lưu tiến độ (mặc định: 3000ms) */
   debounceMs?: number;
+  /** Tổng số chương của cuốn sách */
+  totalChapters: number;
 }
 
 /**
@@ -55,9 +57,11 @@ export function useReadingProgress({
   chapterNumber,
   initialProgress,
   debounceMs = 3000,
+  totalChapters = 1,
 }: UseReadingProgressOptions): UseReadingProgressReturn {
-  // State theo dõi vị trí cuộn & phần trăm hoàn thành
-  const [scrollPercentage, setScrollPercentage] = useState<number>(initialProgress?.percentage ?? 0);
+  // Bỏ qua giá trị initialProgress?.percentage vì nó có thể là bookPercentage,
+  // scrollPercentage ở frontend đại diện cho phần trăm hiện tại của CHƯƠNG.
+  const [scrollPercentage, setScrollPercentage] = useState<number>(0);
   const [currentPosition, setCurrentPosition] = useState<number>(initialProgress?.scrollPosition ?? 0);
   const [isRestored, setIsRestored] = useState<boolean>(false);
 
@@ -76,14 +80,23 @@ export function useReadingProgress({
    * Helper tạo payload tiến độ đọc chuẩn để gửi API.
    */
   const getPayload = useCallback((): SaveReadingProgressPayload => {
+    // Tính toán book percentage
+    const chapterPercentage = latestPercentageRef.current;
+    let bookPercentage = 0;
+    if (totalChapters > 0) {
+       bookPercentage = ((chapterNumber - 1) / totalChapters) * 100 + (chapterPercentage / 100) * (100 / totalChapters);
+    } else {
+       bookPercentage = chapterPercentage;
+    }
+
     return {
       bookId,
       chapterId,
       chapterNumber,
       scrollPosition: latestPosRef.current,
-      percentage: latestPercentageRef.current,
+      percentage: bookPercentage,
     };
-  }, [bookId, chapterId, chapterNumber]);
+  }, [bookId, chapterId, chapterNumber, totalChapters]);
 
   /**
    * Hàm lưu tiến độ đọc ngay lập tức (dùng khi người dùng click bấm lưu hoặc rời chương).

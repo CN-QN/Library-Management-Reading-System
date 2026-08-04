@@ -23,14 +23,50 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  BOOK_AVAILABILITY_FILTERS,
-  BOOK_CATEGORY_FILTERS,
-  BOOK_LANGUAGE_FILTERS,
-  BOOK_SORT_OPTIONS,
-} from '@/lib/api/mocks/book-filter.mocks';
+import { SearchFilterOption, SearchFiltersResponse } from '@/lib/api/search';
 
-const DEFAULT_SORT = 'newest';
+/** Giá trị tùy chọn sắp xếp mặc định nếu chưa chọn */
+const DEFAULT_SORT = 'createdAt';
+
+/** Tùy chọn danh sách ngôn ngữ tĩnh dùng trong giao diện bộ lọc */
+const STATIC_LANGUAGE_OPTIONS: SearchFilterOption[] = [
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'en', label: 'Tiếng Anh' },
+];
+
+/**
+ * Ánh xạ giá trị sắp xếp từ UI (VD: "createdAt", "title", "viewcount", "rating")
+ * thành cặp tham số SortBy và SortOrder cho API tìm kiếm sách backend.
+ *
+ * @param sortValue - Giá trị tùy chọn sắp xếp được chọn
+ */
+function getSortByAndOrder(sortValue: string): { sortBy: string | null; sortOrder: string | null } {
+  switch (sortValue) {
+    case 'createdAt':
+    case 'newest':
+      return { sortBy: 'CreatedAt', sortOrder: 'desc' };
+    case 'oldest':
+      return { sortBy: 'CreatedAt', sortOrder: 'asc' };
+    case 'title':
+    case 'title_asc':
+      return { sortBy: 'Title', sortOrder: 'asc' };
+    case 'title_desc':
+      return { sortBy: 'Title', sortOrder: 'desc' };
+    case 'viewcount':
+      return { sortBy: 'ViewCount', sortOrder: 'desc' };
+    case 'rating':
+      return { sortBy: 'Rating', sortOrder: 'desc' };
+    default:
+      return { sortBy: sortValue || null, sortOrder: 'desc' };
+  }
+}
+
+export interface BookSearchAndFiltersProps {
+  /** Từ khóa tìm kiếm ban đầu từ URL query parameter `Keyword` */
+  initialKeyword: string;
+  /** Dữ liệu bộ lọc siêu dữ liệu (thể loại, tình trạng, tùy chọn sắp xếp) được fetch từ API backend */
+  filtersData: SearchFiltersResponse | null;
+}
 
 type FilterContentProps = {
   keyword: string;
@@ -38,6 +74,9 @@ type FilterContentProps = {
   selectedLanguage: string;
   selectedAvailability: string;
   selectedSort: string;
+  categoryOptions: { value: string; label: string }[];
+  availabilityOptions: SearchFilterOption[];
+  sortOptions: SearchFilterOption[];
   onKeywordChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onLanguageChange: (value: string, checked: boolean) => void;
@@ -46,12 +85,19 @@ type FilterContentProps = {
   onClearFilters: () => void;
 };
 
+/**
+ * Component FilterContent - Dựng nội dung bảng lọc và sắp xếp.
+ * Được tái sử dụng ở cả giao diện Desktop (Sidebar) và Mobile (Sheet Drawer).
+ */
 function FilterContent({
   keyword,
   selectedCategoryId,
   selectedLanguage,
   selectedAvailability,
   selectedSort,
+  categoryOptions,
+  availabilityOptions,
+  sortOptions,
   onKeywordChange,
   onCategoryChange,
   onLanguageChange,
@@ -59,7 +105,10 @@ function FilterContent({
   onSortChange,
   onClearFilters,
 }: FilterContentProps) {
-  const activeSort = BOOK_SORT_OPTIONS.find((option) => option.value === selectedSort) || BOOK_SORT_OPTIONS[0];
+  const activeSort =
+    sortOptions.find((option) => option.value === selectedSort) ||
+    sortOptions[0] ||
+    { value: 'createdAt', label: 'Mới nhất' };
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,11 +124,6 @@ function FilterContent({
         />
       </div>
 
-      <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-        Bộ lọc đang dùng dữ liệu lựa chọn tạm thời ở frontend. Kết quả thật phụ thuộc API Books hỗ trợ
-        các tham số lọc tương ứng.
-      </div>
-
       <div className="space-y-3">
         <h3 className="font-semibold text-sm">Sắp xếp</h3>
         <Select value={selectedSort} onValueChange={onSortChange}>
@@ -87,32 +131,31 @@ function FilterContent({
             <span className="flex flex-1 text-left line-clamp-1">{activeSort.label}</span>
           </SelectTrigger>
           <SelectContent alignItemWithTrigger={false} sideOffset={4}>
-            {BOOK_SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <span>{option.label}</span>
-                {option.backendPending && (
-                  <span className="text-[10px] text-muted-foreground">Chờ BE</span>
-                )}
-              </SelectItem>
-            ))}
+            {sortOptions.map((option, index) => {
+              const optionValue = option.value || `sort-${index}`;
+              return (
+                <SelectItem key={optionValue} value={optionValue}>
+                  <span>{option.label}</span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm flex items-center justify-between">
-          Thể loại
-          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Mock options</Badge>
-        </h3>
+        <h3 className="font-semibold text-sm">Thể loại</h3>
         <RadioGroup value={selectedCategoryId || 'all'} onValueChange={onCategoryChange}>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="all" id="category-all" />
-            <Label htmlFor="category-all" className="text-sm font-normal">Tất cả thể loại</Label>
+            <Label htmlFor="category-all" className="text-sm font-normal cursor-pointer">
+              Tất cả thể loại
+            </Label>
           </div>
-          {BOOK_CATEGORY_FILTERS.map((category) => (
+          {categoryOptions.map((category) => (
             <div key={category.value} className="flex items-center space-x-2">
               <RadioGroupItem value={category.value} id={`category-${category.value}`} />
-              <Label htmlFor={`category-${category.value}`} className="text-sm font-normal">
+              <Label htmlFor={`category-${category.value}`} className="text-sm font-normal cursor-pointer">
                 {category.label}
               </Label>
             </div>
@@ -121,40 +164,34 @@ function FilterContent({
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm flex items-center justify-between">
-          Tình trạng
-          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chờ BE</Badge>
-        </h3>
+        <h3 className="font-semibold text-sm">Tình trạng</h3>
         <RadioGroup value={selectedAvailability || 'all'} onValueChange={onAvailabilityChange}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="all" id="availability-all" />
-            <Label htmlFor="availability-all" className="text-sm font-normal">Tất cả</Label>
-          </div>
-          {BOOK_AVAILABILITY_FILTERS.map((option) => (
-            <div key={option.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={option.value} id={`availability-${option.value}`} />
-              <Label htmlFor={`availability-${option.value}`} className="text-sm font-normal">
-                {option.label}
-              </Label>
-            </div>
-          ))}
+          {availabilityOptions.map((option, index) => {
+            const rawVal = option.value || 'all';
+            const idKey = `availability-${rawVal || index}`;
+            return (
+              <div key={idKey} className="flex items-center space-x-2">
+                <RadioGroupItem value={rawVal} id={idKey} />
+                <Label htmlFor={idKey} className="text-sm font-normal cursor-pointer">
+                  {option.label}
+                </Label>
+              </div>
+            );
+          })}
         </RadioGroup>
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm flex items-center justify-between">
-          Ngôn ngữ
-          <Badge variant="outline" className="text-[10px] font-normal px-1 py-0 h-4">Chờ BE</Badge>
-        </h3>
+        <h3 className="font-semibold text-sm">Ngôn ngữ</h3>
         <div className="space-y-2">
-          {BOOK_LANGUAGE_FILTERS.map((language) => (
-            <div key={language.value} className="flex items-center space-x-2">
+          {STATIC_LANGUAGE_OPTIONS.map((language) => (
+            <div key={language.value ?? 'vi'} className="flex items-center space-x-2">
               <Checkbox
                 id={`language-${language.value}`}
                 checked={selectedLanguage === language.value}
-                onCheckedChange={(checked) => onLanguageChange(language.value, checked === true)}
+                onCheckedChange={(checked) => onLanguageChange(language.value ?? '', checked === true)}
               />
-              <Label htmlFor={`language-${language.value}`} className="text-sm font-normal">
+              <Label htmlFor={`language-${language.value}`} className="text-sm font-normal cursor-pointer">
                 {language.label}
               </Label>
             </div>
@@ -170,51 +207,87 @@ function FilterContent({
 }
 
 /**
- * BookSearchAndFilters - Hiển thị tìm kiếm, bộ lọc và sắp xếp danh sách sách.
+ * BookSearchAndFilters - Hiển thị bộ lọc và tìm kiếm danh sách sách.
+ * Nhận dữ liệu bộ lọc thật từ API backend qua prop `filtersData` và đồng bộ URL query.
  *
- * State được đồng bộ lên URL để có thể chia sẻ link. Dữ liệu option của filter là mock frontend
- * vì backend chưa có API metadata riêng cho Reader Portal.
+ * @param props - Prop chứa từ khóa ban đầu và dữ liệu siêu dữ liệu bộ lọc từ API backend
  */
-export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: string }) {
+export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearchAndFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const selectedCategoryId = searchParams.get('CategoryId') || '';
   const selectedLanguage = searchParams.get('Language') || '';
-  const selectedAvailability = searchParams.get('AccessType') || '';
-  const selectedSort = searchParams.get('Sort') || DEFAULT_SORT;
+  const selectedAvailability = searchParams.get('Availability') || '';
+  const selectedSort = searchParams.get('Sort') || searchParams.get('SortBy') || DEFAULT_SORT;
+
+  // Chuyển đổi danh sách thể loại từ dữ liệu API backend
+  const categoryOptions = useMemo(() => {
+    return filtersData?.categories?.map((c) => ({ value: c.id, label: c.name })) ?? [];
+  }, [filtersData]);
+
+  // Tùy chọn tình trạng sách từ API backend với fallback an toàn
+  const availabilityOptions = useMemo(() => {
+    if (filtersData?.availabilityOptions && filtersData.availabilityOptions.length > 0) {
+      return filtersData.availabilityOptions;
+    }
+    return [
+      { value: null, label: 'Tất cả' },
+      { value: 'AVAILABLE', label: 'Còn bản sao' },
+      { value: 'UNAVAILABLE', label: 'Hết bản sao' },
+    ];
+  }, [filtersData]);
+
+  // Tùy chọn sắp xếp từ API backend với fallback an toàn
+  const sortOptions = useMemo(() => {
+    if (filtersData?.sortOptions && filtersData.sortOptions.length > 0) {
+      return filtersData.sortOptions;
+    }
+    return [
+      { value: 'createdAt', label: 'Mới nhất' },
+      { value: 'title', label: 'Tên sách (A-Z)' },
+      { value: 'viewcount', label: 'Lượt xem nhiều nhất' },
+      { value: 'rating', label: 'Đánh giá cao nhất' },
+    ];
+  }, [filtersData]);
 
   const activeFilterCount = useMemo(() => {
-    return [selectedCategoryId, selectedLanguage, selectedAvailability, selectedSort !== DEFAULT_SORT ? selectedSort : '']
-      .filter(Boolean)
-      .length;
+    return [
+      selectedCategoryId,
+      selectedLanguage,
+      selectedAvailability,
+      selectedSort !== DEFAULT_SORT ? selectedSort : '',
+    ].filter(Boolean).length;
   }, [selectedAvailability, selectedCategoryId, selectedLanguage, selectedSort]);
 
-  const replaceParams = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const replaceParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-    });
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value) {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+      });
 
-    params.delete('Page');
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  }, [pathname, router, searchParams]);
+      params.delete('Page');
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    },
+    [pathname, router, searchParams]
+  );
 
   const handleSortChange = (value: string | null) => {
     const safeValue = value || DEFAULT_SORT;
-    const sortOption = BOOK_SORT_OPTIONS.find((option) => option.value === safeValue) || BOOK_SORT_OPTIONS[0];
+    const { sortBy, sortOrder } = getSortByAndOrder(safeValue);
 
     replaceParams({
       Sort: safeValue === DEFAULT_SORT ? null : safeValue,
-      SortBy: safeValue === DEFAULT_SORT ? null : sortOption.sortBy,
-      SortOrder: safeValue === DEFAULT_SORT ? null : sortOption.sortOrder,
+      SortBy: safeValue === DEFAULT_SORT ? null : sortBy,
+      SortOrder: safeValue === DEFAULT_SORT ? null : sortOrder,
     });
   };
 
@@ -223,7 +296,7 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
       Keyword: null,
       CategoryId: null,
       Language: null,
-      AccessType: null,
+      Availability: null,
       Sort: null,
       SortBy: null,
       SortOrder: null,
@@ -237,10 +310,13 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
       selectedLanguage={selectedLanguage}
       selectedAvailability={selectedAvailability}
       selectedSort={selectedSort}
-      onKeywordChange={(value) => replaceParams({ Keyword: value.trim() || null })}
+      categoryOptions={categoryOptions}
+      availabilityOptions={availabilityOptions}
+      sortOptions={sortOptions}
+      onKeywordChange={(value) => replaceParams({ Keyword: value || null })}
       onCategoryChange={(value) => replaceParams({ CategoryId: value === 'all' ? null : value })}
       onLanguageChange={(value, checked) => replaceParams({ Language: checked ? value : null })}
-      onAvailabilityChange={(value) => replaceParams({ AccessType: value === 'all' ? null : value })}
+      onAvailabilityChange={(value) => replaceParams({ Availability: value === 'all' ? null : value })}
       onSortChange={handleSortChange}
       onClearFilters={handleClearFilters}
     />
@@ -256,7 +332,7 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
             placeholder="Tìm kiếm sách..."
             className="pl-8"
             defaultValue={initialKeyword}
-            onChange={(event) => replaceParams({ Keyword: event.target.value.trim() || null })}
+            onChange={(event) => replaceParams({ Keyword: event.target.value || null })}
             aria-label="Tìm kiếm sách"
           />
         </div>
@@ -278,7 +354,7 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
             <SheetHeader className="text-left mb-6">
               <SheetTitle>Bộ lọc sách</SheetTitle>
               <SheetDescription>
-                Tìm kiếm, lọc và sắp xếp sách. Một số bộ lọc sẽ có hiệu lực đầy đủ khi backend hỗ trợ.
+                Tìm kiếm, lọc theo thể loại, tình trạng và sắp xếp danh sách sách.
               </SheetDescription>
             </SheetHeader>
             {filterContent}
@@ -288,3 +364,4 @@ export function BookSearchAndFilters({ initialKeyword }: { initialKeyword: strin
     </>
   );
 }
+
