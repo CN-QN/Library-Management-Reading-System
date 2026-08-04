@@ -111,13 +111,13 @@ function FilterContent({
     { value: 'createdAt', label: 'Mới nhất' };
 
   return (
-    <div className="flex flex-col gap-6 font-sans">
+    <div className="flex flex-col gap-6">
       <div className="relative md:hidden">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Tìm kiếm sách..."
-          className="pl-8 font-sans"
+          className="pl-8"
           value={keyword}
           onChange={(event) => onKeywordChange(event.target.value)}
           aria-label="Tìm kiếm sách"
@@ -127,7 +127,7 @@ function FilterContent({
       <div className="space-y-3">
         <h3 className="font-semibold text-sm">Sắp xếp</h3>
         <Select value={selectedSort} onValueChange={onSortChange}>
-          <SelectTrigger className="w-full font-sans" aria-label="Sắp xếp sách">
+          <SelectTrigger className="w-full" aria-label="Sắp xếp sách">
             <span className="flex flex-1 text-left line-clamp-1">{activeSort.label}</span>
           </SelectTrigger>
           <SelectContent alignItemWithTrigger={false} sideOffset={4}>
@@ -199,7 +199,7 @@ function FilterContent({
         </div>
       </div>
 
-      <Button type="button" variant="outline" onClick={onClearFilters} className="font-sans">
+      <Button type="button" variant="outline" onClick={onClearFilters}>
         Xoá bộ lọc
       </Button>
     </div>
@@ -219,12 +219,12 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
 
   const selectedCategoryId = searchParams.get('CategoryId') || '';
   const selectedLanguage = searchParams.get('Language') || '';
-  const selectedAvailability = searchParams.get('AccessType') || '';
+  const selectedAvailability = searchParams.get('Availability') || '';
   const selectedSort = searchParams.get('Sort') || searchParams.get('SortBy') || DEFAULT_SORT;
 
   // Chuyển đổi danh sách thể loại từ dữ liệu API backend
   const categoryOptions = useMemo(() => {
-    return filtersData?.categories.map((c) => ({ value: c.id, label: c.name })) || [];
+    return filtersData?.categories?.map((c) => ({ value: c.id, label: c.name })) ?? [];
   }, [filtersData]);
 
   // Tùy chọn tình trạng sách từ API backend với fallback an toàn
@@ -296,7 +296,7 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       Keyword: null,
       CategoryId: null,
       Language: null,
-      AccessType: null,
+      Availability: null,
       Sort: null,
       SortBy: null,
       SortOrder: null,
@@ -313,10 +313,10 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       categoryOptions={categoryOptions}
       availabilityOptions={availabilityOptions}
       sortOptions={sortOptions}
-      onKeywordChange={(value) => replaceParams({ Keyword: value.trim() || null })}
+      onKeywordChange={(value) => replaceParams({ Keyword: value || null })}
       onCategoryChange={(value) => replaceParams({ CategoryId: value === 'all' ? null : value })}
       onLanguageChange={(value, checked) => replaceParams({ Language: checked ? value : null })}
-      onAvailabilityChange={(value) => replaceParams({ AccessType: value === 'all' ? null : value })}
+      onAvailabilityChange={(value) => replaceParams({ Availability: value === 'all' ? null : value })}
       onSortChange={handleSortChange}
       onClearFilters={handleClearFilters}
     />
@@ -324,33 +324,33 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
 
   return (
     <>
-      <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-4 self-start font-sans">
+      <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-4 self-start">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Tìm kiếm sách..."
-            className="pl-8 font-sans"
+            className="pl-8"
             defaultValue={initialKeyword}
-            onChange={(event) => replaceParams({ Keyword: event.target.value.trim() || null })}
+            onChange={(event) => replaceParams({ Keyword: event.target.value || null })}
             aria-label="Tìm kiếm sách"
           />
         </div>
         <div className="border rounded-lg p-4 bg-card">{filterContent}</div>
       </div>
 
-      <div className="md:hidden flex items-center gap-2 mb-4 font-sans">
+      <div className="md:hidden flex items-center gap-2 mb-4">
         <Sheet>
           <SheetTrigger
             render={
-              <Button variant="outline" className="w-full flex justify-center gap-2 font-sans" aria-label="Mở bộ lọc">
+              <Button variant="outline" className="w-full flex justify-center gap-2" aria-label="Mở bộ lọc">
                 <SlidersHorizontal className="w-4 h-4" />
                 Bộ lọc & Sắp xếp
                 {activeFilterCount > 0 && <Badge variant="secondary">{activeFilterCount}</Badge>}
               </Button>
             }
           />
-          <SheetContent side="left" className="w-[300px] sm:w-[350px] overflow-y-auto p-6 font-sans">
+          <SheetContent side="left" className="w-[300px] sm:w-[350px] overflow-y-auto p-6">
             <SheetHeader className="text-left mb-6">
               <SheetTitle>Bộ lọc sách</SheetTitle>
               <SheetDescription>
