@@ -1,4 +1,5 @@
 import { API_URL } from '../api-client';
+import { getBookById, getBookCover } from './book-detail';
 import type {
   ReadingProgress,
   SaveReadingProgressPayload,
@@ -6,6 +7,7 @@ import type {
   ChapterContentDetail,
   ChapterParagraph,
 } from '@/types/Reading';
+import type { ReadingProgress as HomeReadingProgress } from '@/types/ReadingProgress';
 
 /**
  * Helper unwrap envelope `{ data: T }` của API response.
@@ -493,3 +495,87 @@ export async function getChapterDetail(
     content: contentDetail,
   };
 }
+
+/**
+ * Lấy danh sách toàn bộ tiến trình đọc của user hiện tại.
+ * Cần truyền token/cookie vì API yêu cầu authorize.
+ * Không dùng cache (no-store) vì data này thay đổi liên tục theo user.
+ */
+export async function getAllReadingProgress(): Promise<HomeReadingProgress[]> {
+  const isServer = typeof window === 'undefined';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (isServer) {
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const token = cookieStore.get('accessToken')?.value;
+      if (token) {
+        headers['Cookie'] = `accessToken=${token}`;
+      }
+    } catch {
+      // Bỏ qua nếu không trong context Server
+    }
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/Reading/progress`, {
+      headers,
+      cache: 'no-store',
+      ...(isServer ? {} : { credentials: 'include' as const }),
+    });
+    
+    if (!res.ok) return [];
+    
+    const resJson = await res.json();
+    // Tùy theo payload trả về có bọc trong data không (giống cách hàm getReadingProgress làm)
+    const rawItems = resJson?.data || resJson;
+    
+    if (!Array.isArray(rawItems)) return [];
+    
+    // Ánh xạ sang cấu trúc mảng ReadingProgress[] mà frontend mong đợi
+    const progressList = await Promise.all(rawItems.map(async (rawItem: unknown) => {
+      const raw = (rawItem || {}) as Record<string, unknown>;
+      const bookIdStr = String(raw.bookId || raw.BookId || '');
+      
+      let bookInfo = null;
+      let coverData = null;
+      if (bookIdStr) {
+        try {
+          [bookInfo, coverData] = await Promise.all([
+            getBookById(bookIdStr).catch(() => null),
+            getBookCover(bookIdStr).catch(() => null)
+          ]);
+        } catch {
+          // Fallback
+        }
+      }
+
+      const chapterNumber = Number(raw.chapterNumber || raw.ChapterNumber || 1);
+
+      return {
+        bookId: bookIdStr,
+        book: {
+          id: bookIdStr,
+          title: bookInfo?.title || 'Chưa có tiêu đề',
+          slug: bookInfo?.slug || bookIdStr,
+          author: bookInfo?.authorNames?.join(', ') || 'Không rõ tác giả',
+          coverImage: coverData?.fileUrl || '',
+          rating: bookInfo?.rating || 0,
+          status: bookInfo?.status || 'PUBLISHED',
+        },
+        progressPercentage: Number(raw.percentage || raw.Percentage || raw.progressPercentage || raw.ProgressPercentage || 0),
+        lastReadAt: String(raw.lastReadAt || raw.LastReadAt || new Date().toISOString()),
+        currentChapterId: raw.chapterId || raw.ChapterId ? String(raw.chapterId || raw.ChapterId) : undefined,
+        currentChapterTitle: `Chương ${chapterNumber}`,
+      } as HomeReadingProgress;
+    }));
+    return progressList;
+  } catch (error) {
+    console.error("Failed to fetch reading progress list:", error);
+    return [];
+  }
+}
+

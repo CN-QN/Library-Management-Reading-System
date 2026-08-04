@@ -1,4 +1,4 @@
-import { getReadingProgress } from '@/lib/api/mocks/reading-progress.mocks';
+import { getAllReadingProgress } from '@/lib/api/reading';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, ArrowRight } from 'lucide-react';
@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ContinueReadingCard } from '@/components/shared/ContinueReadingCard';
 
 export async function ContinueReading() {
-  const progressList = await getReadingProgress();
+  const progressList = await getAllReadingProgress();
 
   if (!progressList || progressList.length === 0) {
     // Empty State
@@ -37,7 +37,7 @@ export async function ContinueReading() {
     <section className="w-full py-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold tracking-tight">Tiếp tục đọc</h2>
-        <Link href="/reading-history" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+        <Link href="/profile?tab=reading" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
           Xem tất cả <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
