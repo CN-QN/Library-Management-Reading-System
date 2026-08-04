@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { searchBooks } from '@/lib/api/books';
+import { getSearchFilters } from '@/lib/api/search';
 import { BookSearchAndFilters } from '@/components/reader/books/BookSearchAndFilters';
 import { BookListContainer } from '@/components/reader/books/BookListContainer';
 import { BookPagination } from '@/components/reader/books/BookPagination';
@@ -20,10 +21,11 @@ function getStringParam(params: BooksSearchParams, key: string): string {
 /**
  * Trang tìm kiếm sách (Server Component).
  * Xử lý tham số tìm kiếm từ URL, xác thực giới hạn Limit/Page an toàn.
+ * Fetch song song danh sách sách và siêu dữ liệu bộ lọc (thể loại, tình trạng, sắp xếp) từ Backend API.
  * Sử dụng kiến trúc URL-driven state management.
  *
- * @param {Object} props - Thuộc tính của trang
- * @param {Promise<{ [key: string]: string | string[] | undefined }>} props.searchParams - Tham số tìm kiếm truyền qua URL
+ * @param props - Thuộc tính của trang
+ * @param props.searchParams - Tham số tìm kiếm truyền qua URL dạng Promise
  */
 export default async function BooksPage({
   searchParams,
@@ -48,16 +50,20 @@ export default async function BooksPage({
   const limit = typeof rawLimit === 'string' ? parseInt(rawLimit, 10) : 12;
   const validLimit = Math.min(Math.max(isNaN(limit) || limit < 1 ? 12 : limit, 1), 100);
 
-  const data = await searchBooks({
-    Keyword: keyword,
-    Page: validPage,
-    Limit: validLimit,
-    CategoryId: categoryId,
-    Language: language,
-    AccessType: accessType,
-    SortBy: sortBy,
-    SortOrder: sortBy ? sortOrder : undefined,
-  });
+  // Fetch song song kết quả tìm kiếm sách và dữ liệu bộ lọc siêu dữ liệu từ backend
+  const [data, filtersData] = await Promise.all([
+    searchBooks({
+      Keyword: keyword,
+      Page: validPage,
+      Limit: validLimit,
+      CategoryId: categoryId,
+      Language: language,
+      AccessType: accessType,
+      SortBy: sortBy,
+      SortOrder: sortBy ? sortOrder : undefined,
+    }),
+    getSearchFilters(),
+  ]);
 
   const needsPageClamp = validPage > data.totalPages && data.totalPages > 0;
 
@@ -84,9 +90,9 @@ export default async function BooksPage({
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 font-sans">
       <div className="flex flex-col md:flex-row gap-8">
-        <BookSearchAndFilters initialKeyword={keyword} />
+        <BookSearchAndFilters initialKeyword={keyword} filtersData={filtersData} />
 
         <div className="flex-1 flex flex-col min-h-0">
           <BookListContainer books={data.items} />
@@ -96,3 +102,4 @@ export default async function BooksPage({
     </div>
   );
 }
+

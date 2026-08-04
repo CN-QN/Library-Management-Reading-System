@@ -32,7 +32,8 @@ export async function getSearchFilters(): Promise<SearchFiltersResponse | null> 
   try {
     const res = await fetch(`${API_URL}/Search/filters`, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
-    return await res.json();
+    const json = await res.json();
+    return json.data ?? json;
   } catch (error) {
     // Trả về null khi fetch thất bại hoặc lỗi mạng để caller xử lý fallback
     return null;
