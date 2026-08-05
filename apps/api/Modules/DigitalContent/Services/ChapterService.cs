@@ -1,6 +1,5 @@
 using api.Database.Entities;
 using api.Modules.DigitalContent.DTOs;
-using api.Modules.DigitalContent.Services;
 using api.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -8,120 +7,95 @@ namespace api.Modules.DigitalContent.Services
 {
     public class ChapterService : IChapterService
     {
-        private readonly IChapterRepository _chapterRepository;
         private readonly IBookRepository _bookRepository;
         private readonly ILogger<ChapterService> _logger;
 
         public ChapterService(
-            IChapterRepository chapterRepository,
             IBookRepository bookRepository,
             ILogger<ChapterService> logger)
         {
-            _chapterRepository = chapterRepository;
             _bookRepository = bookRepository;
             _logger = logger;
         }
 
-        public async Task<ChapterResponseDto?> GetByIdAsync(string id)
+        public async Task<BookChapter?> GetByIdAsync(string bookId, string chapterId)
         {
-            var chapter = await _chapterRepository.GetByIdAsync(id);
-            return chapter == null ? null : MapToResponseDto(chapter);
+            return await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
         }
 
-        public async Task<List<ChapterResponseDto>> GetByBookIdAsync(string bookId)
+        public async Task<List<BookChapter>> GetByBookIdAsync(string bookId)
         {
-            var chapters = await _chapterRepository.GetByBookIdAsync(bookId);
-            return chapters.Select(MapToResponseDto).ToList();
+            return await _bookRepository.GetChaptersByBookIdAsync(bookId);
         }
 
-        // [SỬA] Đơn giản hóa GetContentAsync
-        public async Task<ChapterContentDto?> GetContentAsync(string id)
+        public async Task<ChapterContentDto?> GetContentAsync(string bookId, string chapterId)
         {
-            var chapter = await _chapterRepository.GetByIdAsync(id);
-            if (chapter == null || chapter.Content == null)
+            var chapter = await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
+            if (chapter == null)
                 return null;
 
+            var content = chapter.Content;
             return new ChapterContentDto
             {
-                Introduction = chapter.Content.Introduction,
-                Conclusion = chapter.Content.Conclusion,
-                Paragraphs = chapter.Content.Paragraphs.Select(p => new ParagraphDto
+                Introduction = content.Introduction,
+                Paragraphs = content.Paragraphs.Select(p => new ParagraphDto
                 {
                     Id = p.Id,
                     Text = p.Text,
                     Order = p.Order
-                }).ToList()
+                }).ToList(),
+                Conclusion = content.Conclusion
             };
         }
 
-        public async Task<int> GetNextChapterNumberAsync(string bookId)
+        public async Task<BookChapter> CreateAsync(string bookId, CreateChapterDto dto, string userId)
         {
-            var chapters = await _chapterRepository.GetByBookIdAsync(bookId);
-            return chapters.Any() ? chapters.Max(c => c.Number) + 1 : 1;
-        }
+            var book = await _bookRepository.GetByIdAsync(bookId);
+            if (book == null)
+                throw new InvalidOperationException($"Book '{bookId}' not found.");
 
-        public async Task<ChapterResponseDto> CreateAsync(CreateChapterDto dto, string userId)
-        {
-            // Kiểm tra trùng số chương
-            var existingChapter = await _chapterRepository.GetByBookIdAndNumberAsync(dto.BookId, dto.Number);
-            if (existingChapter != null)
+            // Validate chapter number uniqueness
+            var existing = await _bookRepository.GetChapterByNumberAsync(bookId, dto.Number);
+            if (existing != null)
                 throw new InvalidOperationException($"Chapter number {dto.Number} already exists in this book.");
 
-            // Tính word count từ content
             var wordCount = CalculateWordCount(dto.Content);
             var readingTime = CalculateReadingTime(wordCount);
 
-            var chapter = new Chapter
+            var chapter = new BookChapter
             {
-                BookId = dto.BookId,
-                Title = dto.Title,
+                ChapterId = Guid.NewGuid().ToString("N"),
                 Number = dto.Number,
+                Title = dto.Title,
                 Summary = dto.Summary,
-                Content = dto.Content,
-                Status = "DRAFT",
+                Content = dto.Content ?? new ChapterContent(),
                 WordCount = wordCount,
                 ReadingTime = readingTime,
+                Status = "DRAFT",
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _chapterRepository.InsertAsync(chapter);
-            
-            // Cập nhật tổng số chương của sách
-            var totalChapters = await _chapterRepository.CountByBookIdAsync(dto.BookId);
-            await _bookRepository.UpdateTotalChaptersAsync(dto.BookId, totalChapters);
+            await _bookRepository.AddChapterAsync(bookId, chapter);
 
-            _logger.LogInformation($"Chapter created: {chapter.Title} (Book: {dto.BookId}) by user {userId}");
+            _logger.LogInformation("Chapter created: {Title} (Book: {BookId}) by user {UserId}", chapter.Title, bookId, userId);
 
-            return MapToResponseDto(chapter);
+            return chapter;
         }
 
-        public async Task<ChapterResponseDto?> UpdateAsync(string id, UpdateChapterDto dto, string userId)
+        public async Task<BookChapter?> UpdateAsync(string bookId, string chapterId, UpdateChapterDto dto, string userId)
         {
-            var chapter = await _chapterRepository.GetByIdAsync(id);
+            var chapter = await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
             if (chapter == null) return null;
 
-            // Kiểm tra trùng số chương nếu thay đổi number
-            if (dto.Number.HasValue && dto.Number.Value != chapter.Number)
-            {
-                var existingChapter = await _chapterRepository.GetByBookIdAndNumberAsync(
-                    chapter.BookId, 
-                    dto.Number.Value
-                );
-                if (existingChapter != null && existingChapter.Id != id)
-                    throw new InvalidOperationException($"Chapter number {dto.Number.Value} already exists in this book.");
-                
-                chapter.Number = dto.Number.Value;
-            }
-
-            if (!string.IsNullOrEmpty(dto.Title)) 
+            if (!string.IsNullOrEmpty(dto.Title))
                 chapter.Title = dto.Title;
-            
-            if (dto.Summary != null) 
+
+            if (dto.Summary != null)
                 chapter.Summary = dto.Summary;
-            
-            if (dto.Content != null) 
+
+            if (dto.Content != null)
             {
                 chapter.Content = dto.Content;
                 chapter.WordCount = CalculateWordCount(dto.Content);
@@ -129,16 +103,16 @@ namespace api.Modules.DigitalContent.Services
             }
 
             chapter.UpdatedAt = DateTime.UtcNow;
-            await _chapterRepository.UpdateAsync(id, chapter);
+            await _bookRepository.ReplaceChapterAsync(bookId, chapterId, chapter);
 
-            _logger.LogInformation($"Chapter updated: {chapter.Title} by user {userId}");
+            _logger.LogInformation("Chapter updated: {Title} by user {UserId}", chapter.Title, userId);
 
-            return MapToResponseDto(chapter);
+            return chapter;
         }
 
-        public async Task<ChapterResponseDto?> PublishAsync(string id, string userId)
+        public async Task<BookChapter?> PublishAsync(string bookId, string chapterId, string userId)
         {
-            var chapter = await _chapterRepository.GetByIdAsync(id);
+            var chapter = await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
             if (chapter == null) return null;
 
             if (chapter.Content == null || !chapter.Content.Paragraphs.Any())
@@ -147,98 +121,82 @@ namespace api.Modules.DigitalContent.Services
             chapter.Status = "PUBLISHED";
             chapter.PublishedAt = DateTime.UtcNow;
             chapter.UpdatedAt = DateTime.UtcNow;
-            
-            await _chapterRepository.UpdateAsync(id, chapter);
 
-            _logger.LogInformation($"Chapter published: {chapter.Title} by user {userId}");
+            await _bookRepository.ReplaceChapterAsync(bookId, chapterId, chapter);
 
-            return MapToResponseDto(chapter);
+            _logger.LogInformation("Chapter published: {Title} by user {UserId}", chapter.Title, userId);
+
+            return chapter;
         }
 
-        public async Task<bool> DeleteAsync(string id)
+        public async Task<bool> DeleteAsync(string bookId, string chapterId)
         {
-            var chapter = await _chapterRepository.GetByIdAsync(id);
+            var chapter = await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
             if (chapter == null) return false;
 
-            chapter.Status = "ARCHIVED";
-            chapter.UpdatedAt = DateTime.UtcNow;
-            
-            await _chapterRepository.UpdateAsync(id, chapter);
+            await _bookRepository.ArchiveChapterAsync(bookId, chapterId);
 
-            // Cập nhật lại tổng số chương của sách
-            var totalChapters = await _chapterRepository.CountByBookIdAsync(chapter.BookId);
-            await _bookRepository.UpdateTotalChaptersAsync(chapter.BookId, totalChapters);
-
-            _logger.LogInformation($"Chapter archived: {chapter.Title}");
+            _logger.LogInformation("Chapter archived: {ChapterId} from book {BookId}", chapterId, bookId);
 
             return true;
         }
 
         public async Task<bool> ReorderChaptersAsync(string bookId, List<string> orderedChapterIds)
         {
-            var chapters = await _chapterRepository.GetByBookIdAsync(bookId);
-            
-            if (orderedChapterIds.Count != chapters.Count || 
-                orderedChapterIds.Except(chapters.Select(c => c.Id)).Any())
-            {
+            var chapters = await _bookRepository.GetChaptersByBookIdAsync(bookId);
+
+            var existingIds = chapters.Select(c => c.ChapterId).ToHashSet();
+            var suppliedIds = orderedChapterIds.ToHashSet();
+
+            if (orderedChapterIds.Count != orderedChapterIds.Distinct().Count())
+                throw new ArgumentException("Duplicate chapter IDs in reorder list.");
+
+            if (!suppliedIds.SetEquals(existingIds))
                 throw new ArgumentException("Invalid chapter list. Some chapters are missing or extra.");
-            }
 
-            for (int i = 0; i < orderedChapterIds.Count; i++)
-            {
-                await _chapterRepository.UpdateOrderAsync(orderedChapterIds[i], i + 1);
-            }
+            var reordered = orderedChapterIds
+                .Select((id, index) =>
+                {
+                    var ch = chapters.First(c => c.ChapterId == id);
+                    ch.Number = index + 1;
+                    ch.UpdatedAt = DateTime.UtcNow;
+                    return ch;
+                })
+                .ToList();
 
-            _logger.LogInformation($"Chapters reordered for book {bookId}");
+            await _bookRepository.ReplaceChaptersAsync(bookId, reordered);
+
+            _logger.LogInformation("Chapters reordered for book {BookId}", bookId);
 
             return true;
         }
 
         // ============== Helper Methods ==============
 
-        private int CalculateWordCount(ChapterContent? content)
+        private static int CalculateWordCount(ChapterContent? content)
         {
             if (content == null) return 0;
-            
+
             var wordCount = 0;
-            
+
             if (!string.IsNullOrEmpty(content.Introduction))
                 wordCount += content.Introduction.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            
+
             foreach (var paragraph in content.Paragraphs)
             {
                 wordCount += paragraph.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
             }
-            
+
             if (!string.IsNullOrEmpty(content.Conclusion))
                 wordCount += content.Conclusion.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            
+
             return wordCount;
         }
 
-        private int CalculateReadingTime(int wordCount)
+        private static int CalculateReadingTime(int wordCount)
         {
-            // Trung bình 200 từ/phút
+            // Average 200 words/minute
             return Math.Max(1, (int)Math.Ceiling(wordCount / 200.0));
-        }
-
-        private ChapterResponseDto MapToResponseDto(Chapter chapter)
-        {
-            return new ChapterResponseDto
-            {
-                Id = chapter.Id,
-                BookId = chapter.BookId,
-                Title = chapter.Title,
-                Number = chapter.Number,
-                Summary = chapter.Summary,
-                Content = chapter.Content,
-                Status = chapter.Status,
-                WordCount = chapter.WordCount,
-                ReadingTime = chapter.ReadingTime,
-                CreatedAt = chapter.CreatedAt,
-                UpdatedAt = chapter.UpdatedAt,
-                PublishedAt = chapter.PublishedAt
-            };
         }
     }
 }
