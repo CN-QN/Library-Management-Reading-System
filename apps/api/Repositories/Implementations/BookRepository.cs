@@ -262,11 +262,10 @@ namespace api.Repositories.Implementations
                              Builders<BookChapter>.Filter.Eq(c => c.ChapterId, chapterId));
 
             var update = Builders<Book>.Update
-                .Set(b => b.Chapters[idx], chapter)
+                .Set("chapters.$", chapter)
                 .Set(b => b.UpdatedAt, DateTime.UtcNow);
 
-            var result = await _collection.UpdateOneAsync(
-                Builders<Book>.Filter.Eq(b => b.Id, bookId), update);
+            var result = await _collection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
 
