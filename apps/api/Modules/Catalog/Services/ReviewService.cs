@@ -135,6 +135,8 @@ namespace api.Modules.Catalog.Services
             await _context.Reviews.InsertOneAsync(review);
             _logger.LogInformation("User {UserId} created review for book {BookId}", userId, dto.BookId);
 
+            await UpdateBookRatingAsync(dto.BookId);
+
             return MapToDto(review);
         }
 
@@ -156,6 +158,8 @@ namespace api.Modules.Catalog.Services
             await _context.Reviews.ReplaceOneAsync(r => r.Id == reviewId, review);
             _logger.LogInformation("User {UserId} updated review {ReviewId}", userId, reviewId);
 
+            await UpdateBookRatingAsync(review.BookId);
+
             return MapToDto(review);
         }
 
@@ -170,6 +174,10 @@ namespace api.Modules.Catalog.Services
             }
 
             var result = await _context.Reviews.DeleteOneAsync(r => r.Id == reviewId);
+            if (result.DeletedCount > 0)
+            {
+                await UpdateBookRatingAsync(review.BookId);
+            }
             return result.DeletedCount > 0;
         }
 
@@ -179,8 +187,24 @@ namespace api.Modules.Catalog.Services
                 .Set(r => r.Status, status)
                 .Set(r => r.UpdatedAt, DateTime.UtcNow);
 
-            var result = await _context.Reviews.UpdateOneAsync(r => r.Id == reviewId, update);
-            return result.ModifiedCount > 0;
+            var review = await _context.Reviews.FindOneAndUpdateAsync(r => r.Id == reviewId, update);
+            if (review != null)
+            {
+                await UpdateBookRatingAsync(review.BookId);
+                return true;
+            }
+            return false;
+        }
+
+        private async Task UpdateBookRatingAsync(string bookId)
+        {
+            var stats = await GetReviewStatsAsync(bookId);
+            
+            var update = Builders<Book>.Update
+                .Set(b => b.Stats!.Rating, stats.AverageRating)
+                .Set(b => b.Stats!.RatingCount, stats.TotalReviews);
+
+            await _context.Books.UpdateOneAsync(b => b.Id == bookId, update);
         }
 
         private static ReviewResponseDto MapToDto(Review r)

@@ -20,6 +20,7 @@ namespace api.Modules.Catalog.DTOs.Responses  // Đổi thành namespace này
         public int TotalChapters { get; set; }
         public int ViewCount { get; set; }
         public double Rating { get; set; }
+        public int RatingCount { get; set; }
         public List<string> CategoryIds { get; set; } = new();
         public List<string> AuthorIds { get; set; } = new();
         public List<string> AuthorNames { get; set; } = new();

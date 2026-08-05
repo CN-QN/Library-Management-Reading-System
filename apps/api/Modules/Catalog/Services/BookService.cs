@@ -203,6 +203,7 @@ namespace api.Modules.Catalog.Services
                 CoverAssetId = book.CoverAssetId,
                 ViewCount = book.Stats?.ViewCount ?? 0,
                 Rating = book.Stats?.Rating ?? 0,
+                RatingCount = book.Stats?.RatingCount ?? 0,
                 CreatedAt = book.CreatedAt,
                 UpdatedAt = book.UpdatedAt,
                 // [THÊM MỚI] Gán danh sách ID
