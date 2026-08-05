@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ArrowLeft, Eye, Star, Calendar, Globe, BookMarked, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { StarRating } from '@/components/shared/StarRating';
 import { BookHeroActions } from '@/components/reader/book-detail/BookHeroActions';
 import { ChapterList } from '@/components/reader/book-detail/ChapterList';
 import { BookRecommendations } from '@/components/reader/book-detail/BookRecommendations';
-import { ReviewsSection } from '@/components/reader/book-detail/ReviewsSection';
+import { BookRatingProvider } from '@/components/reader/book-detail/BookRatingSync';
+import { LiveStarRating } from '@/components/reader/book-detail/LiveStarRating';
+import { ConnectedReviewsSection } from '@/components/reader/book-detail/ConnectedReviewsSection';
 import { BOOK_DETAIL_COPY } from '@/components/reader/book-detail/BookDetailCopy';
 import {
   getBookBySlug,
@@ -128,7 +129,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   const displayCoverUrl = coverFile?.fileUrl || null;
 
   const metaItems: { label: string; icon: React.ReactNode; value: React.ReactNode }[] = [
-    { label: 'Đánh giá', icon: <Star className="w-3.5 h-3.5 text-amber-500" />, value: <StarRating rating={book.rating || 0} /> },
+    { label: 'Đánh giá', icon: <Star className="w-3.5 h-3.5 text-amber-500" />, value: <LiveStarRating /> },
     { label: 'Lượt xem', icon: <Eye className="w-3.5 h-3.5 text-blue-500" />, value: book.viewCount.toLocaleString('vi-VN') },
     { label: 'Số chương', icon: <BookMarked className="w-3.5 h-3.5 text-purple-500" />, value: book.totalChapters },
     { label: 'Quyền truy cập', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />, value: book.accessType },
@@ -142,6 +143,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   ];
 
   return (
+    <BookRatingProvider initialRating={book.rating || 0}>
     <main className="container mx-auto px-4 py-8 max-w-6xl space-y-10">
       {/* Quay lại danh sách sách */}
       <div>
@@ -279,9 +281,8 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       />
 
       {/* Khu vực Đánh giá & Bình luận */}
-      <ReviewsSection
-        bookId={book.id}
-      />
+      <ConnectedReviewsSection bookId={book.id} />
     </main>
+    </BookRatingProvider>
   );
 }
