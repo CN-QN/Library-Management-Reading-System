@@ -246,7 +246,6 @@ builder.Services.AddScoped<
     app.UseMiddleware<TraceIdMiddleware>();
     app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
-    app.UseMiddleware<RateLimitMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
 
     if (app.Environment.IsDevelopment())
