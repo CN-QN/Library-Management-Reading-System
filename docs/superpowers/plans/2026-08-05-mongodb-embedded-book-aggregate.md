@@ -98,6 +98,7 @@ The admin and reader applications are part of this schema migration: deleting ba
 - Modify: `apps/api/Modules/Catalog/DTOs/Requests/UpdateBookDto.cs`
 - Modify: `apps/api/Modules/Catalog/DTOs/Responses/BookResponseDto.cs`
 - Modify: `apps/api/Modules/DigitalContent/DTOs/ChapterDtos.cs`
+- Create: `apps/api.Tests/apps.api.Tests.csproj` — xUnit project referencing `apps/api/api.csproj` and test packages.
 - Test: `apps/api.Tests/Database/BookEmbeddedModelTests.cs`
 
 **Interfaces:**
@@ -204,11 +205,10 @@ git commit -m "feat(api): add embedded MongoDB book aggregate models"
 
 ---
 
-## Task 2: Add aggregate size guard and create the backend test project
+## Task 2: Add the aggregate size guard
 
 **Files:**
 - Create: `apps/api/Common/Validation/BookDocumentSizeGuard.cs`
-- Create: `apps/api.Tests/apps.api.Tests.csproj`
 - Create: `apps/api.Tests/Common/BookDocumentSizeGuardTests.cs`
 - Modify: `apps/api/api.csproj` only if shared testable code requires a package already absent
 
