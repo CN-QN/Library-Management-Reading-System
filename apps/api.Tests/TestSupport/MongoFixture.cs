@@ -1,6 +1,8 @@
 using api.Database.Entities;
+using api.Modules.DigitalContent.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Driver;
 using Xunit;
 
@@ -85,5 +87,55 @@ public sealed class MongoFixture : IAsyncLifetime
         collection.InsertOne(book);
 
         return new BookRepository(Database);
+    }
+
+    // ── Unit-test helpers (no MongoDB required) ──────────────────────────────
+
+    /// <summary>
+    /// Creates an in-memory ChapterService that already contains book "book-1"
+    /// with one chapter at the given number.
+    /// </summary>
+    public ChapterService CreateChapterServiceWithChapter(string bookId, int number)
+    {
+        var chapter = TestBooks.Chapter(number);
+        var book = new Book
+        {
+            Id = bookId,
+            Title = "Test Book",
+            Slug = $"test-book-{bookId}",
+            Chapters = new List<BookChapter> { chapter },
+            TotalChapters = 1
+        };
+
+        var repo = new FakeBookRepository(new[] { book });
+        return new ChapterService(repo, NullLogger<ChapterService>.Instance);
+    }
+
+    /// <summary>
+    /// Creates an in-memory ChapterService that already contains book "book-1"
+    /// with chapters having the supplied chapterIds (numbered 1..N).
+    /// </summary>
+    public ChapterService CreateChapterServiceWithChapters(string bookId, params string[] chapterIds)
+    {
+        var chapters = chapterIds
+            .Select((id, idx) =>
+            {
+                var ch = TestBooks.WithChapter(bookId, id);
+                ch.Number = idx + 1;
+                return ch;
+            })
+            .ToList();
+
+        var book = new Book
+        {
+            Id = bookId,
+            Title = "Test Book",
+            Slug = $"test-book-{bookId}",
+            Chapters = chapters,
+            TotalChapters = chapters.Count
+        };
+
+        var repo = new FakeBookRepository(new[] { book });
+        return new ChapterService(repo, NullLogger<ChapterService>.Instance);
     }
 }
