@@ -1,79 +1,93 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace api.Database.Entities
+namespace api.Database.Entities;
+
+public class Book
 {
-    public class Book
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = string.Empty;
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = string.Empty;
 
-        [BsonElement("title")]
-        public string Title { get; set; } = string.Empty;
+    [BsonElement("title")]
+    public string Title { get; set; } = string.Empty;
 
-        [BsonElement("slug")]
-        public string Slug { get; set; } = string.Empty;
+    [BsonElement("slug")]
+    public string Slug { get; set; } = string.Empty;
 
-        [BsonElement("isbn")]
-        public string? ISBN { get; set; }
+    [BsonElement("isbn")]
+    public string? ISBN { get; set; }
 
-        [BsonElement("summary")]
-        public string? Summary { get; set; }
+    [BsonElement("summary")]
+    public string? Summary { get; set; }
 
-        [BsonElement("publisherId")]
-        public string? PublisherId { get; set; }
+    [BsonElement("publicationYear")]
+    public int? PublicationYear { get; set; }
 
-        [BsonElement("publicationYear")]
-        public int? PublicationYear { get; set; }
+    // Temporary compile-time aliases for code migrated in later aggregate tasks.
+    [BsonIgnore]
+    [Obsolete("Use Publisher instead.")]
+    public string? PublisherId { get; set; }
 
-        [BsonElement("language")]
-        public string Language { get; set; } = "vi";
+    [BsonIgnore]
+    [Obsolete("Use Categories instead.")]
+    public List<string> CategoryIds { get; set; } = new();
 
-        [BsonElement("coverAssetId")]
-        public string? CoverAssetId { get; set; }
+    [BsonIgnore]
+    [Obsolete("Use Authors instead.")]
+    public List<string> AuthorIds { get; set; } = new();
 
-        [BsonElement("accessType")]
-        public string AccessType { get; set; } = "FREE";
+    [BsonElement("language")]
+    public string Language { get; set; } = "vi";
 
-        [BsonElement("status")]
-        public string Status { get; set; } = "DRAFT";
+    [BsonElement("coverAssetId")]
+    public string? CoverAssetId { get; set; }
 
-        [BsonElement("totalChapters")]
-        public int TotalChapters { get; set; }
+    [BsonElement("accessType")]
+    public string AccessType { get; set; } = "FREE";
 
-        [BsonElement("stats")]
-        public BookStats? Stats { get; set; }
+    [BsonElement("status")]
+    public string Status { get; set; } = "DRAFT";
 
-        [BsonElement("createdBy")]
-        public string? CreatedBy { get; set; }
+    [BsonElement("authors")]
+    public List<BookAuthorSnapshot> Authors { get; set; } = new();
 
-        [BsonElement("createdAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [BsonElement("categories")]
+    public List<BookCategorySnapshot> Categories { get; set; } = new();
 
-        [BsonElement("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    [BsonElement("publisher")]
+    public BookPublisherSnapshot? Publisher { get; set; }
 
-        // [THÊM MỚI] Lưu danh sách CategoryIds và AuthorIds
-        [BsonElement("categoryIds")]
-        public List<string> CategoryIds { get; set; } = new();
+    [BsonElement("chapters")]
+    public List<BookChapter> Chapters { get; set; } = new();
 
-        [BsonElement("authorIds")]
-        public List<string> AuthorIds { get; set; } = new();
-    }
+    [BsonElement("totalChapters")]
+    public int TotalChapters { get; set; }
 
-    public class BookStats
-    {
-        [BsonElement("viewCount")]
-        public int ViewCount { get; set; }
+    [BsonElement("stats")]
+    public BookStats Stats { get; set; } = new();
 
-        [BsonElement("readingCount")]
-        public int ReadingCount { get; set; }
+    [BsonElement("createdBy")]
+    public string? CreatedBy { get; set; }
 
-        [BsonElement("rating")]
-        public double Rating { get; set; }
+    [BsonElement("createdAt")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        [BsonElement("ratingCount")]
-        public int RatingCount { get; set; }
-    }
+    [BsonElement("updatedAt")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class BookStats
+{
+    [BsonElement("viewCount")]
+    public int ViewCount { get; set; }
+
+    [BsonElement("readingCount")]
+    public int ReadingCount { get; set; }
+
+    [BsonElement("rating")]
+    public double Rating { get; set; }
+
+    [BsonElement("ratingCount")]
+    public int RatingCount { get; set; }
 }
