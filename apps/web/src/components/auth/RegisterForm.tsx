@@ -4,7 +4,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, Loader2, CheckCircle2, ArrowLeft, Check, XCircle } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, Check, XCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -92,7 +92,7 @@ export function RegisterForm() {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="flex flex-col justify-center py-6 sm:py-10 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-card py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-border text-center space-y-6">
             <div className="flex justify-center">
@@ -120,14 +120,8 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="flex flex-col justify-center py-6 sm:py-10 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
-        <div className="w-full flex justify-start mb-2">
-          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Về trang chủ
-          </Link>
-        </div>
         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
           <UserPlus size={32} />
         </div>
