@@ -1,3 +1,4 @@
+using api.Common.Validation;
 using api.Database.Entities;
 using api.Modules.DigitalContent.DTOs;
 using api.Repositories.Interfaces;
@@ -31,7 +32,7 @@ namespace api.Modules.DigitalContent.Services
         public async Task<ChapterContentDto?> GetContentAsync(string bookId, string chapterId)
         {
             var chapter = await _bookRepository.GetChapterByIdAsync(bookId, chapterId);
-            if (chapter == null)
+            if (chapter == null || chapter.Content == null)
                 return null;
 
             var content = chapter.Content;
@@ -76,6 +77,9 @@ namespace api.Modules.DigitalContent.Services
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+
+            book.Chapters.Add(chapter);
+            BookDocumentSizeGuard.Validate(book);
 
             await _bookRepository.AddChapterAsync(bookId, chapter);
 
