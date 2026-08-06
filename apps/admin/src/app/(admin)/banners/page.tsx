@@ -170,15 +170,15 @@ export default function BannersPage() {
 
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {isLoading ? (
-        <p className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500">Đang tải banner…</p>
+        <p className="rounded-xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm">Đang tải banner…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">
+        <div className="rounded-xl bg-white p-10 text-center text-slate-500 shadow-sm">
           <ImageIcon className="mx-auto mb-2 h-8 w-8" />Chưa có banner.
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {items.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-xl border bg-white shadow-sm">
+            <article key={item.id} className="overflow-hidden rounded-xl bg-white shadow-sm">
               <div className="relative h-48 bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
@@ -190,7 +190,7 @@ export default function BannersPage() {
                   <p className="mt-1 text-sm text-slate-500">{item.subtitle || "Không có mô tả"}</p>
                   <p className="mt-1 text-xs text-slate-400">{item.linkUrl} · thứ tự {item.sortOrder}</p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                   <Button size="sm" variant="outline" onClick={() => void toggle(item)}>{item.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{item.isActive ? "Ẩn" : "Hiện"}</Button>
                   <Button size="sm" variant="outline" onClick={() => openEdit(item)}><Edit2 className="h-4 w-4" />Sửa</Button>
                   <Button size="sm" variant="danger" onClick={() => void remove(item)}><Trash2 className="h-4 w-4" />Xóa</Button>
@@ -219,7 +219,7 @@ export default function BannersPage() {
             <input className="hidden" type="file" accept="image/*" disabled={isUploading || isSaving} onChange={uploadBanner} />
           </label>
           {selectedMedia && (
-            <div className="overflow-hidden rounded-lg border bg-slate-50 p-2">
+            <div className="overflow-hidden rounded-lg bg-slate-50 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selectedMedia.fileUrl} alt="Xem trước banner" className="h-32 w-full rounded object-cover" />
             </div>
