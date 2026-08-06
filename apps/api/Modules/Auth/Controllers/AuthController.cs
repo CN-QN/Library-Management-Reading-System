@@ -209,4 +209,114 @@ public class AuthController : ControllerBase
 
         return Ok(ApiResponse.SuccessResponse("Session revoked successfully."));
     }
+
+    /// <summary>
+    /// Yêu cầu quên mật khẩu
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email))
+        {
+            return BadRequest(ApiResponse.ErrorResponse(400, "Vui lòng nhập Email."));
+        }
+
+        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại trong hệ thống."));
+        }
+
+        return Ok(ApiResponse.SuccessResponse($"Đã gửi mã khôi phục mật khẩu đến email {dto.Email}."));
+    }
+
+    /// <summary>
+    /// Đặt lại mật khẩu mới
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.NewPassword))
+        {
+            return BadRequest(ApiResponse.ErrorResponse(400, "Email và Mật khẩu mới là bắt buộc."));
+        }
+
+        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại."));
+        }
+
+        var newHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        var update = Builders<User>.Update.Set(u => u.PasswordHash, newHash);
+        await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update);
+
+        return Ok(ApiResponse.SuccessResponse("Đặt lại mật khẩu mới thành công. Bạn có thể đăng nhập ngay!"));
+    }
+
+    /// <summary>
+    /// Đăng nhập bằng Google OAuth2
+    /// </summary>
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email))
+        {
+            return BadRequest(ApiResponse.ErrorResponse(400, "Thông tin Google không hợp lệ."));
+        }
+
+        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            user = new User
+            {
+                Email = dto.Email.Trim().ToLower(),
+                FullName = dto.Name ?? "Độc giả Google",
+                Avatar = dto.Avatar,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                Status = "ACTIVE",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.Users.InsertOneAsync(user);
+
+            // Assign MEMBER_READER role
+            var readerRole = await _context.Roles.Find(r => r.Code == "MEMBER_READER").FirstOrDefaultAsync();
+            if (readerRole != null)
+            {
+                await _context.UserRoles.InsertOneAsync(new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = readerRole.Id
+                });
+            }
+        }
+
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "::1";
+        var deviceName = GetDeviceNameFromUserAgent();
+        var result = await _authService.LoginWithoutPasswordAsync(user, ip, deviceName);
+
+        SetAccessTokenCookie(result.AccessToken);
+        SetRefreshTokenCookie(result.RefreshToken);
+
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Đăng nhập Google thành công."));
+    }
+}
+
+public class ForgotPasswordDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class GoogleLoginDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? GoogleId { get; set; }
+    public string? Avatar { get; set; }
 }

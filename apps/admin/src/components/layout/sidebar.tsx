@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Library,
+  ShieldCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Tổng quan", epic: "E5.2", permissions: [], icon: LayoutDashboard },
   { href: "/books", label: "Quản lý sách", epic: "E5.3", permissions: [Permissions.BookRead], icon: BookOpen },
   { href: "/users", label: "Người dùng", epic: "E5.5", permissions: [Permissions.UserRead], icon: Users },
+  { href: "/roles", label: "Vai trò & Phân quyền", epic: "E5.16", permissions: [], icon: ShieldCheck },
   { href: "/borrowings", label: "Mượn / Trả", epic: "E5.6", permissions: [Permissions.LoanCreate, Permissions.LoanReturn, Permissions.LoanExtend], icon: Repeat },
   { href: "/vouchers", label: "Quản lý Voucher", epic: "E5.11", permissions: [], icon: Ticket },
   { href: "/banners", label: "Quản lý Banner UI", epic: "E5.12", permissions: [], icon: ImageIcon },

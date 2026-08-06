@@ -94,6 +94,11 @@ public class AuthService
         return await GenerateLoginSessionAsync(user, device, ipAddress);
     }
 
+    public async Task<LoginResponse> LoginWithoutPasswordAsync(User user, string ipAddress, string device)
+    {
+        return await GenerateLoginSessionAsync(user, device, ipAddress);
+    }
+
     public async Task<LoginResponse> RefreshAsync(RefreshRequest request, string ipAddress)
     {
         var tokenHash = _jwtService.HashToken(request.RefreshToken);
