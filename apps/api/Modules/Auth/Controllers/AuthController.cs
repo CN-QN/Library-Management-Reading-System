@@ -252,7 +252,12 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse.ErrorResponse(400, "Vui lòng nhập Email."));
         }
 
-        await _passwordRecovery.RequestAsync(dto.Email, cancellationToken);
+        var token = await _passwordRecovery.RequestAsync(dto.Email, cancellationToken);
+        if (_environment.IsDevelopment() && !string.IsNullOrEmpty(token))
+        {
+            return Ok(ApiResponse<object>.SuccessResponse(new { token }, "Nếu email tồn tại, LibraryHub đã gửi hướng dẫn đặt lại mật khẩu."));
+        }
+
         return Ok(ApiResponse.SuccessResponse("Nếu email tồn tại, LibraryHub đã gửi hướng dẫn đặt lại mật khẩu."));
     }
 

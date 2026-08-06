@@ -91,6 +91,10 @@ export function LoginForm() {
 
     try {
       const res = await authApi.forgotPassword(forgotEmail);
+      const devToken = (res.data?.data as { token?: string } | undefined)?.token;
+      if (devToken) {
+        setResetToken(devToken);
+      }
       setForgotMessage(res.data?.message || 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.');
       setTokenStep(true);
     } catch (err: unknown) {
