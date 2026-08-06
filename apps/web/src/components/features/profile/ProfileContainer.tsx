@@ -21,6 +21,7 @@ import {
   BorrowedBooksTab,
   PaymentHistoryTab,
   EditProfileModal,
+  ChangePasswordModal,
 } from './index';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,6 +64,7 @@ export function ProfileContainer({
 
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const [profileOverride, setProfileOverride] = useState<{ fullName?: string; avatar?: string | null }>({});
 
   // Đọc dữ liệu ghi đè từ LocalStorage nếu có
@@ -186,6 +188,7 @@ export function ProfileContainer({
       <ProfileHeroHeader
         user={displayUser}
         onOpenEditModal={() => setIsEditModalOpen(true)}
+        onOpenChangePasswordModal={() => setIsChangePasswordModalOpen(true)}
       />
 
       {/* Lưới Bento thống kê đọc sách */}
@@ -242,6 +245,13 @@ export function ProfileContainer({
         onClose={() => setIsEditModalOpen(false)}
         currentUser={displayUser}
         onSuccess={handleProfileUpdated}
+      />
+
+      {/* Modal Đổi mật khẩu tài khoản */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        userEmail={user?.email || ''}
       />
     </div>
   );

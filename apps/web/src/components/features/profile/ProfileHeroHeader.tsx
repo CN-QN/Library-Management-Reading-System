@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Mail, Phone, Building, Edit3, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, Building, Edit3, ShieldCheck, KeyRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +18,14 @@ export interface UserProfileHeaderProps {
     notifyBookAvailable?: boolean;
   } | null;
   onOpenEditModal: () => void;
+  onOpenChangePasswordModal: () => void;
 }
 
-export function ProfileHeroHeader({ user, onOpenEditModal }: UserProfileHeaderProps) {
+export function ProfileHeroHeader({
+  user,
+  onOpenEditModal,
+  onOpenChangePasswordModal,
+}: UserProfileHeaderProps) {
   const displayName = user?.fullName || 'Độc giả Thư viện';
 
   const initials = displayName
@@ -76,16 +81,28 @@ export function ProfileHeroHeader({ user, onOpenEditModal }: UserProfileHeaderPr
             </div>
           </div>
 
-          {/* Edit Profile Button */}
-          <Button
-            onClick={onOpenEditModal}
-            variant="outline"
-            size="sm"
-            className="cursor-pointer gap-1.5 border-border/80 hover:bg-primary/10 hover:text-primary hover:border-primary/40 font-semibold transition-colors"
-          >
-            <Edit3 className="h-4 w-4" />
-            <span>Chỉnh sửa hồ sơ</span>
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={onOpenChangePasswordModal}
+              variant="outline"
+              size="sm"
+              className="cursor-pointer gap-1.5 border-border/80 hover:bg-primary/10 hover:text-primary hover:border-primary/40 font-semibold transition-colors"
+            >
+              <KeyRound className="h-4 w-4" />
+              <span>Đổi mật khẩu</span>
+            </Button>
+
+            <Button
+              onClick={onOpenEditModal}
+              variant="outline"
+              size="sm"
+              className="cursor-pointer gap-1.5 border-border/80 hover:bg-primary/10 hover:text-primary hover:border-primary/40 font-semibold transition-colors"
+            >
+              <Edit3 className="h-4 w-4" />
+              <span>Chỉnh sửa hồ sơ</span>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

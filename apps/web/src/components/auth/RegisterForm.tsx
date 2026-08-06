@@ -175,7 +175,7 @@ export function RegisterForm() {
                 autoComplete="new-password"
                 {...register('password')}
                 className={`w-full pr-10 ${(touchedFields.password && errors.password) ? 'border-destructive' : ''}`}
-                placeholder="Tối thiểu 8 ký tự"
+                placeholder="Tối thiểu 6 ký tự"
               />
             </div>
             <PasswordRequirements password={currentPassword} />
