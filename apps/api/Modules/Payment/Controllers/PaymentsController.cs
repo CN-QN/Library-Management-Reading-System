@@ -41,6 +41,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     [HttpPost("create-qr")]
     [Authorize]
+    [api.Common.Middleware.RedisRateLimit(MaxRequests = 10, WindowSeconds = 60)]
     public async Task<ActionResult<ApiResponse<PaymentQrResponse>>> CreatePaymentQr([FromBody] CreatePaymentQrRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

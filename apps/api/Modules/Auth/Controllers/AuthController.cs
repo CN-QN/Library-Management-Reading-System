@@ -120,6 +120,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [api.Common.Middleware.RedisRateLimit(MaxRequests = 10, WindowSeconds = 60)]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
@@ -244,6 +245,7 @@ public class AuthController : ControllerBase
     /// Yêu cầu quên mật khẩu và gửi liên kết dùng một lần qua email.
     /// </summary>
     [HttpPost("forgot-password")]
+    [api.Common.Middleware.RedisRateLimit(MaxRequests = 5, WindowSeconds = 60)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest dto, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(dto.Email))

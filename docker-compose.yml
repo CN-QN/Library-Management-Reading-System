@@ -113,8 +113,8 @@ services:
     container_name: libraryhub_backend
     restart: always
     ports:
-      - "5000:5210"  # Cổng kết nối từ Web/Admin
-      - "5210:5210"  # Cổng Swagger API / Dev
+      - "5000:5210" # Cổng kết nối từ Web/Admin
+      - "5210:5210" # Cổng Swagger API / Dev
     depends_on:
       mongodb:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - NEXT_PUBLIC_API_URL=http://localhost:5210/api
     depends_on:
       - backend
     networks:
@@ -173,7 +173,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - API_URL=http://backend:5210/api
+      - NEXT_PUBLIC_API_URL=http://localhost:5210/api
     depends_on:
       - backend
     networks:
@@ -183,4 +184,4 @@ volumes:
   mongodb_data:
     name: libraryhub_mongodb_data
   redis_data:
-    name: libraryhub_redis_data
+    name: libraryhub_redis_data
