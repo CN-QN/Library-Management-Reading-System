@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function ReaderLayout({ children }: { children: React.ReactNode }) {
@@ -64,8 +64,9 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger render={
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-1 ring-border">
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-1 ring-border p-0 overflow-hidden">
                     <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.avatar || undefined} className="object-cover" />
                       <AvatarFallback className="bg-primary/10 text-primary font-medium">
                         {user?.firstName?.[0] || 'U'}
                       </AvatarFallback>

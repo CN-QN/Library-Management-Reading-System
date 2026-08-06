@@ -104,6 +104,7 @@ export function EditProfileModal({
       const url = res.data?.data?.fileUrl;
       if (url) {
         setAvatarUrl(url);
+        onSuccess({ avatar: url });
       }
     } catch (err: unknown) {
       setErrorMessage(axios.isAxiosError(err) ? err.response?.data?.message : 'Không thể tải ảnh lên server.');
