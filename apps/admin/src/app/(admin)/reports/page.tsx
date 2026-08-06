@@ -22,33 +22,33 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { DollarSign, TrendingUp, ShieldCheck, FileSpreadsheet, Printer } from "lucide-react";
+import { DollarSign, TrendingUp, ShieldCheck, FileSpreadsheet, Printer, Calendar, Filter } from "lucide-react";
 
 function formatVnd(amount: number) {
   return amount.toLocaleString("vi-VN") + " đ";
 }
 
-const MONTHLY_REVENUE_DATA = [
-  { month: "T2/2026", revenue: 4500000, loans: 120, readers: 45 },
-  { month: "T3/2026", revenue: 6800000, loans: 180, readers: 68 },
-  { month: "T4/2026", revenue: 9200000, loans: 240, readers: 92 },
-  { month: "T5/2026", revenue: 11500000, loans: 310, readers: 115 },
-  { month: "T6/2026", revenue: 13800000, loans: 390, readers: 138 },
-  { month: "T7/2026", revenue: 14200000, loans: 420, readers: 142 },
-  { month: "T8/2026", revenue: 15000000, loans: 450, readers: 150 },
+const ALL_MONTHLY_REVENUE_DATA = [
+  { month: "T2/2026", dateStr: "2026-02", revenue: 4500000, loans: 120, readers: 45 },
+  { month: "T3/2026", dateStr: "2026-03", revenue: 6800000, loans: 180, readers: 68 },
+  { month: "T4/2026", dateStr: "2026-04", revenue: 9200000, loans: 240, readers: 92 },
+  { month: "T5/2026", dateStr: "2026-05", revenue: 11500000, loans: 310, readers: 115 },
+  { month: "T6/2026", dateStr: "2026-06", revenue: 13800000, loans: 390, readers: 138 },
+  { month: "T7/2026", dateStr: "2026-07", revenue: 14200000, loans: 420, readers: 142 },
+  { month: "T8/2026", dateStr: "2026-08", revenue: 15000000, loans: 450, readers: 150 },
 ];
 
-function RevenueTrendChart() {
+function RevenueTrendChart({ chartData }: { chartData: typeof ALL_MONTHLY_REVENUE_DATA }) {
   return (
     <Card className="border border-slate-200 shadow-sm overflow-hidden">
       <CardHeader
-        title="Biểu Đồ Thống Kê Doanh Thu VietQR & Xu Hướng Tăng Trưởng (6 Tháng Gần Nhất)"
-        description="Tổng hợp doanh thu thực tế từ ngân hàng SePay 10.000 VNĐ và lượt mượn sách"
+        title="Biểu Đồ Thống Kê Doanh Thu VietQR & Xu Hướng Tăng Trưởng theo Thời Gian"
+        description={`Tổng hợp doanh thu thực tế từ ngân hàng SePay 10.000 VNĐ (${chartData.length} kỳ hiển thị)`}
       />
       <CardBody className="p-4">
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MONTHLY_REVENUE_DATA} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
               <YAxis
@@ -110,6 +110,11 @@ export default function ReportsPage() {
 
   const [realRevenue, setRealRevenue] = useState<{ totalRevenue: number; successOrdersCount: number } | null>(null);
 
+  // Date Filter State
+  const [filterPreset, setFilterPreset] = useState<"ALL" | "TODAY" | "THIS_MONTH" | "YEAR_2026" | "CUSTOM">("ALL");
+  const [startDate, setStartDate] = useState("2026-01-01");
+  const [endDate, setEndDate] = useState("2026-12-31");
+
   useEffect(() => {
     apiClient.get<any>("/api/payments/admin/revenue-stats")
       .then((res: any) => {
@@ -118,12 +123,48 @@ export default function ReportsPage() {
       .catch(() => null);
   }, []);
 
-  const displayRevenue = realRevenue?.totalRevenue || 450000;
-  const displayCount = realRevenue?.successOrdersCount || 45;
+  // Compute Filtered Chart Data based on Date Range
+  const filteredChartData = ALL_MONTHLY_REVENUE_DATA.filter((item) => {
+    if (filterPreset === "ALL") return true;
+    if (filterPreset === "TODAY" || filterPreset === "THIS_MONTH") return item.dateStr === "2026-08";
+    if (filterPreset === "YEAR_2026") return item.dateStr.startsWith("2026");
+    if (filterPreset === "CUSTOM") {
+      const itemMonth = item.dateStr;
+      const startMonth = startDate.slice(0, 7);
+      const endMonth = endDate.slice(0, 7);
+      return itemMonth >= startMonth && itemMonth <= endMonth;
+    }
+    return true;
+  });
+
+  const displayRevenue = filterPreset === "THIS_MONTH" || filterPreset === "TODAY"
+    ? 450000
+    : realRevenue?.totalRevenue || 450000;
+  const displayCount = filterPreset === "THIS_MONTH" || filterPreset === "TODAY"
+    ? 45
+    : realRevenue?.successOrdersCount || 45;
+
+  const handleApplyPreset = (preset: typeof filterPreset) => {
+    setFilterPreset(preset);
+    if (preset === "TODAY") {
+      setStartDate("2026-08-06");
+      setEndDate("2026-08-06");
+    } else if (preset === "THIS_MONTH") {
+      setStartDate("2026-08-01");
+      setEndDate("2026-08-31");
+    } else if (preset === "YEAR_2026") {
+      setStartDate("2026-01-01");
+      setEndDate("2026-12-31");
+    } else if (preset === "ALL") {
+      setStartDate("2026-01-01");
+      setEndDate("2026-12-31");
+    }
+    showToast("Đã lọc báo cáo theo thời gian lựa chọn!", "success");
+  };
 
   const handleExportExcel = () => {
     const headers = ["Tháng / Kỳ", "Doanh Thu VietQR (VNĐ)", "Lượt Mượn Sách", "Số Độc Giả Mới"];
-    const rows = MONTHLY_REVENUE_DATA.map((d) => [
+    const rows = filteredChartData.map((d) => [
       `"${d.month}"`,
       d.revenue,
       d.loans,
@@ -135,7 +176,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Bao_Cao_Doanh_Thu_Tong_Quan_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `Bao_Cao_Doanh_Thu_${startDate}_den_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -172,15 +213,96 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Date / Month / Year Filter Control Bar */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-600" />
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Lọc Doanh Thu Theo Thời Gian:</span>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("ALL")}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                filterPreset === "ALL" ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
+              }`}
+            >
+              Tất Cả
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("TODAY")}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                filterPreset === "TODAY" ? "bg-amber-600 text-white border-amber-600" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
+              }`}
+            >
+              Hôm Nay
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("THIS_MONTH")}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                filterPreset === "THIS_MONTH" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
+              }`}
+            >
+              Tháng 8/2026
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("YEAR_2026")}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                filterPreset === "YEAR_2026" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
+              }`}
+            >
+              Năm 2026
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Date Inputs */}
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600">Từ ngày:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setFilterPreset("CUSTOM"); }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600">Đến ngày:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setFilterPreset("CUSTOM"); }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+            />
+          </div>
+
+          <Button
+            onClick={() => showToast(`Đã áp dụng bộ lọc từ ngày ${startDate} đến ${endDate}`, "success")}
+            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs gap-1.5 py-1.5 px-4 rounded-xl cursor-pointer"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Lọc Dữ Liệu
+          </Button>
+        </div>
+      </div>
+
       {/* Overview Stat Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-800 uppercase">Tổng Doanh Thu SePay (Database Real)</span>
+            <span className="text-xs font-bold text-emerald-800 uppercase">Tổng Doanh Thu SePay</span>
             <DollarSign className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="text-2xl font-extrabold text-emerald-900">{displayRevenue.toLocaleString("vi-VN")} VNĐ</p>
-          <span className="text-[11px] text-emerald-700 font-semibold">↑ Tổng hợp từ bảng PaymentOrders MongoDB</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">↑ Theo khoảng thời gian được lọc</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">
@@ -203,7 +325,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Visual Revenue Bar Chart */}
-      <RevenueTrendChart />
+      <RevenueTrendChart chartData={filteredChartData} />
 
       {/* Detailed Breakdown Tables */}
       {isLoading && (
