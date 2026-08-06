@@ -36,32 +36,23 @@ public class AuthService : IUserPermissionResolver
 
     public async Task<LoginResponse> RegisterAsync(RegisterRequest request)
     {
-        // 1. Check if email exists
         var emailExists = await _context.Users.Find(u => u.Email == request.Email).AnyAsync();
         if (emailExists)
         {
             throw new ConflictException(ErrorCodes.USER_001, "Email này đã được đăng ký.");
         }
 
-        // 2. Check if student code exists
-        var codeExists = await _context.Users.Find(u => u.StudentCode == request.StudentCode).AnyAsync();
-        if (codeExists)
-        {
-            throw new ConflictException(ErrorCodes.USER_002, "Mã sinh viên này đã được đăng ký.");
-        }
-
-        // 3. Create User
         var user = new User
         {
             Email = request.Email,
-            StudentCode = request.StudentCode,
+            // Legacy persistence requires a unique value, but it is no longer part of the public auth contract.
+            StudentCode = $"SELF-{Guid.NewGuid():N}",
             FullName = request.FullName,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Status = StatusValues.User.ACTIVE
         };
         await _context.Users.InsertOneAsync(user);
 
-        // 4. Assign STUDENT role by default
         var studentRole = await _context.Roles.Find(r => r.Code == "STUDENT").FirstOrDefaultAsync();
         if (studentRole != null)
         {
@@ -73,7 +64,6 @@ public class AuthService : IUserPermissionResolver
             await _context.UserRoles.InsertOneAsync(userRole);
         }
 
-        // 5. Generate session and login
         return await GenerateLoginSessionAsync(user, "DefaultDevice", "0.0.0.0");
     }
 
@@ -153,7 +143,6 @@ public class AuthService : IUserPermissionResolver
         {
             Id = user.Id,
             Email = user.Email,
-            StudentCode = user.StudentCode,
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             NotifyBookAvailable = user.NotifyBookAvailable,
@@ -260,7 +249,6 @@ public class AuthService : IUserPermissionResolver
             {
                 Id = user.Id,
                 Email = user.Email,
-                StudentCode = user.StudentCode,
                 FullName = user.FullName,
                 BranchId = user.BranchId,
                 Avatar = user.Avatar,
