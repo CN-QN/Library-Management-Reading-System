@@ -33,21 +33,6 @@ function pickRaw<T>(raw: Record<string, unknown> | null | undefined, ...keys: st
 }
 
 /**
- * Helper lấy tiến độ đọc sách của khách từ localStorage phía client.
- * Đảm bảo an toàn SSR (kiểm tra typeof window !== 'undefined').
- */
-function getGuestProgressFromLocalStorage(bookId: string): ReadingProgress | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(`reader_guest_progress_${bookId}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as ReadingProgress;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Helper tạo đối tượng ReadingProgress đầy đủ từ payload đã chuẩn hóa.
  */
 function createProgressFromPayload(payload: SaveReadingProgressPayload): ReadingProgress {
@@ -61,19 +46,6 @@ function createProgressFromPayload(payload: SaveReadingProgressPayload): Reading
     status: payload.status || 'Reading',
     lastReadAt: new Date().toISOString(),
   };
-}
-
-/**
- * Helper lưu tiến độ đọc sách vào localStorage phía client cho khách / chế độ offline.
- */
-function saveGuestProgressToLocalStorage(payload: SaveReadingProgressPayload): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const progress: ReadingProgress = createProgressFromPayload(payload);
-    localStorage.setItem(`reader_guest_progress_${payload.bookId}`, JSON.stringify(progress));
-  } catch {
-    // Bỏ qua nếu localStorage bận hoặc bị vô hiệu hóa
-  }
 }
 
 /**
@@ -149,19 +121,15 @@ export async function getReadingProgress(bookId: string): Promise<ReadingProgres
       ...(isServer ? {} : { credentials: 'include' as const }),
     });
 
-    if (res.status === 401 || res.status === 404) {
-      return getGuestProgressFromLocalStorage(bookId);
-    }
-
-    if (!res.ok) {
-      return getGuestProgressFromLocalStorage(bookId);
+    if (res.status === 401 || res.status === 404 || !res.ok) {
+      return null;
     }
 
     const payload = await res.json();
     const data = unwrapPayload<ReadingProgress>(payload);
-    return data || getGuestProgressFromLocalStorage(bookId);
+    return data || null;
   } catch {
-    return getGuestProgressFromLocalStorage(bookId);
+    return null;
   }
 }
 
@@ -175,7 +143,6 @@ export async function getReadingProgress(bookId: string): Promise<ReadingProgres
  *    - `chapterNumber = Math.floor(payload.chapterNumber)`
  *    - `scrollPosition = Math.max(0, Math.round(payload.scrollPosition))`
  * 2. Gửi request `POST /api/Reading/progress`.
- * 3. Bắt lỗi 401 (chưa đăng nhập) hoặc lỗi mạng êm dịu -> lưu dữ liệu vào `localStorage` key `reader_guest_progress_${payload.bookId}`.
  * 
  * @param payload - Dữ liệu tiến độ đọc sách cần lưu
  */
@@ -210,9 +177,6 @@ export async function saveReadingProgress(
     }
   }
 
-  // Đồng bộ sẵn vào localStorage client cho khách hoặc offline cache
-  saveGuestProgressToLocalStorage(normalizedPayload);
-
   try {
     if (!isServer) {
       // Dùng apiClient ở phía client để tự động bắt 401 và refresh token
@@ -227,15 +191,15 @@ export async function saveReadingProgress(
       });
 
       if (res.status === 401 || !res.ok) {
-        return createProgressFromPayload(normalizedPayload);
+        return null;
       }
 
       const resJson = await res.json();
       const data = unwrapPayload<ReadingProgress>(resJson);
-      return data || createProgressFromPayload(normalizedPayload);
+      return data || null;
     }
   } catch {
-    return createProgressFromPayload(normalizedPayload);
+    return null;
   }
 }
 
@@ -259,9 +223,6 @@ export function saveReadingProgressBeacon(payload: SaveReadingProgressPayload): 
     version: Math.max(1, payload.version || 1),
     status: payload.status || 'Reading',
   };
-
-  // Cập nhật localStorage client
-  saveGuestProgressToLocalStorage(normalizedPayload);
 
   if (typeof window === 'undefined') return;
 

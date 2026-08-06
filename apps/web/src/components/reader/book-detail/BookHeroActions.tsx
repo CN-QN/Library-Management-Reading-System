@@ -60,7 +60,7 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
   let rawReadTarget: string | null = null;
   let isContinue = false;
 
-  if (progress && Number.isFinite(progress.chapterNumber) && progress.chapterNumber > 0) {
+  if (isAuthenticated && progress && Number.isFinite(progress.chapterNumber) && progress.chapterNumber > 0) {
     // Nếu đã có tiến độ hợp lệ -> Tiếp tục đọc tại vị trí đang đọc dở
     const scrollPos = Number.isFinite(progress.scrollPosition) ? progress.scrollPosition : 0;
     rawReadTarget = `/books/${encodeURIComponent(book.slug)}/read?chapter=${progress.chapterNumber}&position=${scrollPos}`;
@@ -82,8 +82,8 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
 
   return (
     <div className="space-y-4 pt-2">
-      {/* Khối Tiến độ đọc (nếu user đã đọc sách này) */}
-      {isContinue && progress && (
+      {/* Khối Tiến độ đọc (chỉ hiển thị khi đã đăng nhập và có tiến độ) */}
+      {isAuthenticated && isContinue && progress && (
         <div className="p-4 rounded-lg border bg-secondary/30 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="flex items-center gap-1.5 text-primary">

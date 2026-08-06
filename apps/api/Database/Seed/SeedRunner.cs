@@ -49,6 +49,9 @@ public class SeedRunner
             // ===== 9. SEED SAMPLE REVIEWS =====
             await SeedReviewsAsync(books);
 
+            // ===== 10. SYNC RATING STATS FOR ALL BOOKS =====
+            await SyncAllBookRatingStatsAsync();
+
             _logger.LogInformation("Database seeding process completed successfully.");
         }
         catch (Exception ex)
@@ -375,8 +378,8 @@ public class SeedRunner
                 {
                     ViewCount = random.Next(100, 5000),
                     ReadingCount = random.Next(50, 2000),
-                    Rating = Math.Round(random.NextDouble() * 2 + 3, 1),
-                    RatingCount = random.Next(10, 150)
+                    Rating = 0.0,
+                    RatingCount = 0
                 }
             };
             books.Add(book);
@@ -539,6 +542,41 @@ public class SeedRunner
                     .Set(b => b.Stats.Rating, avgRating)
                     .Set(b => b.Stats.RatingCount, bReviews.Count);
                 await _context.Books.UpdateOneAsync(b => b.Id == bId, update);
+            }
+        }
+    }
+
+    private async Task SyncAllBookRatingStatsAsync()
+    {
+        _logger.LogInformation("Syncing rating stats for all books with actual reviews in DB...");
+        var allBooks = await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
+        var allApprovedReviews = await _context.Reviews.Find(r => r.Status == "APPROVED").ToListAsync();
+
+        var reviewsByBook = allApprovedReviews.GroupBy(r => r.BookId).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var book in allBooks)
+        {
+            if (reviewsByBook.TryGetValue(book.Id, out var bReviews) && bReviews.Any())
+            {
+                var avgRating = Math.Round(bReviews.Average(r => r.Rating), 1);
+                var count = bReviews.Count;
+                if (book.Stats.Rating != avgRating || book.Stats.RatingCount != count)
+                {
+                    var update = Builders<Book>.Update
+                        .Set(b => b.Stats.Rating, avgRating)
+                        .Set(b => b.Stats.RatingCount, count);
+                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
+                }
+            }
+            else
+            {
+                if (book.Stats.Rating != 0.0 || book.Stats.RatingCount != 0)
+                {
+                    var update = Builders<Book>.Update
+                        .Set(b => b.Stats.Rating, 0.0)
+                        .Set(b => b.Stats.RatingCount, 0);
+                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
+                }
             }
         }
     }
