@@ -35,6 +35,36 @@ const NAV_ITEMS: NavItem[] = [
     permissions: [Permissions.LoanCreate, Permissions.LoanReturn, Permissions.LoanExtend],
   },
   {
+    href: "/vouchers",
+    label: "Quản lý Voucher",
+    epic: "E5.11",
+    permissions: [],
+  },
+  {
+    href: "/banners",
+    label: "Quản lý Banner UI",
+    epic: "E5.12",
+    permissions: [],
+  },
+  {
+    href: "/flash-sale",
+    label: "Sự kiện Flash Sale",
+    epic: "E5.13",
+    permissions: [],
+  },
+  {
+    href: "/media",
+    label: "Thư viện Media Cloudinary",
+    epic: "E5.14",
+    permissions: [],
+  },
+  {
+    href: "/reviews",
+    label: "Kiểm duyệt Đánh giá",
+    epic: "E5.15",
+    permissions: [],
+  },
+  {
     href: "/reports",
     label: "Báo cáo & Thống kê",
     epic: "E5.7",
