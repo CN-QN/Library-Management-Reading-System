@@ -29,8 +29,8 @@ namespace api.Modules.Catalog.Services
                 filter = filterBuilder.Regex(a => a.Name, new BsonRegularExpression(search, "i"));
             }
 
-            var totalCount = await _context.Authors.CountDocumentsAsync(filter);
-            var authors = await _context.Authors.Find(filter)
+            var totalCount = await _context.Database.GetCollection<Author>("authors").CountDocumentsAsync(filter);
+            var authors = await _context.Database.GetCollection<Author>("authors").Find(filter)
                 .SortByDescending(a => a.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Limit(pageSize)
@@ -43,7 +43,7 @@ namespace api.Modules.Catalog.Services
 
         public async Task<AuthorResponseDto?> GetAuthorByIdAsync(string id)
         {
-            var author = await _context.Authors.Find(a => a.Id == id).FirstOrDefaultAsync();
+            var author = await _context.Database.GetCollection<Author>("authors").Find(a => a.Id == id).FirstOrDefaultAsync();
             return author == null ? null : MapToResponseDto(author);
         }
 
@@ -52,7 +52,7 @@ namespace api.Modules.Catalog.Services
             var slug = GenerateSlug(dto.Name);
             
             // Ensure unique slug
-            var existingSlug = await _context.Authors.Find(a => a.Slug == slug).FirstOrDefaultAsync();
+            var existingSlug = await _context.Database.GetCollection<Author>("authors").Find(a => a.Slug == slug).FirstOrDefaultAsync();
             if (existingSlug != null)
             {
                 slug = $"{slug}-{Guid.NewGuid().ToString("N")[..6]}";
@@ -68,7 +68,7 @@ namespace api.Modules.Catalog.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _context.Authors.InsertOneAsync(author);
+            await _context.Database.GetCollection<Author>("authors").InsertOneAsync(author);
             _logger.LogInformation("Created new author: {AuthorName} (ID: {AuthorId})", author.Name, author.Id);
 
             return MapToResponseDto(author);
@@ -76,13 +76,13 @@ namespace api.Modules.Catalog.Services
 
         public async Task<AuthorResponseDto?> UpdateAuthorAsync(string id, UpdateAuthorDto dto)
         {
-            var author = await _context.Authors.Find(a => a.Id == id).FirstOrDefaultAsync();
+            var author = await _context.Database.GetCollection<Author>("authors").Find(a => a.Id == id).FirstOrDefaultAsync();
             if (author == null) return null;
 
             var newSlug = author.Name != dto.Name ? GenerateSlug(dto.Name) : author.Slug;
             if (newSlug != author.Slug)
             {
-                var existingSlug = await _context.Authors.Find(a => a.Slug == newSlug && a.Id != id).FirstOrDefaultAsync();
+                var existingSlug = await _context.Database.GetCollection<Author>("authors").Find(a => a.Slug == newSlug && a.Id != id).FirstOrDefaultAsync();
                 if (existingSlug != null)
                 {
                     newSlug = $"{newSlug}-{Guid.NewGuid().ToString("N")[..6]}";
@@ -95,7 +95,7 @@ namespace api.Modules.Catalog.Services
             author.Avatar = dto.Avatar;
             author.UpdatedAt = DateTime.UtcNow;
 
-            await _context.Authors.ReplaceOneAsync(a => a.Id == id, author);
+            await _context.Database.GetCollection<Author>("authors").ReplaceOneAsync(a => a.Id == id, author);
             _logger.LogInformation("Updated author: {AuthorId}", id);
 
             return MapToResponseDto(author);
@@ -103,7 +103,7 @@ namespace api.Modules.Catalog.Services
 
         public async Task<bool> DeleteAuthorAsync(string id)
         {
-            var result = await _context.Authors.DeleteOneAsync(a => a.Id == id);
+            var result = await _context.Database.GetCollection<Author>("authors").DeleteOneAsync(a => a.Id == id);
             return result.DeletedCount > 0;
         }
 

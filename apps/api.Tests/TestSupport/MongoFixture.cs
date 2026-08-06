@@ -138,4 +138,24 @@ public sealed class MongoFixture : IAsyncLifetime
         var repo = new FakeBookRepository(new[] { book });
         return new ChapterService(repo, NullLogger<ChapterService>.Instance);
     }
+
+    /// <summary>
+    /// Runs the database seed process against the current test database.
+    /// </summary>
+    public async Task RunSeedAsync()
+    {
+        if (Database is null) return;
+        
+        var options = Microsoft.Extensions.Options.Options.Create(new api.Configuration.MongoDbSettings
+        {
+            ConnectionString = Environment.GetEnvironmentVariable("MONGODB_TEST_CONNECTION_STRING") ?? "",
+            DatabaseName = DatabaseName
+        });
+        
+        var context = new api.Database.MongoDbContext(options);
+        var logger = NullLogger<api.Database.Seed.SeedRunner>.Instance;
+        var runner = new api.Database.Seed.SeedRunner(context, logger);
+        
+        await runner.RunSeedAsync();
+    }
 }
