@@ -30,7 +30,8 @@ public sealed class UserMediaController : ControllerBase
             return StatusCode(500, ApiResponse.ErrorResponse(500, "Chức năng thay đổi ảnh đại diện đang bị lỗi! Vui lòng thử lại sau!"));
         }
         var asset = new FileAsset { FileName = Path.GetFileNameWithoutExtension(file.FileName) + media.Extension, OriginalFileName = Path.GetFileName(file.FileName), FilePath = uploaded.PublicId, FileUrl = uploaded.SecureUrl, CloudinaryPublicId = uploaded.PublicId, FileType = "AVATAR", MimeType = media.MimeType, Format = media.Format, FileSize = media.Bytes.LongLength, Width = media.Width, Height = media.Height, Category = "avatar", UsageType = "avatar", UserId = userId, CreatedBy = userId };
-        try { await _context.FileAssets.InsertOneAsync(asset, cancellationToken: cancellationToken); await _context.Users.UpdateOneAsync(x => x.Id == userId, Builders<User>.Update.Set(x => x.Avatar, asset.FileUrl).Set(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken: cancellationToken); } catch { await _cloudinary.DeleteAsync(uploaded.PublicId, cancellationToken); return StatusCode(500, ApiResponse.ErrorResponse(500, "Chức năng thay đổi ảnh đại diện đang bị lỗi! Vui lòng thử lại sau!")); }
+        // Chỉ lưu FileAsset, không trực tiếp cập nhật Users.Avatar để tránh tự động đổi avatar khi người dùng chưa nhấn "Lưu thay đổi"
+        try { await _context.FileAssets.InsertOneAsync(asset, cancellationToken: cancellationToken); } catch { await _cloudinary.DeleteAsync(uploaded.PublicId, cancellationToken); return StatusCode(500, ApiResponse.ErrorResponse(500, "Chức năng thay đổi ảnh đại diện đang bị lỗi! Vui lòng thử lại sau!")); }
         return Ok(ApiResponse<FileAsset>.SuccessResponse(asset));
     }
 }
