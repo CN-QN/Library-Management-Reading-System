@@ -25,10 +25,10 @@ namespace api.Repositories.Implementations
         public SearchRecommendationRepository(MongoDbContext dbContext)
         {
             _booksCollection = dbContext.Books;
-            _authorsCollection = dbContext.Authors;
-            _categoriesCollection = dbContext.Categories;
-            _bookAuthorsCollection = dbContext.BookAuthors;
-            _bookCategoriesCollection = dbContext.BookCategories;
+            _authorsCollection = dbContext.Database.GetCollection<Author>("authors");
+            _categoriesCollection = dbContext.Database.GetCollection<Category>("categories");
+            _bookAuthorsCollection = dbContext.Database.GetCollection<BookAuthor>("book_authors");
+            _bookCategoriesCollection = dbContext.Database.GetCollection<BookCategory>("book_categories");
             _readingProgressCollection = dbContext.ReadingProgresses;
             _readingSessionCollection = dbContext.ReadingSessions;
             _viewEventsCollection = dbContext.ViewEvents;

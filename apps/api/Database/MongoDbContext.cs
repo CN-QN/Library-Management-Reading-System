@@ -30,15 +30,9 @@ public class MongoDbContext
     public IMongoCollection<LibraryBranch> LibraryBranches => _database.GetCollection<LibraryBranch>("library_branches");
 
     // ===== CATALOG (M03) =====
-    public IMongoCollection<Author> Authors => _database.GetCollection<Author>("authors");
-    public IMongoCollection<Publisher> Publishers => _database.GetCollection<Publisher>("publishers"); // ← THÊM DÒNG NÀY
-    public IMongoCollection<Category> Categories => _database.GetCollection<Category>("categories");
     public IMongoCollection<Book> Books => _database.GetCollection<Book>("books");
-    public IMongoCollection<BookAuthor> BookAuthors => _database.GetCollection<BookAuthor>("book_authors");
-    public IMongoCollection<BookCategory> BookCategories => _database.GetCollection<BookCategory>("book_categories");
 
     // ===== DIGITAL CONTENT (M04) =====
-    public IMongoCollection<Chapter> Chapters => _database.GetCollection<Chapter>("chapters");
     public IMongoCollection<DigitalAsset> DigitalAssets => _database.GetCollection<DigitalAsset>("digital_assets");
 
     // ===== INVENTORY (M05) =====
