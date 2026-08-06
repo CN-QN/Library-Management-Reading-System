@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Clock, ArrowRight, BookMarked, X } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, BookMarked, X, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,8 @@ export function ContinueReadingCard({ item, className, onDeleteProgress }: Conti
   if (isDeleted) {
     return null;
   }
+
+  const isPremium = item.isPremium || ['PREMIUM', 'PAID'].includes((item.accessType || 'FREE').toUpperCase());
 
   // Xây dựng đường dẫn URL đọc sách kèm query parameters chapterId và scrollPosition
   const queryParams = [
@@ -69,7 +72,7 @@ export function ContinueReadingCard({ item, className, onDeleteProgress }: Conti
       <button
         onClick={handleDelete}
         disabled={isDeleting}
-        className="absolute top-2 right-2 p-1.5 z-10 rounded-full bg-background/80 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 p-1.5 z-10 rounded-full bg-background/80 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
         title="Xóa tiến trình đọc"
         aria-label="Xóa tiến trình đọc"
       >
@@ -80,6 +83,18 @@ export function ContinueReadingCard({ item, className, onDeleteProgress }: Conti
         <div className="flex gap-3.5">
           {/* Bìa sách cao cấp với hiệu ứng Ambient Glow & Drop Shadow */}
           <div className="relative h-28 w-20 shrink-0 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-900/60 border border-border/50 shadow-sm flex items-center justify-center group/cover">
+            {/* Badge Access Type (FREE / PREMIUM) */}
+            <div className="absolute top-1 left-1 z-20">
+              {isPremium ? (
+                <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-[9px] uppercase tracking-wider px-1.5 py-0 shadow-xs border-0">
+                  <span>PRO</span>
+                </Badge>
+              ) : (
+                <Badge className="bg-emerald-600 text-white font-extrabold text-[9px] uppercase tracking-wider px-1.5 py-0 shadow-xs border-0">
+                  <span>FREE</span>
+                </Badge>
+              )}
+            </div>
             {item.bookCoverImage ? (
               <>
                 <Image

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Sparkles } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +29,19 @@ export function BookCard({ book, className }: BookCardProps) {
         <CardContent className="p-0 flex flex-col flex-1 h-full">
           {/* Ảnh bìa cao cấp với hiệu ứng Ambient Backdrop Glow */}
           <Link href={detailHref} className="relative aspect-[2/3] w-full bg-slate-100 dark:bg-slate-900/60 overflow-hidden flex shrink-0 group/cover">
+            {/* Badge Access Type (FREE / PREMIUM) */}
+            <div className="absolute top-2.5 left-2.5 z-20">
+              {isPremium ? (
+                <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5 shadow-md border-0">
+                  <span>PREMIUM</span>
+                </Badge>
+              ) : (
+                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5 shadow-md border-0">
+                  <span>MIỄN PHÍ</span>
+                </Badge>
+              )}
+            </div>
+
             {book.coverImage ? (
               <>
                 {/* Lớp nền mờ Ambient Glow */}
