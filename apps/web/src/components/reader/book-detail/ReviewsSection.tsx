@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, LogIn, AlertCircle } from 'lucide-react';
+import { MessageSquare, LogIn, AlertCircle, BookOpen } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -55,6 +55,8 @@ import type { Review, ReviewStats } from '@/types/Review';
 export interface ReviewsSectionProps {
   /** ID cuốn sách cần quản lý đánh giá & nhận xét */
   bookId: string;
+  /** Trạng thái đã bắt đầu đọc sách hay chưa */
+  hasReadBook?: boolean;
   /** ID người dùng (optional - ưu tiên tự động lấy từ useAuthStore) */
   userId?: string | null;
   /** Tên hiển thị người dùng (optional - ưu tiên tự động lấy từ useAuthStore) */
@@ -84,6 +86,7 @@ export interface ReviewsSectionProps {
  */
 export function ReviewsSection({
   bookId,
+  hasReadBook = true,
   userId,
   userDisplayName,
   onStatsChange,
@@ -370,8 +373,23 @@ export function ReviewsSection({
               onDelete={handleDeleteReview}
             />
           )
+        ) : !hasReadBook ? (
+          /* Luồng Khóa: Người dùng chưa từng mở/đọc cuốn sách này */
+          <div className="p-6 rounded-xl border border-dashed bg-card/60 text-center space-y-3 shadow-xs">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Bạn chưa đọc cuốn sách này
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Để bảo đảm tính trung thực của các bài nhận xét, bạn cần đọc cuốn sách trước khi gửi đánh giá. Hãy bấm <strong>&quot;Bắt đầu đọc&quot;</strong> ở trên để thưởng thức sách ngay!
+              </p>
+            </div>
+          </div>
         ) : (
-          /* Luồng Tạo mới: Người dùng đã đăng nhập và chưa từng đánh giá cuốn sách này */
+          /* Luồng Tạo mới: Người dùng đã đăng nhập, đã đọc và chưa từng đánh giá cuốn sách này */
           <ReviewForm
             isEditing={false}
             onSubmit={handleCreateReview}

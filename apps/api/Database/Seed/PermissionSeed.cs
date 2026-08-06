@@ -60,6 +60,14 @@ public static class PermissionSeed
         new Permission { Code = Constants.Permissions.ReviewModerate, Resource = "review", Action = "moderate", Description = "Moderate reviews" },
         new Permission { Code = Constants.Permissions.ListManage, Resource = "list", Action = "manage", Description = "Manage reading lists" },
 
+        // Payment
+        new Permission { Code = Constants.Permissions.PaymentRead, Resource = "payment", Action = "read", Description = "View payment orders and revenue summaries" },
+
+        // Promotions
+        new Permission { Code = Constants.Permissions.PromotionBannerManage, Resource = "promotion", Action = "banner_manage", Description = "Manage promotional banners" },
+        new Permission { Code = Constants.Permissions.PromotionFlashSaleManage, Resource = "promotion", Action = "flash_sale_manage", Description = "Manage flash sales" },
+        new Permission { Code = Constants.Permissions.PromotionVoucherManage, Resource = "promotion", Action = "voucher_manage", Description = "Manage vouchers" },
+
         // Reports
         new Permission { Code = Constants.Permissions.ReportView, Resource = "report", Action = "view", Description = "View dashboard statistics and reports" },
         new Permission { Code = Constants.Permissions.ReportExport, Resource = "report", Action = "export", Description = "Export reports" },
@@ -90,6 +98,10 @@ public static class PermissionSeed
                 Constants.Permissions.CopyRead, Constants.Permissions.CopyCreate, Constants.Permissions.CopyUpdateStatus,
                 Constants.Permissions.LoanCreate, Constants.Permissions.LoanReturn, Constants.Permissions.LoanExtend,
                 Constants.Permissions.ReportView, Constants.Permissions.ReportExport,
+                Constants.Permissions.PaymentRead,
+                Constants.Permissions.PromotionBannerManage, Constants.Permissions.PromotionFlashSaleManage, Constants.Permissions.PromotionVoucherManage,
+                Constants.Permissions.ReviewModerate, Constants.Permissions.FileManage,
+                Constants.Permissions.RoleRead, Constants.Permissions.RoleCreate, Constants.Permissions.RoleUpdate, Constants.Permissions.RoleAssignPermission,
                 Constants.Permissions.SettingRead, Constants.Permissions.SettingUpdate, Constants.Permissions.AuditRead,
                 Constants.Permissions.NotificationSend, Constants.Permissions.NotificationBroadcast
             }

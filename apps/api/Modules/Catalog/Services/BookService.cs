@@ -1,44 +1,39 @@
 using api.Database.Entities;
+using api.Modules.Catalog.DTOs;
 using api.Modules.Catalog.DTOs.Requests;
 using api.Modules.Catalog.DTOs.Responses;
 using api.Repositories.Interfaces;
 using api.Common.Models;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace api.Modules.Catalog.Services
 {
     public class BookService : IBookService
     {
         private readonly IBookRepository _bookRepository;
-        private readonly IAuthorRepository _authorRepository;
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly IPublisherRepository _publisherRepository;
         private readonly ILogger<BookService> _logger;
 
         public BookService(
             IBookRepository bookRepository,
-            IAuthorRepository authorRepository,
-            ICategoryRepository categoryRepository,
-            IPublisherRepository publisherRepository,
             ILogger<BookService> logger)
         {
             _bookRepository = bookRepository;
-            _authorRepository = authorRepository;
-            _categoryRepository = categoryRepository;
-            _publisherRepository = publisherRepository;
             _logger = logger;
         }
 
         public async Task<BookResponseDto?> GetByIdAsync(string id)
         {
             var book = await _bookRepository.GetByIdAsync(id);
-            return book == null ? null : await MapToResponseAsync(book);
+            return book == null ? null : MapToResponse(book);
         }
 
         public async Task<BookResponseDto?> GetBySlugAsync(string slug)
         {
             var book = await _bookRepository.GetBySlugAsync(slug);
-            return book == null ? null : await MapToResponseAsync(book);
+            return book == null ? null : MapToResponse(book);
         }
 
         public async Task<PagedResult<BookResponseDto>> SearchAsync(BookQueryDto query)
@@ -56,11 +51,7 @@ namespace api.Modules.Catalog.Services
                 query.SortOrder
             );
 
-            var items = new List<BookResponseDto>();
-            foreach (var book in books)
-            {
-                items.Add(await MapToResponseAsync(book));
-            }
+            var items = books.Select(MapToResponse).ToList();
 
             return new PagedResult<BookResponseDto>(items, query.Page, query.Limit, total);
         }
@@ -68,29 +59,21 @@ namespace api.Modules.Catalog.Services
         public async Task<List<BookResponseDto>> GetTrendingAsync(int limit)
         {
             var books = await _bookRepository.GetTrendingAsync(limit);
-            var result = new List<BookResponseDto>();
-            foreach (var book in books)
-            {
-                result.Add(await MapToResponseAsync(book));
-            }
-            return result;
+            return books.Select(MapToResponse).ToList();
         }
 
         public async Task<List<BookResponseDto>> GetNewReleasesAsync(int limit)
         {
             var books = await _bookRepository.GetNewReleasesAsync(limit);
-            var result = new List<BookResponseDto>();
-            foreach (var book in books)
-            {
-                result.Add(await MapToResponseAsync(book));
-            }
-            return result;
+            return books.Select(MapToResponse).ToList();
         }
 
         public async Task<BookResponseDto> CreateAsync(CreateBookDto dto, string userId)
         {
-            if (await _bookRepository.ExistsBySlugAsync(dto.Slug))
-                throw new InvalidOperationException($"Slug '{dto.Slug}' already exists");
+            var slug = await GenerateUniqueSlugAsync(dto.Title);
+            var accessType = string.IsNullOrWhiteSpace(dto.AccessType)
+                ? "FREE"
+                : dto.AccessType.ToUpperInvariant();
 
             if (!string.IsNullOrEmpty(dto.ISBN) && await _bookRepository.ExistsByISBNAsync(dto.ISBN))
                 throw new InvalidOperationException($"ISBN '{dto.ISBN}' already exists");
@@ -98,27 +81,61 @@ namespace api.Modules.Catalog.Services
             var book = new Book
             {
                 Title = dto.Title,
-                Slug = dto.Slug,
+                Slug = slug,
                 ISBN = dto.ISBN,
                 Summary = dto.Summary,
-                PublisherId = dto.PublisherId,
                 PublicationYear = dto.PublicationYear,
                 Language = dto.Language ?? "vi",
-                AccessType = dto.AccessType ?? "FREE",
+                AccessType = accessType,
+                Price = string.Equals(accessType, "FREE", StringComparison.OrdinalIgnoreCase)
+                    ? 0
+                    : dto.Price ?? 10000,
                 Status = "DRAFT",
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Stats = new BookStats(),
-                // [THÊM MỚI] Lưu danh sách CategoryIds và AuthorIds
-                CategoryIds = dto.CategoryIds ?? new List<string>(),
-                AuthorIds = dto.AuthorIds ?? new List<string>()
+                Stats = new BookStats()
             };
 
-            await _bookRepository.InsertAsync(book);
-            _logger.LogInformation($"Book created: {book.Title} by user {userId}");
+            // Map embedded author snapshots if supplied
+            if (dto.Authors != null)
+            {
+                book.Authors = dto.Authors.Select((a, i) => new BookAuthorSnapshot
+                {
+                    AuthorId = a.AuthorId,
+                    Name = a.Name,
+                    Slug = a.Slug,
+                    Role = a.Role ?? "AUTHOR",
+                    Order = a.Order > 0 ? a.Order : i + 1
+                }).ToList();
+            }
 
-            return await MapToResponseAsync(book);
+            // Map embedded category snapshots if supplied
+            if (dto.Categories != null)
+            {
+                book.Categories = dto.Categories.Select(c => new BookCategorySnapshot
+                {
+                    CategoryId = c.CategoryId,
+                    Name = c.Name,
+                    Slug = c.Slug
+                }).ToList();
+            }
+
+            // Map embedded publisher snapshot if supplied
+            if (dto.Publisher != null)
+            {
+                book.Publisher = new BookPublisherSnapshot
+                {
+                    PublisherId = dto.Publisher.PublisherId,
+                    Name = dto.Publisher.Name,
+                    Slug = dto.Publisher.Slug
+                };
+            }
+
+            await _bookRepository.InsertAsync(book);
+            _logger.LogInformation("Book created: {Title} by user {UserId}", book.Title, userId);
+
+            return MapToResponse(book);
         }
 
         public async Task<BookResponseDto?> UpdateAsync(string id, UpdateBookDto dto, string userId)
@@ -130,17 +147,54 @@ namespace api.Modules.Catalog.Services
             if (!string.IsNullOrEmpty(dto.Summary)) book.Summary = dto.Summary;
             if (dto.PublicationYear.HasValue) book.PublicationYear = dto.PublicationYear;
             if (!string.IsNullOrEmpty(dto.Language)) book.Language = dto.Language;
-            if (!string.IsNullOrEmpty(dto.AccessType)) book.AccessType = dto.AccessType;
-            
-            // [THÊM MỚI] Cập nhật danh sách CategoryIds và AuthorIds
-            if (dto.CategoryIds != null) book.CategoryIds = dto.CategoryIds;
-            if (dto.AuthorIds != null) book.AuthorIds = dto.AuthorIds;
+            if (!string.IsNullOrEmpty(dto.AccessType)) book.AccessType = dto.AccessType.ToUpperInvariant();
+            if (string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase))
+                book.Price = 0;
+            else if (dto.Price.HasValue)
+                book.Price = dto.Price.Value;
+            if (!string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase) && book.Price <= 0)
+                throw new InvalidOperationException("Premium books must have a price greater than zero.");
+
+            // Update embedded author snapshots if supplied
+            if (dto.Authors != null)
+            {
+                book.Authors = dto.Authors.Select((a, i) => new BookAuthorSnapshot
+                {
+                    AuthorId = a.AuthorId,
+                    Name = a.Name,
+                    Slug = a.Slug,
+                    Role = a.Role ?? "AUTHOR",
+                    Order = a.Order > 0 ? a.Order : i + 1
+                }).ToList();
+            }
+
+            // Update embedded category snapshots if supplied
+            if (dto.Categories != null)
+            {
+                book.Categories = dto.Categories.Select(c => new BookCategorySnapshot
+                {
+                    CategoryId = c.CategoryId,
+                    Name = c.Name,
+                    Slug = c.Slug
+                }).ToList();
+            }
+
+            // Update embedded publisher snapshot if supplied
+            if (dto.Publisher != null)
+            {
+                book.Publisher = new BookPublisherSnapshot
+                {
+                    PublisherId = dto.Publisher.PublisherId,
+                    Name = dto.Publisher.Name,
+                    Slug = dto.Publisher.Slug
+                };
+            }
 
             book.UpdatedAt = DateTime.UtcNow;
             await _bookRepository.UpdateAsync(id, book);
-            _logger.LogInformation($"Book updated: {book.Title} by user {userId}");
+            _logger.LogInformation("Book updated: {Title} by user {UserId}", book.Title, userId);
 
-            return await MapToResponseAsync(book);
+            return MapToResponse(book);
         }
 
         public async Task<BookResponseDto?> UpdateStatusAsync(string id, string status, string userId)
@@ -151,9 +205,9 @@ namespace api.Modules.Catalog.Services
             book.Status = status;
             book.UpdatedAt = DateTime.UtcNow;
             await _bookRepository.UpdateAsync(id, book);
-            _logger.LogInformation($"Book status updated: {book.Title} -> {status} by user {userId}");
+            _logger.LogInformation("Book status updated: {Title} -> {Status} by user {UserId}", book.Title, status, userId);
 
-            return await MapToResponseAsync(book);
+            return MapToResponse(book);
         }
 
         public async Task<bool> DeleteAsync(string id)
@@ -164,7 +218,7 @@ namespace api.Modules.Catalog.Services
             book.Status = "ARCHIVED";
             book.UpdatedAt = DateTime.UtcNow;
             await _bookRepository.UpdateAsync(id, book);
-            _logger.LogInformation($"Book archived: {book.Title}");
+            _logger.LogInformation("Book archived: {Title}", book.Title);
 
             return true;
         }
@@ -185,10 +239,9 @@ namespace api.Modules.Catalog.Services
             return !await _bookRepository.ExistsByISBNAsync(isbn);
         }
 
-        // [SỬA LỖI QUAN TRỌNG] Cập nhật MapToResponseAsync để lấy tên Authors và Categories
-        private async Task<BookResponseDto> MapToResponseAsync(Book book)
+        private static BookResponseDto MapToResponse(Book book)
         {
-            var response = new BookResponseDto
+            return new BookResponseDto
             {
                 Id = book.Id,
                 Title = book.Title,
@@ -198,6 +251,7 @@ namespace api.Modules.Catalog.Services
                 PublicationYear = book.PublicationYear,
                 Language = book.Language,
                 AccessType = book.AccessType,
+                Price = book.Price,
                 Status = book.Status,
                 TotalChapters = book.TotalChapters,
                 CoverAssetId = book.CoverAssetId,
@@ -205,43 +259,53 @@ namespace api.Modules.Catalog.Services
                 Rating = book.Stats?.Rating ?? 0,
                 CreatedAt = book.CreatedAt,
                 UpdatedAt = book.UpdatedAt,
-                // [THÊM MỚI] Gán danh sách ID
-                CategoryIds = book.CategoryIds ?? new List<string>(),
-                AuthorIds = book.AuthorIds ?? new List<string>()
+                Authors = (book.Authors ?? new List<BookAuthorSnapshot>()).Select(a => new BookAuthorDto
+                {
+                    AuthorId = a.AuthorId,
+                    Name = a.Name,
+                    Slug = a.Slug,
+                    Role = a.Role,
+                    Order = a.Order
+                }).ToList(),
+                Categories = (book.Categories ?? new List<BookCategorySnapshot>()).Select(c => new BookCategoryDto
+                {
+                    CategoryId = c.CategoryId,
+                    Name = c.Name,
+                    Slug = c.Slug
+                }).ToList(),
+                Publisher = book.Publisher == null ? null : new BookPublisherDto
+                {
+                    PublisherId = book.Publisher.PublisherId,
+                    Name = book.Publisher.Name,
+                    Slug = book.Publisher.Slug
+                },
+                Chapters = book.Chapters ?? new List<BookChapter>()
             };
+        }
 
-            // Lấy tên Publisher
-            if (!string.IsNullOrEmpty(book.PublisherId))
+        private async Task<string> GenerateUniqueSlugAsync(string title)
+        {
+            var normalized = (title ?? string.Empty)
+                .Replace('đ', 'd')
+                .Replace('Đ', 'D')
+                .Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+            foreach (var character in normalized)
             {
-                var publisher = await _publisherRepository.GetByIdAsync(book.PublisherId);
-                response.PublisherName = publisher?.Name;
+                if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+                    builder.Append(character);
             }
 
-            // [SỬA LỖI] Lấy danh sách tên Categories
-            var categoryNames = new List<string>();
-            if (book.CategoryIds != null && book.CategoryIds.Any())
-            {
-                var categories = await _categoryRepository.GetByIdsAsync(book.CategoryIds);
-                if (categories != null)
-                {
-                    categoryNames = categories.Select(c => c.Name).ToList();
-                }
-            }
-            response.CategoryNames = categoryNames;
+            var baseSlug = Regex.Replace(builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant(), "[^a-z0-9]+", "-")
+                .Trim('-');
+            if (string.IsNullOrWhiteSpace(baseSlug)) baseSlug = "sach";
+            if (baseSlug.Length > 90) baseSlug = baseSlug[..90].TrimEnd('-');
 
-            // [SỬA LỖI] Lấy danh sách tên Authors
-            var authorNames = new List<string>();
-            if (book.AuthorIds != null && book.AuthorIds.Any())
-            {
-                var authors = await _authorRepository.GetByIdsAsync(book.AuthorIds);
-                if (authors != null)
-                {
-                    authorNames = authors.Select(a => a.Name).ToList();
-                }
-            }
-            response.AuthorNames = authorNames;
-
-            return response;
+            var slug = baseSlug;
+            var suffix = 2;
+            while (await _bookRepository.ExistsBySlugAsync(slug))
+                slug = $"{baseSlug}-{suffix++}";
+            return slug;
         }
     }
 }

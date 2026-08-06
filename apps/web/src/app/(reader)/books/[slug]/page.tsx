@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import sanitizeHtml from 'sanitize-html';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ArrowLeft, Eye, Star, Calendar, Globe, BookMarked, ShieldCheck } from 'lucide-react';
@@ -46,7 +47,9 @@ export async function generateMetadata({ params }: BookDetailPageProps): Promise
     const cover = await getBookCover(book.id).catch(() => null);
 
     const title = `${book.title}${BOOK_DETAIL_COPY.pageTitleSuffix}`;
-    const description = book.summary || `${book.title} - Tác giả: ${book.authorNames.join(', ') || BOOK_DETAIL_COPY.missingAuthor}`;
+    const description = book.summary
+      ? sanitizeHtml(book.summary, { allowedTags: [], allowedAttributes: {} })
+      : `${book.title} - Tác giả: ${book.authorNames.join(', ') || BOOK_DETAIL_COPY.missingAuthor}`;
     const images = cover?.fileUrl ? [cover.fileUrl] : [];
 
     return {
@@ -125,17 +128,25 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   const firstChapter = chapters.length > 0 ? chapters[0] : null;
 
   // Xác định URL ảnh bìa (ưu tiên từ API cover -> tiếp theo từ thuộc tính book)
-  const displayCoverUrl = coverFile?.fileUrl || null;
+  const displayCoverUrl = coverFile?.fileUrl || book.coverImage || null;
+  const safeSummary = book.summary
+    ? sanitizeHtml(book.summary, {
+        allowedTags: ['p', 'br', 'strong', 'em', 'u', 's', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'blockquote', 'a', 'span'],
+        allowedAttributes: { a: ['href', 'target', 'rel'], span: ['class'], p: ['class'] },
+        allowedSchemes: ['http', 'https', 'mailto'],
+      })
+    : '';
 
   const metaItems: { label: string; icon: React.ReactNode; value: React.ReactNode }[] = [
     { label: 'Đánh giá', icon: <Star className="w-3.5 h-3.5 text-amber-500" />, value: <StarRating rating={book.rating || 0} /> },
     { label: 'Lượt xem', icon: <Eye className="w-3.5 h-3.5 text-blue-500" />, value: book.viewCount.toLocaleString('vi-VN') },
     { label: 'Số chương', icon: <BookMarked className="w-3.5 h-3.5 text-purple-500" />, value: book.totalChapters },
     { label: 'Quyền truy cập', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />, value: book.accessType },
+    ...(book.price > 0 ? [{ label: 'Giá mở khóa', icon: <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />, value: `${book.price.toLocaleString('vi-VN')} ₫` }] : []),
   ];
 
   const publishItems: { label: string; value: string | number | null; icon?: React.ReactNode }[] = [
-    { label: 'Nhà xuất bản', value: book.publisherName },
+    { label: 'Nhà xuất bản', value: book.publisher?.name ?? book.publisherName ?? null },
     { label: 'Năm xuất bản', value: book.publicationYear, icon: <Calendar className="w-3.5 h-3.5" /> },
     { label: 'Ngôn ngữ', value: book.language, icon: <Globe className="w-3.5 h-3.5" /> },
     { label: 'ISBN', value: book.isbn },
@@ -158,18 +169,30 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
         {/* Khối Ảnh bìa */}
         <div className="md:col-span-4 lg:col-span-3 flex justify-center">
-          <div className="relative w-full max-w-[280px] aspect-[2/3] rounded-lg overflow-hidden border bg-muted shadow-md">
+          <div className="relative w-full max-w-[280px] aspect-[2/3] rounded-xl overflow-hidden border bg-card shadow-lg group">
             {displayCoverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={displayCoverUrl}
                 alt={`Bìa sách ${book.title}`}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full text-muted-foreground bg-secondary/40 p-4 text-center">
-                <BookOpen className="w-16 h-16 text-muted-foreground/30 mb-2" />
-                <span className="text-sm font-medium text-muted-foreground/70">No Cover</span>
+              <div className="flex flex-col items-center justify-between w-full h-full bg-gradient-to-br from-amber-600/90 via-orange-700 to-amber-900 p-6 text-center text-white">
+                <div className="pt-4 opacity-80">
+                  <BookOpen className="w-12 h-12 mx-auto" />
+                </div>
+                <div className="space-y-2">
+                  <p className="font-bold text-lg leading-tight line-clamp-3 uppercase tracking-wide">
+                    {book.title}
+                  </p>
+                  <p className="text-xs opacity-75 line-clamp-1">
+                    {book.authorNames.join(', ') || 'Thư viện LibraryHub'}
+                  </p>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest opacity-60 font-mono">
+                  LibraryHub Collection
+                </div>
               </div>
             )}
 
@@ -248,9 +271,14 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
           {/* Khối Tóm tắt nội dung */}
           <div className="space-y-2 pt-2 border-t">
             <h2 className="text-base font-semibold">Tóm tắt nội dung</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {book.summary || BOOK_DETAIL_COPY.missingSummary}
-            </p>
+            {safeSummary ? (
+              <div
+                className="book-summary text-sm text-muted-foreground leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: safeSummary }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">{BOOK_DETAIL_COPY.missingSummary}</p>
+            )}
           </div>
 
           {/* Khối Hành động CTA chính & Tiến độ đọc trong Hero */}
@@ -281,6 +309,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       {/* Khu vực Đánh giá & Bình luận */}
       <ReviewsSection
         bookId={book.id}
+        hasReadBook={Boolean(progress)}
       />
     </main>
   );

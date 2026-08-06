@@ -38,7 +38,7 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             return;
         }
 
-        var authService = context.HttpContext.RequestServices.GetRequiredService<AuthService>();
+        var authService = context.HttpContext.RequestServices.GetRequiredService<IUserPermissionResolver>();
         var userPermissions = await authService.GetCachedPermissionsAsync(userId);
 
         // Check if user has ALL of the required permissions (AND logic)
@@ -99,7 +99,7 @@ public class RequireAnyPermissionAttribute : Attribute, IAsyncAuthorizationFilte
             return;
         }
 
-        var authService = context.HttpContext.RequestServices.GetRequiredService<AuthService>();
+        var authService = context.HttpContext.RequestServices.GetRequiredService<IUserPermissionResolver>();
         var userPermissions = await authService.GetCachedPermissionsAsync(userId);
 
         // Check if user has ANY of the required permissions (OR logic)

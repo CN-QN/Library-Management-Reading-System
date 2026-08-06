@@ -18,6 +18,7 @@ import {
   InProgressBooksTab,
   ReadingHistoryTab,
   BorrowedBooksTab,
+  PaymentHistoryTab,
   EditProfileModal,
 } from './index';
 import { Button } from '@/components/ui/button';
@@ -69,13 +70,15 @@ export function ProfileContainer({
       try {
         const stored = localStorage.getItem(`user_profile_override_${user.id}`);
         if (stored) {
+          // Synchronize the client-only persisted override after hydration.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setProfileOverride(JSON.parse(stored));
         }
       } catch {
         // Bỏ qua lỗi đọc LocalStorage
       }
     }
-  }, [user?.id]);
+  }, [user]);
 
   // Tải dữ liệu song song từ API thật
   const loadProfileData = useCallback(async () => {
@@ -98,9 +101,11 @@ export function ProfileContainer({
     } finally {
       setIsLoadingData(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
+    // The profile APIs are the external source synchronized by this effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProfileData();
   }, [loadProfileData]);
 
@@ -115,7 +120,7 @@ export function ProfileContainer({
   };
 
   // Callback sau khi lưu thông tin cá nhân
-  const handleProfileUpdated = (updated: { fullName: string; avatar?: string | null }) => {
+  const handleProfileUpdated = (updated: { fullName?: string; email?: string; phoneNumber?: string; avatar?: string | null }) => {
     setProfileOverride(updated);
     checkAuth();
   };
@@ -208,6 +213,9 @@ export function ProfileContainer({
         )}
         {activeTab === 'borrowed' && (
           <BorrowedBooksTab borrowed={borrowedBooks} isLoading={isLoadingData} />
+        )}
+        {activeTab === 'payments' && (
+          <PaymentHistoryTab />
         )}
       </div>
 

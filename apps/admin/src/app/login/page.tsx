@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
+import { Library } from "lucide-react";
 
 interface LoginFormValues {
   email: string;
@@ -34,7 +35,7 @@ export default function LoginPage() {
     setFormError(null);
     try {
       await login(values.email, values.password);
-      showToast("Đăng nhập thành công.", "success");
+      showToast("Đăng nhập quản trị thành công.", "success");
       router.replace("/dashboard");
     } catch (err) {
       const message =
@@ -47,23 +48,27 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        {isSubmitting && <LoadingOverlay message="Đang đăng nhập..." />}
+      <div className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm space-y-6">
+        {isSubmitting && <LoadingOverlay message="Đang xác thực tài khoản..." />}
 
-        <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold text-slate-900">LibraryHub Admin</h1>
-          <p className="mt-1 text-sm text-slate-500">Đăng nhập để tiếp tục quản trị</p>
+        {/* Admin Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center p-3 rounded-xl bg-slate-900 text-white shadow-sm">
+            <Library className="h-6 w-6" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">LibraryHub Admin</h1>
+          <p className="text-xs text-slate-500">Đăng nhập tài khoản cán bộ quản trị hệ thống</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <Input
-            label="Email"
+            label="Email cán bộ quản trị *"
             type="email"
             autoComplete="email"
             placeholder="admin@libraryhub.com"
             error={errors.email?.message}
             {...register("email", {
-              required: "Vui lòng nhập email.",
+              required: "Vui lòng nhập email cán bộ.",
               pattern: {
                 value: /^\S+@\S+\.\S+$/,
                 message: "Email không hợp lệ.",
@@ -72,7 +77,7 @@ export default function LoginPage() {
           />
 
           <Input
-            label="Mật khẩu"
+            label="Mật khẩu *"
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
@@ -83,13 +88,13 @@ export default function LoginPage() {
           />
 
           {formError && (
-            <p role="alert" className="text-sm text-red-600">
+            <div role="alert" className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-600 font-medium">
               {formError}
-            </p>
+            </div>
           )}
 
-          <Button type="submit" isLoading={isSubmitting} fullWidth>
-            Đăng nhập
+          <Button type="submit" isLoading={isSubmitting} fullWidth className="bg-slate-900 hover:bg-slate-800 text-white font-semibold">
+            Đăng nhập Quản trị
           </Button>
         </form>
       </div>

@@ -1,6 +1,7 @@
 using api.Database.Entities;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Text.Json;
 
 namespace api.Database.Seed;
 
@@ -36,23 +37,27 @@ public class SeedRunner
             // ===== 5. SEED USERS & USER ROLES =====
             await SeedUsersAsync(defaultBranch);
 
-            // ===== 6. SEED AUTHORS =====
-            await SeedAuthorsAsync();
+            // ===== 6. DEVELOPMENT CLEANUP =====
+            await CleanupDevelopmentCollectionsAsync();
 
-            // ===== 7. SEED PUBLISHERS =====
-            await SeedPublishersAsync();
-
-            // ===== 8. SEED CATEGORIES =====
-            await SeedCategoriesAsync();
-
-            // ===== 9. SEED BOOKS (50+) =====
+            // ===== 7. SEED BOOKS (embeds Authors, Categories, Publishers, Chapters) =====
             var books = await SeedBooksAsync();
 
-            // ===== 10. SEED CHAPTERS (100+) =====
-            await SeedChaptersAsync(books);
-
-            // ===== 11. SEED BOOK COPIES (100+) =====
+            // ===== 8. SEED BOOK COPIES (100+) =====
             await SeedBookCopiesAsync(books, defaultBranch);
+
+            // ===== 9. SEED SAMPLE REVIEWS =====
+            await SeedReviewsAsync(books);
+
+            // ===== 10. SYNC RATING STATS FOR ALL BOOKS =====
+            await SyncAllBookRatingStatsAsync();
+
+            // ===== 11. SEED PROMOTIONS (VOUCHERS, BANNERS, FLASH SALE) =====
+            await SeedPromotionsAsync();
+
+            // ===== 12. SEED SAMPLE BORROWINGS & SEPAY REVENUE =====
+            var allUsers = await _context.Users.Find(Builders<User>.Filter.Empty).ToListAsync();
+            await SeedBorrowingsAndPaymentOrdersAsync(books, allUsers, defaultBranch);
 
             _logger.LogInformation("Database seeding process completed successfully.");
         }
@@ -60,6 +65,31 @@ public class SeedRunner
         {
             _logger.LogError(ex, "Error occurred during database seeding.");
             throw;
+        }
+    }
+
+    private async Task CleanupDevelopmentCollectionsAsync()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Development environment detected. Dropping obsolete collections...");
+            var obsoleteCollections = new[] { "authors", "categories", "publishers", "chapters", "book_authors", "book_categories" };
+            foreach (var col in obsoleteCollections)
+            {
+                await _context.Database.DropCollectionAsync(col);
+                _logger.LogInformation("Dropped collection: {CollectionName}", col);
+            }
+
+            // Self-healing: if 'books' contains old schema documents (e.g. has 'publisherId'), drop it and 'book_copies' to force a clean seed
+            var booksCollection = _context.Database.GetCollection<BsonDocument>("books");
+            var hasOldSchema = await booksCollection.Find(Builders<BsonDocument>.Filter.Exists("publisherId")).AnyAsync();
+            if (hasOldSchema)
+            {
+                _logger.LogWarning("Old catalog schema detected in 'books' collection. Dropping 'books' and 'book_copies' to trigger a clean embedded seed...");
+                await _context.Database.DropCollectionAsync("books");
+                await _context.Database.DropCollectionAsync("book_copies");
+            }
         }
     }
 
@@ -98,23 +128,26 @@ public class SeedRunner
 
     private async Task SeedPermissionsAsync()
     {
-        var count = await _context.Permissions.CountDocumentsAsync(Builders<Permission>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding default permissions...");
-        await _context.Permissions.InsertManyAsync(PermissionSeed.Permissions);
+        _logger.LogInformation("Reconciling default permissions...");
+        foreach (var permission in PermissionSeed.Permissions)
+        {
+            var update = Builders<Permission>.Update
+                .Set(x => x.Resource, permission.Resource)
+                .Set(x => x.Action, permission.Action)
+                .Set(x => x.Description, permission.Description)
+                .SetOnInsert(x => x.Code, permission.Code);
+            await _context.Permissions.UpdateOneAsync(
+                x => x.Code == permission.Code,
+                update,
+                new UpdateOptions { IsUpsert = true });
+        }
     }
 
     private async Task SeedRolePermissionsAsync()
     {
-        var count = await _context.RolePermissions.CountDocumentsAsync(Builders<RolePermission>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Mapping roles to permissions...");
+        _logger.LogInformation("Reconciling default role-to-permission mappings...");
         var dbRoles = await _context.Roles.Find(Builders<Role>.Filter.Empty).ToListAsync();
         var dbPerms = await _context.Permissions.Find(Builders<Permission>.Filter.Empty).ToListAsync();
-
-        var rolePermList = new List<RolePermission>();
 
         foreach (var role in dbRoles)
         {
@@ -125,19 +158,15 @@ public class SeedRunner
                     var perm = dbPerms.FirstOrDefault(p => p.Code == permCode);
                     if (perm != null)
                     {
-                        rolePermList.Add(new RolePermission
-                        {
-                            RoleId = role.Id,
-                            PermissionId = perm.Id
-                        });
+                        await _context.RolePermissions.UpdateOneAsync(
+                            x => x.RoleId == role.Id && x.PermissionId == perm.Id,
+                            Builders<RolePermission>.Update
+                                .SetOnInsert(x => x.RoleId, role.Id)
+                                .SetOnInsert(x => x.PermissionId, perm.Id),
+                            new UpdateOptions { IsUpsert = true });
                     }
                 }
             }
-        }
-
-        if (rolePermList.Any())
-        {
-            await _context.RolePermissions.InsertManyAsync(rolePermList);
         }
     }
 
@@ -180,79 +209,59 @@ public class SeedRunner
 
     #endregion
 
-    #region Catalog Seed Methods (M03)
-
-    private async Task SeedAuthorsAsync()
-    {
-        var count = await _context.Authors.CountDocumentsAsync(Builders<Author>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding authors...");
-        var authors = new List<Author>
-        {
-            new() { Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh", Biography = "Nhà văn nổi tiếng với những tác phẩm về tuổi thơ" },
-            new() { Name = "Tô Hoài", Slug = "to-hoai", Biography = "Tác giả của 'Dế Mèn phiêu lưu ký'" },
-            new() { Name = "Nam Cao", Slug = "nam-cao", Biography = "Nhà văn hiện thực phê phán xuất sắc" },
-            new() { Name = "Vũ Trọng Phụng", Slug = "vu-trong-phung", Biography = "Nhà văn trào phúng xuất sắc" },
-            new() { Name = "Nguyễn Du", Slug = "nguyen-du", Biography = "Đại thi hào dân tộc" },
-            new() { Name = "Hồ Chí Minh", Slug = "ho-chi-minh", Biography = "Lãnh tụ vĩ đại, nhà thơ lớn" },
-            new() { Name = "Xuân Quỳnh", Slug = "xuan-quynh", Biography = "Nhà thơ nữ với nhiều tác phẩm về tình yêu" },
-            new() { Name = "Nguyễn Minh Châu", Slug = "nguyen-minh-chau", Biography = "Nhà văn hiện đại xuất sắc" },
-            new() { Name = "Nguyễn Huy Thiệp", Slug = "nguyen-huy-thiep", Biography = "Nhà văn đương đại nổi tiếng" },
-            new() { Name = "Đỗ Chu", Slug = "do-chu", Biography = "Nhà văn với nhiều tác phẩm về miền Tây" }
-        };
-        await _context.Authors.InsertManyAsync(authors);
-    }
-
-    private async Task SeedPublishersAsync()
-    {
-        var count = await _context.Publishers.CountDocumentsAsync(Builders<Publisher>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding publishers...");
-        var publishers = new List<Publisher>
-        {
-            new() { Name = "NXB Trẻ", Slug = "nxb-tre", Address = "TP. Hồ Chí Minh", Contact = "028 1234 5678" },
-            new() { Name = "NXB Kim Đồng", Slug = "nxb-kim-dong", Address = "Hà Nội", Contact = "024 1234 5678" },
-            new() { Name = "NXB Văn Học", Slug = "nxb-van-hoc", Address = "Hà Nội", Contact = "024 8765 4321" },
-            new() { Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van", Address = "Hà Nội", Contact = "024 1234 8765" },
-            new() { Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia", Address = "Hà Nội", Contact = "024 5678 1234" }
-        };
-        await _context.Publishers.InsertManyAsync(publishers);
-    }
-
-    private async Task SeedCategoriesAsync()
-    {
-        var count = await _context.Categories.CountDocumentsAsync(Builders<Category>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding categories...");
-        var categories = new List<Category>
-        {
-            new() { Name = "Văn học", Slug = "van-hoc", Status = "ACTIVE" },
-            new() { Name = "Khoa học", Slug = "khoa-hoc", Status = "ACTIVE" },
-            new() { Name = "Kỹ năng sống", Slug = "ky-nang-song", Status = "ACTIVE" },
-            new() { Name = "Lịch sử", Slug = "lich-su", Status = "ACTIVE" },
-            new() { Name = "Thiếu nhi", Slug = "thieu-nhi", Status = "ACTIVE" },
-            new() { Name = "Tiểu thuyết", Slug = "tieu-thuyet", ParentId = null, Path = "/van-hoc/tieu-thuyet", Status = "ACTIVE" },
-            new() { Name = "Truyện ngắn", Slug = "truyen-ngan", ParentId = null, Path = "/van-hoc/truyen-ngan", Status = "ACTIVE" },
-            new() { Name = "Thơ", Slug = "tho", ParentId = null, Path = "/van-hoc/tho", Status = "ACTIVE" }
-        };
-        await _context.Categories.InsertManyAsync(categories);
-    }
+    #region Catalog Seed Methods (M03) & DigitalContent Seed Methods (M04)
 
     private async Task<List<Book>> SeedBooksAsync()
     {
         var count = await _context.Books.CountDocumentsAsync(Builders<Book>.Filter.Empty);
         if (count > 0)
         {
+            // Bộ dữ liệu demo hiện có luôn là sách miễn phí. Chỉ bộ LibraryHub Originals
+            // bên dưới mới yêu cầu thanh toán, giúp migration cũ không bất ngờ khóa sách.
+            var demoFilter = Builders<Book>.Filter.Regex("isbn", new BsonRegularExpression("^97860410000"));
+            await _context.Books.UpdateManyAsync(
+                demoFilter,
+                Builders<Book>.Update.Set(x => x.AccessType, "FREE").Set(x => x.Price, 0));
+            await EnsurePremiumBooksAsync();
             return await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
         }
 
-        _logger.LogInformation("Seeding 50+ books...");
-        var authors = await _context.Authors.Find(Builders<Author>.Filter.Empty).ToListAsync();
-        var publishers = await _context.Publishers.Find(Builders<Publisher>.Filter.Empty).ToListAsync();
-        var categories = await _context.Categories.Find(Builders<Category>.Filter.Empty).ToListAsync();
+        _logger.LogInformation("Seeding 50+ books with embedded metadata and chapters...");
+        
+        var authors = new List<BookAuthorSnapshot>
+        {
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Tô Hoài", Slug = "to-hoai" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nam Cao", Slug = "nam-cao" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Vũ Trọng Phụng", Slug = "vu-trong-phung" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Du", Slug = "nguyen-du" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Hồ Chí Minh", Slug = "ho-chi-minh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Xuân Quỳnh", Slug = "xuan-quynh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Minh Châu", Slug = "nguyen-minh-chau" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Huy Thiệp", Slug = "nguyen-huy-thiep" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Đỗ Chu", Slug = "do-chu" }
+        };
+
+        var publishers = new List<BookPublisherSnapshot>
+        {
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Trẻ", Slug = "nxb-tre" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Kim Đồng", Slug = "nxb-kim-dong" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Văn Học", Slug = "nxb-van-hoc" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia" }
+        };
+
+        var categories = new List<BookCategorySnapshot>
+        {
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Văn học", Slug = "van-hoc" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Khoa học", Slug = "khoa-hoc" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Kỹ năng sống", Slug = "ky-nang-song" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Lịch sử", Slug = "lich-su" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Thiếu nhi", Slug = "thieu-nhi" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Tiểu thuyết", Slug = "tieu-thuyet" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Truyện ngắn", Slug = "truyen-ngan" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Thơ", Slug = "tho" }
+        };
 
         var books = new List<Book>();
         var random = new Random();
@@ -289,7 +298,6 @@ public class SeedRunner
             ("Tắt đèn", "tat-den", "9786041000028", "Tiểu thuyết Ngô Tất Tố", 1939),
             ("Bước đường cùng", "buoc-duong-cung", "9786041000029", "Tiểu thuyết Nguyễn Công Hoan", 1938),
             ("Những ngày thơ ấu", "nhung-ngay-tho-au", "9786041000030", "Hồi ký Nguyên Hồng", 1938),
-            // Thêm 20 sách nữa để đạt 50+
             ("Đất nước đứng lên", "dat-nung-dung-len", "9786041000031", "Tiểu thuyết", 1954),
             ("Rừng xà nu", "rung-xa-nu", "9786041000032", "Truyện ngắn Nguyễn Trung Thành", 1965),
             ("Mùa lá rụng trong vườn", "mua-la-rung-trong-vuon", "9786041000033", "Truyện dài Ma Văn Kháng", 1985),
@@ -322,73 +330,21 @@ public class SeedRunner
             "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=400",
             "https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=400"
         };
+        
+        int totalEmbeddedChapters = 0;
 
         foreach (var (title, slug, isbn, summary, year) in bookData)
         {
-            var book = new Book
-            {
-                Title = title,
-                Slug = slug,
-                ISBN = isbn,
-                Summary = summary,
-                PublicationYear = year,
-                Language = "vi",
-                CoverAssetId = coverUrls[random.Next(coverUrls.Length)],
-                AccessType = random.Next(0, 3) == 0 ? "PREMIUM" : "FREE",
-                Status = "PUBLISHED",
-                TotalChapters = 0,
-                PublisherId = publishers[random.Next(publishers.Count)].Id,
-                CreatedBy = "system",
-                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
-                UpdatedAt = DateTime.UtcNow,
-                Stats = new BookStats
-                {
-                    ViewCount = random.Next(100, 5000),
-                    ReadingCount = random.Next(50, 2000),
-                    Rating = Math.Round(random.NextDouble() * 2 + 3, 1),
-                    RatingCount = random.Next(10, 150)
-                }
-            };
-            books.Add(book);
-        }
-
-        if (books.Any())
-        {
-            await _context.Books.InsertManyAsync(books);
-            _logger.LogInformation($"Seeded {books.Count} books");
-        }
-
-        return books;
-    }
-
-    #endregion
-
-    #region DigitalContent Seed Methods (M04)
-
-    private async Task SeedChaptersAsync(List<Book> books)
-    {
-        var count = await _context.Chapters.CountDocumentsAsync(Builders<Chapter>.Filter.Empty);
-        if (count > 0) return;
-
-        if (!books.Any()) return;
-
-        _logger.LogInformation("Seeding 100+ chapters...");
-        var chapters = new List<Chapter>();
-        var random = new Random();
-
-        foreach (var book in books)
-        {
+            var bookChapters = new List<BookChapter>();
             var chapterCount = random.Next(5, 15);
             for (int i = 1; i <= chapterCount; i++)
             {
                 var isPublished = random.Next(0, 5) < 4;
-
-                var chapter = new Chapter
+                var chapter = new BookChapter
                 {
-                    BookId = book.Id,
+                    ChapterId = ObjectId.GenerateNewId().ToString(),
                     Number = i,
                     Title = $"Chương {i}: {GenerateChapterTitle(random)}",
-                    // [SỬA] Dùng Content thay vì ContentJson
                     Content = new ChapterContent
                     {
                         Introduction = $"Giới thiệu chương {i}",
@@ -402,33 +358,134 @@ public class SeedRunner
                     },
                     WordCount = random.Next(500, 3000),
                     Status = isPublished ? "PUBLISHED" : "DRAFT",
-                    // [SỬA] Xóa Version và UpdatedBy
                     PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
                     CreatedBy = "system",
                     CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                     UpdatedAt = DateTime.UtcNow
                 };
-                chapters.Add(chapter);
+                bookChapters.Add(chapter);
             }
-        }
+            
+            totalEmbeddedChapters += bookChapters.Count;
 
-        if (chapters.Any())
-        {
-            await _context.Chapters.InsertManyAsync(chapters);
-            _logger.LogInformation($"Seeded {chapters.Count} chapters");
-
-            // Update total chapters for books
-            foreach (var book in books)
+            var book = new Book
             {
-                var publishedCount = chapters.Count(c => c.BookId == book.Id && c.Status == "PUBLISHED");
-                if (publishedCount > 0)
+                Title = title,
+                Slug = slug,
+                ISBN = isbn,
+                Summary = summary,
+                PublicationYear = year,
+                Language = "vi",
+                CoverAssetId = coverUrls[random.Next(coverUrls.Length)],
+                AccessType = "FREE",
+                Price = 0,
+                Status = "PUBLISHED",
+                TotalChapters = bookChapters.Count,
+                Publisher = publishers[random.Next(publishers.Count)],
+                Authors = new List<BookAuthorSnapshot> { authors[random.Next(authors.Count)] },
+                Categories = new List<BookCategorySnapshot> { categories[random.Next(categories.Count)] },
+                Chapters = bookChapters,
+                CreatedBy = "system",
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
+                UpdatedAt = DateTime.UtcNow,
+                Stats = new BookStats
                 {
-                    var update = Builders<Book>.Update.Set(b => b.TotalChapters, publishedCount);
-                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
+                    ViewCount = random.Next(100, 5000),
+                    ReadingCount = random.Next(50, 2000),
+                    Rating = 0.0,
+                    RatingCount = 0
                 }
-            }
+            };
+            books.Add(book);
         }
+
+        if (books.Any())
+        {
+            await _context.Books.InsertManyAsync(books);
+            _logger.LogInformation($"Seeded {books.Count} books with {totalEmbeddedChapters} embedded chapters");
+        }
+
+        await EnsurePremiumBooksAsync();
+        return await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
     }
+
+    private async Task EnsurePremiumBooksAsync()
+    {
+        var premiumCatalog = new[]
+        {
+            new { Title = "Thành Phố Sau Màn Mưa", Slug = "thanh-pho-sau-man-mua", Isbn = "9786049999001", Price = 49000m, Category = "Tiểu thuyết", Cover = "https://images.unsplash.com/photo-1519682337058-a94d519337bc?q=80&w=600" },
+            new { Title = "Mật Mã Của Những Vì Sao", Slug = "mat-ma-cua-nhung-vi-sao", Isbn = "9786049999002", Price = 59000m, Category = "Khoa học", Cover = "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=600" },
+            new { Title = "Bản Đồ Của Ký Ức", Slug = "ban-do-cua-ky-uc", Isbn = "9786049999003", Price = 39000m, Category = "Truyện ngắn", Cover = "https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=600" },
+            new { Title = "Đi Qua Những Ngày Xanh", Slug = "di-qua-nhung-ngay-xanh", Isbn = "9786049999004", Price = 45000m, Category = "Kỹ năng sống", Cover = "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=600" }
+        };
+
+        foreach (var item in premiumCatalog)
+        {
+            var existing = await _context.Books.Find(x => x.ISBN == item.Isbn).FirstOrDefaultAsync();
+            if (existing != null)
+            {
+                await _context.Books.UpdateOneAsync(
+                    x => x.Id == existing.Id,
+                    Builders<Book>.Update
+                        .Set(x => x.AccessType, "PREMIUM")
+                        .Set(x => x.Price, item.Price)
+                        .Set(x => x.Status, "PUBLISHED"));
+                continue;
+            }
+
+            var chapters = Enumerable.Range(1, 5).Select(number => new BookChapter
+            {
+                ChapterId = ObjectId.GenerateNewId().ToString(),
+                Number = number,
+                Title = $"Chương {number}: Hành trình mở ra",
+                Content = new ChapterContent
+                {
+                    Introduction = $"Nội dung bản quyền của {item.Title}.",
+                    Paragraphs = new List<Paragraph>
+                    {
+                        new() { Id = Guid.NewGuid().ToString(), Order = 1, Text = $"Chương {number} mở ra một lát cắt mới trong câu chuyện, nơi nhân vật phải lựa chọn giữa điều quen thuộc và một con đường chưa từng bước qua." },
+                        new() { Id = Guid.NewGuid().ToString(), Order = 2, Text = "Những chi tiết nhỏ dần kết nối thành một câu trả lời lớn hơn, nhưng cũng đặt ra thêm nhiều câu hỏi cho hành trình phía trước." },
+                        new() { Id = Guid.NewGuid().ToString(), Order = 3, Text = "Bản đọc đầy đủ được phát hành độc quyền trên LibraryHub và chỉ mở khóa sau khi thanh toán thành công." }
+                    },
+                    Conclusion = $"Kết thúc chương {number}."
+                },
+                WordCount = 950 + number * 120,
+                Status = "PUBLISHED",
+                PublishedAt = DateTime.UtcNow.AddDays(-number),
+                CreatedBy = "system",
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                UpdatedAt = DateTime.UtcNow
+            }).ToList();
+
+            var authorId = ObjectId.GenerateNewId().ToString();
+            var categoryId = ObjectId.GenerateNewId().ToString();
+            await _context.Books.InsertOneAsync(new Book
+            {
+                Title = item.Title,
+                Slug = item.Slug,
+                ISBN = item.Isbn,
+                Summary = $"<p><strong>LibraryHub Originals</strong> — ấn bản điện tử có bản quyền của <em>{item.Title}</em>. Nội dung đầy đủ được mở khóa sau khi thanh toán.</p>",
+                PublicationYear = 2026,
+                Language = "vi",
+                CoverAssetId = item.Cover,
+                AccessType = "PREMIUM",
+                Price = item.Price,
+                Status = "PUBLISHED",
+                TotalChapters = chapters.Count,
+                Publisher = new BookPublisherSnapshot { PublisherId = "libraryhub-originals", Name = "LibraryHub Originals", Slug = "libraryhub-originals" },
+                Authors = new List<BookAuthorSnapshot> { new() { AuthorId = authorId, Name = "Ban biên tập LibraryHub", Slug = "ban-bien-tap-libraryhub", Role = "AUTHOR", Order = 1 } },
+                Categories = new List<BookCategorySnapshot> { new() { CategoryId = categoryId, Name = item.Category, Slug = item.Category.ToLowerInvariant().Replace(' ', '-') } },
+                Chapters = chapters,
+                CreatedBy = "system",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Stats = new BookStats { ViewCount = 0, ReadingCount = 0, Rating = 0, RatingCount = 0 }
+            });
+        }
+
+        _logger.LogInformation("Premium catalog reconciled: {Count} LibraryHub Originals titles", premiumCatalog.Length);
+    }
+
     #endregion
 
     #region Inventory Seed Methods (M05)
@@ -511,49 +568,284 @@ public class SeedRunner
             "Ánh đèn vàng hắt ra từ căn phòng nhỏ, ấm áp và bình yên.",
             "Những giọt mưa lăn dài trên cửa kính, như những giọt lệ của bầu trời.",
             "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
-            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
+            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt muốn.",
             "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
             "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
         };
         return texts[random.Next(texts.Length)];
     }
-    private string GenerateChapterContent(Random random)
+
+    private async Task SeedReviewsAsync(List<Book> books)
     {
-        var paragraphs = new[]
+        var count = await _context.Reviews.CountDocumentsAsync(Builders<Review>.Filter.Empty);
+        if (count > 0) return;
+
+        _logger.LogInformation("Seeding sample book reviews...");
+        var users = await _context.Users.Find(Builders<User>.Filter.Empty).ToListAsync();
+        if (!users.Any() || !books.Any()) return;
+
+        var sampleComments = new[]
         {
-            "Trời hôm nay thật đẹp, nắng vàng rải nhẹ trên những tán cây xanh mướt.",
-            "Cơn gió nhẹ nhàng thổi qua, mang theo hương thơm của những bông hoa dại.",
-            "Tiếng chim hót líu lo như bản nhạc du dương của buổi sớm mai.",
-            "Trong không gian yên tĩnh, chỉ còn tiếng lá rơi xào xạc.",
-            "Ánh đèn vàng hắt ra từ căn phòng nhỏ, ấm áp và bình yên.",
-            "Những giọt mưa lăn dài trên cửa kính, như những giọt lệ của bầu trời.",
-            "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
-            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
-            "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
-            "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
+            "Sách rất hay và súc tích, các chương ngắn gọn dễ tiếp thu!",
+            "Tác phẩm tuyệt vời, xứng đáng nằm trong tủ sách cá nhân.",
+            "Nội dung lôi cuốn từ chương đầu tiên, rất đáng đọc.",
+            "Giá trị giáo dục cao, phù hợp cho mọi lứa tuổi độc giả.",
+            "Giọng văn mượt mà, sâu sắc và để lại nhiều suy ngẫm."
         };
 
-        var nodes = new List<object>();
-        var paragraphCount = random.Next(3, 8);
+        var reviews = new List<Review>();
+        var random = new Random();
 
-        for (int i = 0; i < paragraphCount; i++)
+        foreach (var book in books.Take(15))
         {
-            var selectedText = string.Join(" ", paragraphs
-                .OrderBy(_ => random.Next())
-                .Take(random.Next(2, 4)));
+            var reviewerCount = random.Next(2, 5);
+            var selectedUsers = users.OrderBy(_ => random.Next()).Take(reviewerCount).ToList();
 
-            nodes.Add(new
+            foreach (var u in selectedUsers)
             {
-                type = "paragraph",
-                content = new[] { new { type = "text", text = selectedText } }
+                var rating = random.Next(4, 6);
+                reviews.Add(new Review
+                {
+                    BookId = book.Id,
+                    UserId = u.Id,
+                    UserFullName = !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : "Độc giả",
+                    UserEmail = u.Email,
+                    UserAvatarUrl = u.Avatar,
+                    Rating = rating,
+                    Comment = sampleComments[random.Next(sampleComments.Length)],
+                    Status = "APPROVED",
+                    IsEdited = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 60)),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 60))
+                });
+            }
+        }
+
+        if (reviews.Any())
+        {
+            await _context.Reviews.InsertManyAsync(reviews);
+
+            var bookIds = reviews.Select(r => r.BookId).Distinct().ToList();
+            foreach (var bId in bookIds)
+            {
+                var bReviews = reviews.Where(r => r.BookId == bId).ToList();
+                var avgRating = Math.Round(bReviews.Average(r => r.Rating), 1);
+                var update = Builders<Book>.Update
+                    .Set(b => b.Stats.Rating, avgRating)
+                    .Set(b => b.Stats.RatingCount, bReviews.Count);
+                await _context.Books.UpdateOneAsync(b => b.Id == bId, update);
+            }
+        }
+    }
+
+    private async Task SyncAllBookRatingStatsAsync()
+    {
+        _logger.LogInformation("Syncing rating stats for all books with actual reviews in DB...");
+        var allBooks = await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
+        var allApprovedReviews = await _context.Reviews.Find(r => r.Status == "APPROVED").ToListAsync();
+
+        var reviewsByBook = allApprovedReviews.GroupBy(r => r.BookId).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var book in allBooks)
+        {
+            if (reviewsByBook.TryGetValue(book.Id, out var bReviews) && bReviews.Any())
+            {
+                var avgRating = Math.Round(bReviews.Average(r => r.Rating), 1);
+                var count = bReviews.Count;
+                if (book.Stats.Rating != avgRating || book.Stats.RatingCount != count)
+                {
+                    var update = Builders<Book>.Update
+                        .Set(b => b.Stats.Rating, avgRating)
+                        .Set(b => b.Stats.RatingCount, count);
+                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
+                }
+            }
+            else
+            {
+                if (book.Stats.Rating != 0.0 || book.Stats.RatingCount != 0)
+                {
+                    var update = Builders<Book>.Update
+                        .Set(b => b.Stats.Rating, 0.0)
+                        .Set(b => b.Stats.RatingCount, 0);
+                }
+            }
+        }
+    }
+
+    private async Task SeedPromotionsAsync()
+    {
+        var voucherCount = await _context.Vouchers.CountDocumentsAsync(FilterDefinition<Voucher>.Empty);
+        if (voucherCount == 0)
+        {
+            _logger.LogInformation("Seeding default Vouchers...");
+            await _context.Vouchers.InsertManyAsync(new[]
+            {
+                new Voucher { Code = "LH50OFF", DiscountType = "PERCENT", DiscountValue = 50, MinOrderValue = 10000, MaxUsage = 500, UsedCount = 124, ExpiresAt = DateTime.UtcNow.AddMonths(6), Status = "ACTIVE" },
+                new Voucher { Code = "HE5K", DiscountType = "FIXED", DiscountValue = 5000, MinOrderValue = 10000, MaxUsage = 1000, UsedCount = 450, ExpiresAt = DateTime.UtcNow.AddMonths(3), Status = "ACTIVE" },
+                new Voucher { Code = "SINHVIEN2026", DiscountType = "PERCENT", DiscountValue = 20, MinOrderValue = 10000, MaxUsage = 200, UsedCount = 200, ExpiresAt = DateTime.UtcNow.AddDays(-10), Status = "EXPIRED" }
             });
         }
 
-        return System.Text.Json.JsonSerializer.Serialize(new
+        var bannerCount = await _context.Banners.CountDocumentsAsync(FilterDefinition<Banner>.Empty);
+        if (bannerCount == 0)
         {
-            type = "doc",
-            content = nodes
-        });
+            _logger.LogInformation("Seeding default Banners...");
+            await _context.Banners.InsertManyAsync(new[]
+            {
+                new Banner { Title = "Chào Hè 2026 - Mở Kho Sách Số 10.000đ", Subtitle = "Khám phá hàng nghìn tác phẩm E-Book bản quyền đọc mượt mà trên mọi thiết bị", ImageUrl = "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1200", LinkUrl = "/books", IsActive = true, SortOrder = 1 },
+                new Banner { Title = "Flash Sale Đọc Sách Số Chỉ 5.000 VNĐ", Subtitle = "Thanh toán siêu tốc VietQR SePay tự động mở khóa ngay tức thì", ImageUrl = "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=1200", LinkUrl = "/books", IsActive = true, SortOrder = 2 }
+            });
+        }
+
+        var flashSaleCount = await _context.FlashSales.CountDocumentsAsync(FilterDefinition<FlashSale>.Empty);
+        if (flashSaleCount == 0)
+        {
+            _logger.LogInformation("Seeding default FlashSale...");
+            await _context.FlashSales.InsertOneAsync(new FlashSale
+            {
+                Name = "Giờ Vàng Giá Sách 5.000 VNĐ - Hè 2026",
+                OriginalPrice = 10000,
+                SalePrice = 5000,
+                StartTime = DateTime.UtcNow,
+                EndTime = DateTime.UtcNow.AddDays(7),
+                Status = "RUNNING"
+            });
+        }
+    }
+
+    private async Task SeedBorrowingsAndPaymentOrdersAsync(List<Book> books, List<User> users, LibraryBranch branch)
+    {
+        var paymentCount = await _context.PaymentOrders.CountDocumentsAsync(FilterDefinition<PaymentOrder>.Empty);
+        if (paymentCount < 40 && users.Any() && books.Any())
+        {
+            _logger.LogInformation("Seeding rich sample PaymentOrders across past 6 months...");
+            await _context.PaymentOrders.DeleteManyAsync(FilterDefinition<PaymentOrder>.Empty);
+
+            var payments = new List<PaymentOrder>();
+            var paidBooks = books.Where(b => b.AccessType == "PAID").ToList();
+            if (!paidBooks.Any()) paidBooks = books;
+
+            var today = DateTime.UtcNow;
+            int orderCounter = 1000;
+
+            for (int monthOffset = 6; monthOffset >= 0; monthOffset--)
+            {
+                int countForMonth = 5 + (6 - monthOffset) * 2;
+                for (int k = 0; k < countForMonth; k++)
+                {
+                    var book = paidBooks[(orderCounter + k) % paidBooks.Count];
+                    var user = users[(orderCounter + k) % users.Count];
+                    var code = (100000 + orderCounter).ToString();
+                    var daysAgo = (monthOffset * 30) + (k * 2);
+                    var dt = today.AddDays(-daysAgo).AddHours(k % 12);
+
+                    payments.Add(new PaymentOrder
+                    {
+                        OrderCode = code,
+                        UserId = user.Id,
+                        BookId = book.Id,
+                        BookTitle = book.Title,
+                        Amount = 10000,
+                        Status = "SUCCESS",
+                        QrCodeUrl = $"https://qr.sepay.vn/img?bank=VietinBank&acc=105886719416&template=compact&amount=10000&des=LH{code}",
+                        PaymentContent = $"LH{code} VietQR SePay",
+                        SePayTransactionId = $"SEPAY_TRX_{code}",
+                        CreatedAt = dt,
+                        PaidAt = dt.AddMinutes(2)
+                    });
+
+                    orderCounter++;
+                }
+            }
+
+            await _context.PaymentOrders.InsertManyAsync(payments);
+        }
+
+        var borrowingCount = await _context.Borrowings.CountDocumentsAsync(FilterDefinition<Borrowing>.Empty);
+        if (borrowingCount < 50 && users.Any() && books.Any())
+        {
+            _logger.LogInformation("Seeding rich sample Physical Borrowings across past 90 days...");
+
+            await _context.Borrowings.DeleteManyAsync(FilterDefinition<Borrowing>.Empty);
+            await _context.BorrowingItems.DeleteManyAsync(FilterDefinition<BorrowingItem>.Empty);
+
+            var borrowings = new List<Borrowing>();
+            var borrowingItems = new List<BorrowingItem>();
+            var adminUser = users.FirstOrDefault(u => u.Email == "admin@libraryhub.com") ?? users.First();
+            var random = new Random(42);
+
+            var today = DateTime.UtcNow;
+            int counter = 1;
+
+            // Rải đều 90 ngày: 2-4 lượt mượn mỗi ngày
+            for (int dayOffset = 90; dayOffset >= 0; dayOffset--)
+            {
+                var borrowDate = today.AddDays(-dayOffset);
+                int itemsCountForDay = 2 + (dayOffset % 3); // 2-4 per day
+
+                for (int j = 0; j < itemsCountForDay; j++)
+                {
+                    var user = users[(counter + j) % users.Count];
+                    // 65% RETURNED (CLOSED), 20% OPEN, 15% OVERDUE
+                    int roll = counter % 20;
+                    bool isReturned = roll < 13;
+                    bool isOverdue = !isReturned && dayOffset > 14 && roll >= 17;
+                    string status = isReturned ? "CLOSED" : "OPEN";
+
+                    var borrowingId = ObjectId.GenerateNewId().ToString();
+                    var loanDays = 14;
+                    var expectedReturn = isOverdue ? borrowDate.AddDays(3) : borrowDate.AddDays(loanDays);
+                    var closedAt = isReturned ? borrowDate.AddDays(random.Next(1, loanDays)) : (DateTime?)null;
+
+                    borrowings.Add(new Borrowing
+                    {
+                        Id = borrowingId,
+                        Code = $"LOAN-2026-{counter:D4}",
+                        UserId = user.Id,
+                        BranchId = branch.Id,
+                        Status = status,
+                        BorrowedAt = borrowDate,
+                        ExpectedReturnAt = expectedReturn,
+                        ClosedAt = closedAt,
+                        CreatedBy = adminUser.Id,
+                        Note = "Mượn sách giấy tại quầy thư viện"
+                    });
+
+                    // Add BorrowingItem
+                    borrowingItems.Add(new BorrowingItem
+                    {
+                        Id = ObjectId.GenerateNewId().ToString(),
+                        BorrowingId = borrowingId,
+                        CopyId = ObjectId.GenerateNewId().ToString(),
+                        DueAt = expectedReturn,
+                        ReturnedAt = closedAt,
+                        Status = isReturned ? "RETURNED" : (isOverdue ? "OVERDUE" : "BORROWED")
+                    });
+
+                    counter++;
+                }
+            }
+
+            await _context.Borrowings.InsertManyAsync(borrowings);
+            await _context.BorrowingItems.InsertManyAsync(borrowingItems);
+        }
+
+        // Boost book stats so trending/reading widgets show real numbers
+        _logger.LogInformation("Boosting book ViewCount & ReadingCount for trending widget...");
+        var allBooksForStats = await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
+        var rng = new Random(99);
+        foreach (var book in allBooksForStats)
+        {
+            if (book.Stats.ViewCount < 50)
+            {
+                var viewCount = rng.Next(120, 2500);
+                var readCount = rng.Next(30, Math.Max(31, viewCount / 2));
+                var upd = Builders<Book>.Update
+                    .Set(b => b.Stats.ViewCount, viewCount)
+                    .Set(b => b.Stats.ReadingCount, readCount);
+                await _context.Books.UpdateOneAsync(b => b.Id == book.Id, upd);
+            }
+        }
     }
 
     #endregion

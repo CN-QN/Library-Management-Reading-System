@@ -1,3 +1,4 @@
+using api.Database.Entities;
 using api.Modules.DigitalContent.DTOs;
 
 namespace api.Modules.DigitalContent.Services
@@ -7,42 +8,37 @@ namespace api.Modules.DigitalContent.Services
         /// <summary>
         /// Lấy thông tin chapter theo ID
         /// </summary>
-        Task<ChapterResponseDto?> GetByIdAsync(string id);
+        Task<BookChapter?> GetByIdAsync(string bookId, string chapterId);
 
         /// <summary>
         /// Lấy danh sách chapter của một sách
         /// </summary>
-        Task<List<ChapterResponseDto>> GetByBookIdAsync(string bookId);
+        Task<List<BookChapter>> GetByBookIdAsync(string bookId);
 
         /// <summary>
         /// Lấy nội dung chapter
         /// </summary>
-        Task<ChapterContentDto?> GetContentAsync(string id);
-
-        /// <summary>
-        /// Lấy số chapter tiếp theo
-        /// </summary>
-        Task<int> GetNextChapterNumberAsync(string bookId);
+        Task<ChapterContentDto?> GetContentAsync(string bookId, string chapterId);
 
         /// <summary>
         /// Tạo chapter mới
         /// </summary>
-        Task<ChapterResponseDto> CreateAsync(CreateChapterDto dto, string userId);
+        Task<BookChapter> CreateAsync(string bookId, CreateChapterDto dto, string userId);
 
         /// <summary>
         /// Cập nhật chapter
         /// </summary>
-        Task<ChapterResponseDto?> UpdateAsync(string id, UpdateChapterDto dto, string userId);
+        Task<BookChapter?> UpdateAsync(string bookId, string chapterId, UpdateChapterDto dto, string userId);
 
         /// <summary>
         /// Xuất bản chapter
         /// </summary>
-        Task<ChapterResponseDto?> PublishAsync(string id, string userId);
+        Task<BookChapter?> PublishAsync(string bookId, string chapterId, string userId);
 
         /// <summary>
         /// Xóa chapter (archive)
         /// </summary>
-        Task<bool> DeleteAsync(string id);
+        Task<bool> DeleteAsync(string bookId, string chapterId);
 
         /// <summary>
         /// Đổi thứ tự các chapter

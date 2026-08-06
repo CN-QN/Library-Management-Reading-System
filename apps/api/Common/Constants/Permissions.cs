@@ -57,6 +57,14 @@ public static class Permissions
     public const string ReviewModerate = "review.moderate";
     public const string ListManage = "list.manage";
 
+    // Payment (admin read)
+    public const string PaymentRead = "payment.read";
+
+    // Promotion management
+    public const string PromotionBannerManage = "promotion.banner.manage";
+    public const string PromotionFlashSaleManage = "promotion.flash_sale.manage";
+    public const string PromotionVoucherManage = "promotion.voucher.manage";
+
     // Report
     public const string ReportView = "report.view";
     public const string ReportExport = "report.export";

@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { BookCover } from "@/components/ui/book-cover";
-import type { Book } from "@/lib/api/books";
+import type { DashboardBook } from "@/lib/api/reports";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("vi-VN", {
@@ -10,7 +10,7 @@ function formatDate(iso: string) {
   });
 }
 
-export function RecentBooksWidget({ books }: { books: Book[] }) {
+export function RecentBooksWidget({ books }: { books: DashboardBook[] }) {
   return (
     <Card>
       <CardHeader title="Sách mới thêm" />

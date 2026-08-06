@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { getBookBySlug, getChapters, BookNotFoundError } from '@/lib/api/book-detail';
-import { getReadingProgress, getChapterDetail } from '@/lib/api/reading';
+import { getReadingProgress, getChapterDetail, BookAccessError } from '@/lib/api/reading';
 import { BookReaderContainer } from '@/components/features/reader';
 import type { Chapter } from '@/types/Reading';
 
@@ -138,7 +138,7 @@ export default async function BookReadPage({ params, searchParams }: BookReadPag
               Chưa có nội dung đọc
             </h1>
             <p className="text-stone-600 dark:text-stone-400 text-sm leading-relaxed">
-              Cuốn sách <span className="font-semibold text-stone-900 dark:text-stone-200">"{book.title}"</span> hiện chưa có chương nào được xuất bản hoặc phát hành nội dung đọc trực tuyến.
+              Cuốn sách <span className="font-semibold text-stone-900 dark:text-stone-200">&ldquo;{book.title}&rdquo;</span> hiện chưa có chương nào được xuất bản hoặc phát hành nội dung đọc trực tuyến.
             </p>
           </div>
 
@@ -157,7 +157,19 @@ export default async function BookReadPage({ params, searchParams }: BookReadPag
   }
 
   // 5. Fetch chi tiết nội dung chương hiện tại
-  const currentChapterDetail = await getChapterDetail(book.id, activeChapter.id);
+  let currentChapterDetail;
+  try {
+    currentChapterDetail = await getChapterDetail(book.id, activeChapter.id);
+  } catch (error) {
+    if (error instanceof BookAccessError) {
+      const detailHref = `/books/${encodeURIComponent(book.slug)}`;
+      if (error.status === 401) {
+        redirect(`/login?returnUrl=${encodeURIComponent(detailHref)}`);
+      }
+      redirect(`${detailHref}?paymentRequired=1`);
+    }
+    throw error;
+  }
 
   // 6. Map dữ liệu chapters từ ChapterSummary[] sang Chapter[] cho BookReaderContainer
   const mappedChapters: Chapter[] = chapters.map((ch) => ({

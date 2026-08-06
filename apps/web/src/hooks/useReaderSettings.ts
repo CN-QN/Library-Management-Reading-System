@@ -67,6 +67,7 @@ export function useReaderSettings(): UseReaderSettingsReturn {
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<ReaderSettings>;
         // Validate dữ liệu từ localStorage để tránh crash nếu dữ liệu bị hỏng
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSettings({
           theme: parsed.theme || DEFAULT_SETTINGS.theme,
           fontSize: parsed.fontSize || DEFAULT_SETTINGS.fontSize,

@@ -11,7 +11,7 @@ namespace api.Modules.Reading.Services
         private readonly IReadingProgressRepository _progressRepository;
         private readonly IReadingSessionRepository _sessionRepository;
         private readonly IBookRepository _bookRepository;
-        private readonly IChapterRepository _chapterRepository;
+
         private readonly RedisContext _redisContext;
         private readonly ILogger<ReadingProgressService> _logger;
 
@@ -19,14 +19,12 @@ namespace api.Modules.Reading.Services
             IReadingProgressRepository progressRepository,
             IReadingSessionRepository sessionRepository,
             IBookRepository bookRepository,
-            IChapterRepository chapterRepository,
             RedisContext redisContext,
             ILogger<ReadingProgressService> logger)
         {
             _progressRepository = progressRepository;
             _sessionRepository = sessionRepository;
             _bookRepository = bookRepository;
-            _chapterRepository = chapterRepository;
             _redisContext = redisContext;
             _logger = logger;
         }
@@ -41,16 +39,13 @@ namespace api.Modules.Reading.Services
             }
 
             // Validate Chapter
-            var chapter = await _chapterRepository.GetByIdAsync(dto.ChapterId);
+            var chapter = await _bookRepository.GetChapterByIdAsync(dto.BookId, dto.ChapterId);
             if (chapter == null)
             {
                 throw new KeyNotFoundException($"Không tìm thấy chương có ID: {dto.ChapterId}");
             }
 
-            if (chapter.BookId != dto.BookId)
-            {
-                throw new InvalidOperationException("Chương được chọn không thuộc về sách này.");
-            }
+
 
             var db = _redisContext.GetDatabase();
             var hashKey = $"reading_progress:{userId}:{dto.BookId}";
@@ -144,7 +139,7 @@ namespace api.Modules.Reading.Services
             }
 
             // Validate Chapter
-            var chapter = await _chapterRepository.GetByIdAsync(dto.ChapterId);
+            var chapter = await _bookRepository.GetChapterByIdAsync(dto.BookId, dto.ChapterId);
             if (chapter == null)
             {
                 throw new KeyNotFoundException($"Không tìm thấy chương có ID: {dto.ChapterId}");

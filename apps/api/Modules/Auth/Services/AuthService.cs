@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace api.Auth;
 
-public class AuthService
+public class AuthService : IUserPermissionResolver
 {
     private readonly MongoDbContext _context;
     private readonly RedisContext _redisContext;
@@ -94,6 +94,11 @@ public class AuthService
         return await GenerateLoginSessionAsync(user, device, ipAddress);
     }
 
+    public async Task<LoginResponse> LoginWithoutPasswordAsync(User user, string ipAddress, string device)
+    {
+        return await GenerateLoginSessionAsync(user, device, ipAddress);
+    }
+
     public async Task<LoginResponse> RefreshAsync(RefreshRequest request, string ipAddress)
     {
         var tokenHash = _jwtService.HashToken(request.RefreshToken);
@@ -150,11 +155,42 @@ public class AuthService
             Email = user.Email,
             StudentCode = user.StudentCode,
             FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            NotifyBookAvailable = user.NotifyBookAvailable,
             BranchId = user.BranchId,
             Avatar = user.Avatar,
             Roles = roles,
             Permissions = permissions
         };
+    }
+
+    public async Task<UserProfileDto> UpdateProfileAsync(string userId, UpdateProfileDto dto)
+    {
+        var user = await _context.Users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null)
+        {
+            throw new UnauthorizedException("User not found.");
+        }
+
+        var updateDef = Builders<User>.Update.Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+            updateDef = updateDef.Set(u => u.FullName, dto.FullName.Trim());
+
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+            updateDef = updateDef.Set(u => u.Email, dto.Email.Trim().ToLower());
+
+        if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
+            updateDef = updateDef.Set(u => u.PhoneNumber, dto.PhoneNumber.Trim());
+
+        if (!string.IsNullOrWhiteSpace(dto.Avatar))
+            updateDef = updateDef.Set(u => u.Avatar, dto.Avatar.Trim());
+
+        if (dto.NotifyBookAvailable.HasValue)
+            updateDef = updateDef.Set(u => u.NotifyBookAvailable, dto.NotifyBookAvailable.Value);
+
+        await _context.Users.UpdateOneAsync(u => u.Id == userId, updateDef);
+        return await GetProfileAsync(userId);
     }
 
     public async Task<List<string>> GetCachedPermissionsAsync(string userId)

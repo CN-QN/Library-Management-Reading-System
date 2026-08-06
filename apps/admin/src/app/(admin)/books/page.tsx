@@ -84,12 +84,12 @@ export default function BooksListPage() {
     {
       key: "authors",
       header: "Tác giả",
-      render: (book) => book.authorNames.join(", ") || "—",
+      render: (book) => book.authorNames?.join(", ") || "—",
     },
     {
       key: "category",
       header: "Thể loại",
-      render: (book) => book.categoryNames.join(", ") || "—",
+      render: (book) => book.categoryNames?.join(", ") || "—",
     },
     {
       key: "status",

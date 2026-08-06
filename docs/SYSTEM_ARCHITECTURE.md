@@ -1,5 +1,7 @@
 # Sơ đồ Kiến trúc Hệ thống (System Architecture Diagram)
 
+> Cập nhật 2026-08-06: `apps/admin` là admin portal duy nhất. Admin APIs nằm dưới `/api/admin` và được bảo vệ bằng permission filter. Cloudinary/SMTP chỉ được gọi từ backend; metadata media, campaigns, settings và báo cáo được persist hoặc aggregate từ MongoDB. Xem [admin-api-contracts.md](admin-api-contracts.md).
+
 Tài liệu này mô tả sơ đồ kiến trúc tổng thể của dự án **LibraryHub (Hệ thống Quản lý Thư viện và Đọc sách Online)** do **Người 1 (Tech Lead)** xây dựng, phục vụ cho việc tích hợp và bàn giao cho các thành viên trong nhóm.
 
 ---

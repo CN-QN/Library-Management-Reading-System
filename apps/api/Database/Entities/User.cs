@@ -31,6 +31,9 @@ public class User
     [BsonElement("avatar")]
     public string? Avatar { get; set; }
 
+    [BsonElement("googleSubject")]
+    public string? GoogleSubject { get; set; }
+
     [BsonElement("lastLoginAt")]
     public DateTime? LastLoginAt { get; set; }
 
@@ -39,4 +42,16 @@ public class User
 
     [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [BsonElement("phoneNumber")]
+    public string? PhoneNumber { get; set; }
+
+    [BsonElement("notifyBookAvailable")]
+    public bool NotifyBookAvailable { get; set; } = true;
+
+    [BsonElement("resetToken")]
+    public string? ResetToken { get; set; }
+
+    [BsonElement("resetTokenExpires")]
+    public DateTime? ResetTokenExpires { get; set; }
 }

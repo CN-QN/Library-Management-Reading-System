@@ -3,7 +3,7 @@ import { TableSkeleton } from "./skeleton";
 
 export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-slate-200">
+    <div className="w-full overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
       <table className={`w-full text-left text-sm ${className ?? ""}`} {...props} />
     </div>
   );
@@ -18,7 +18,7 @@ export function TableBody({ children }: { children: ReactNode }) {
 }
 
 export function TableRow({ children }: { children: ReactNode }) {
-  return <tr className="hover:bg-slate-50">{children}</tr>;
+  return <tr className="bg-white hover:bg-slate-50/70 transition-colors">{children}</tr>;
 }
 
 export function TableHeadCell({ children }: { children: ReactNode }) {
@@ -59,7 +59,7 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+      <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-100 ring-dashed">
         {emptyMessage}
       </div>
     );

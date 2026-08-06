@@ -87,7 +87,7 @@ public class UsersController : ControllerBase
 
     private string? GetCurrentUserBranchIdScope()
     {
-        if (User.IsInRole("SUPER_ADMIN") || User.IsInRole("CONTENT_EDITOR"))
+        if (User.IsInRole("SUPER_ADMIN") || User.IsInRole("CONTENT_EDITOR") || User.IsInRole("ADMIN") || User.IsInRole("LIBRARIAN"))
         {
             return null; // Global access
         }

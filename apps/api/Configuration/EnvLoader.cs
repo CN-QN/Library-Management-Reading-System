@@ -114,6 +114,16 @@ public static class EnvLoader
 
         // 4. CORS
         if (env.TryGetValue("CORS_ORIGINS", out var corsOrigins)) SetIfEmpty("CORS_ORIGINS", corsOrigins);
+
+        Bridge(env, "GOOGLE_CLIENT_ID", "Google__ClientId");
+        Bridge(env, "EMAIL_HOST", "Email__Host"); Bridge(env, "EMAIL_PORT", "Email__Port");
+        Bridge(env, "EMAIL_ENABLE_SSL", "Email__EnableSsl"); Bridge(env, "EMAIL_FROM_ADDRESS", "Email__FromAddress");
+        Bridge(env, "EMAIL_FROM_NAME", "Email__FromName"); Bridge(env, "EMAIL_USERNAME", "Email__Username");
+        Bridge(env, "EMAIL_PASSWORD", "Email__Password"); Bridge(env, "WEB_BASE_URL", "Email__WebBaseUrl");
+        Bridge(env, "CLOUDINARY_CLOUD_NAME", "Cloudinary__CloudName"); Bridge(env, "CLOUDINARY_API_KEY", "Cloudinary__ApiKey");
+        Bridge(env, "CLOUDINARY_API_SECRET", "Cloudinary__ApiSecret"); Bridge(env, "SEPAY_BANK_ACCOUNT", "SePay__BankAccount");
+        Bridge(env, "SEPAY_BANK_NAME", "SePay__BankName"); Bridge(env, "SEPAY_ACCOUNT_NAME", "SePay__AccountName");
+        Bridge(env, "SEPAY_API_KEY", "SePay__ApiKey");
     }
 
     private static void SetIfEmpty(string key, string value)
@@ -122,5 +132,10 @@ public static class EnvLoader
         {
             Environment.SetEnvironmentVariable(key, value);
         }
+    }
+
+    private static void Bridge(Dictionary<string, string> env, string source, string target)
+    {
+        if (env.TryGetValue(source, out var value)) SetIfEmpty(target, value);
     }
 }

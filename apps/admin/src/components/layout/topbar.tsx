@@ -48,7 +48,7 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         {user && (
           <div className="text-right">
             <p className="text-sm font-medium text-slate-900">{user.fullName}</p>
-            <p className="text-xs text-slate-500">{user.roles.join(", ")}</p>
+            <p className="text-xs text-slate-500">{user.roles?.join(", ") || "READER"}</p>
           </div>
         )}
         <button

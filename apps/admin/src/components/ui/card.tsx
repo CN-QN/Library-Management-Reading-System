@@ -7,7 +7,7 @@ function cx(...classes: Array<string | false | undefined>) {
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cx("rounded-xl border border-slate-200 bg-white shadow-sm", className)}
+      className={cx("rounded-2xl bg-white shadow-sm ring-1 ring-slate-100", className)}
       {...props}
     />
   );
@@ -27,7 +27,7 @@ export function CardHeader({
   return (
     <div
       className={cx(
-        "flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4",
+        "flex items-start justify-between gap-4 border-b border-slate-100/70 px-5 py-4",
         className
       )}
     >
@@ -47,7 +47,7 @@ export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cx("border-t border-slate-100 px-5 py-3", className)}
+      className={cx("border-t border-slate-100/70 px-5 py-3", className)}
       {...props}
     />
   );

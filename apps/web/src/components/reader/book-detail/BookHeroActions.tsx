@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Bookmark, BookmarkCheck } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, QrCode, CheckCircle2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth-store';
 import { getBookmarked, toggleBookmarked } from '@/lib/api/mocks/bookmarks.mocks';
+import { checkBookAccess } from '@/lib/api/payment';
+import { PaymentModal } from '@/components/features/payment/PaymentModal';
 import { BOOK_DETAIL_COPY } from './BookDetailCopy';
 import type { BookDetail, ChapterSummary, ReadingProgressDetail } from '@/types/BookDetail';
 import { cn } from '@/lib/utils';
@@ -24,21 +26,30 @@ export interface BookHeroActionsProps {
 
 /**
  * BookHeroActions - Client Component quản lý các hành động chính trong khối Hero của trang chi tiết sách:
- * Hiển thị thanh tiến độ đọc, nút CTA Đọc sách / Tiếp tục đọc và nút Đánh dấu yêu thích (Bookmark).
- *
- * Dùng ở: Khối Hero bên phải của trang chi tiết sách (/books/[slug]).
- *
- * @param book - Dữ liệu chi tiết cuốn sách
- * @param firstChapter - Thông tin chương 1 để bắt đầu đọc
- * @param progress - Tiến độ đọc sách của người dùng
+ * Hiển thị thanh tiến độ đọc, nút CTA Đọc sách / Tiếp tục đọc, nút Đánh dấu yêu thích và Nút Mua sách Premium VietQR SePay.
  */
 export function BookHeroActions({ book, firstChapter, progress }: BookHeroActionsProps) {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const userId = user?.id || null;
 
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState<boolean>(false);
+  const [hasPaidAccess, setHasPaidAccess] = useState<boolean>(false);
 
-  // Khởi tạo trạng thái bookmark từ localStorage phía client bất đồng bộ để tránh cascading render / hydration mismatch
+  const isPaidBook = book.accessType === 'PAID' || book.accessType === 'PREMIUM';
+
+  // Kiểm tra quyền truy cập sách Premium
+  useEffect(() => {
+    if (isAuthenticated && isPaidBook && book.id) {
+      checkBookAccess(book.id)
+        .then((res) => {
+          if (res?.hasAccess) setHasPaidAccess(true);
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated, isPaidBook, book.id]);
+
+  // Khởi tạo trạng thái bookmark
   useEffect(() => {
     let isMounted = true;
     Promise.resolve().then(() => {
@@ -56,27 +67,31 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
     setIsBookmarked(newState);
   };
 
-  // Xác định href cho nút Đọc sách / Tiếp tục đọc theo chuẩn Issue #44
-  let readHref: string | null = null;
+  // Xác định href cho nút Đọc sách / Tiếp tục đọc
+  let rawReadTarget: string | null = null;
   let isContinue = false;
 
-  if (progress && Number.isFinite(progress.chapterNumber) && progress.chapterNumber > 0) {
-    // Nếu đã có tiến độ hợp lệ -> Tiếp tục đọc tại vị trí đang đọc dở
+  if (isAuthenticated && progress && Number.isFinite(progress.chapterNumber) && progress.chapterNumber > 0) {
     const scrollPos = Number.isFinite(progress.scrollPosition) ? progress.scrollPosition : 0;
-    readHref = `/books/${encodeURIComponent(book.slug)}/read?chapter=${progress.chapterNumber}&position=${scrollPos}`;
+    rawReadTarget = `/books/${encodeURIComponent(book.slug)}/read?chapter=${progress.chapterNumber}&position=${scrollPos}`;
     isContinue = true;
   } else if (firstChapter) {
-    // Nếu chưa có tiến độ nhưng có chương đầu tiên -> Bắt đầu đọc từ chương 1
-    readHref = `/books/${encodeURIComponent(book.slug)}/read?chapter=${firstChapter.number}&position=0`;
+    rawReadTarget = `/books/${encodeURIComponent(book.slug)}/read?chapter=${firstChapter.number}&position=0`;
   }
 
-  // Chuẩn hóa progress percentage từ 0 đến 100
+  const readHref = rawReadTarget
+    ? isAuthenticated
+      ? rawReadTarget
+      : `/login?returnUrl=${encodeURIComponent(rawReadTarget)}`
+    : null;
+
   const progressPercent = progress ? Math.min(100, Math.max(0, progress.percentage)) : 0;
+  const canRead = !isPaidBook || hasPaidAccess;
 
   return (
     <div className="space-y-4 pt-2">
-      {/* Khối Tiến độ đọc (nếu user đã đọc sách này) */}
-      {isContinue && progress && (
+      {/* Khối Tiến độ đọc */}
+      {isAuthenticated && isContinue && progress && (
         <div className="p-4 rounded-lg border bg-secondary/30 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="flex items-center gap-1.5 text-primary">
@@ -96,9 +111,9 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
         </div>
       )}
 
-      {/* Khối các Nút Hành động CTA chính (Đọc & Bookmark) */}
+      {/* Khối Nút Hành động */}
       <div className="flex flex-wrap items-center gap-4">
-        {readHref ? (
+        {readHref && canRead ? (
           <Link
             href={readHref}
             className={cn(
@@ -109,6 +124,21 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
             <BookOpen className="w-5 h-5 mr-2" />
             {isContinue ? BOOK_DETAIL_COPY.continueReading : BOOK_DETAIL_COPY.startReading}
           </Link>
+        ) : isPaidBook && !hasPaidAccess ? (
+          <Button
+            size="lg"
+            onClick={() => {
+              if (!isAuthenticated) {
+                window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+                return;
+              }
+              setIsPaymentOpen(true);
+            }}
+            className="min-w-[190px] font-semibold shadow-md"
+          >
+            <QrCode className="w-5 h-5 mr-2" />
+            Mua để đọc{book.price > 0 ? ` · ${book.price.toLocaleString('vi-VN')} ₫` : ''}
+          </Button>
         ) : (
           <Button disabled variant="secondary" size="lg" className="min-w-[160px]">
             <BookOpen className="w-5 h-5 mr-2" />
@@ -116,7 +146,15 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
           </Button>
         )}
 
-        {/* Nút Toggle Bookmark */}
+        {/* Nút Mua sách Premium qua VietQR SePay */}
+        {isPaidBook && hasPaidAccess && (
+          <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+            <CheckCircle2 className="w-5 h-5" />
+            Đã mở khóa Premium
+          </span>
+        )}
+
+        {/* Nút Bookmark */}
         <Button
           variant={isBookmarked ? 'secondary' : 'outline'}
           size="lg"
@@ -138,6 +176,18 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
           )}
         </Button>
       </div>
+
+      {/* Modal Thanh toán VietQR SePay */}
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        bookId={book.id}
+        bookTitle={book.title}
+        onPaymentSuccess={() => {
+          setHasPaidAccess(true);
+        }}
+      />
     </div>
   );
 }
+

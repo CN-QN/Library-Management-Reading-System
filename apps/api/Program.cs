@@ -21,6 +21,8 @@ using api.Modules.Notifications.Services;
 using api.Modules.Files.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
+using api.Modules.Payment.Services;
+using api.Modules.Media;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -49,6 +51,8 @@ try
     builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDb"));
     builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection("Redis"));
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+    builder.Services.Configure<GoogleSettings>(builder.Configuration.GetSection("Google"));
+    builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 
     builder.Services.AddSingleton<MongoDbContext>();
     builder.Services.AddSingleton<RedisContext>();
@@ -75,6 +79,10 @@ try
 
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<IUserPermissionResolver>(sp => sp.GetRequiredService<AuthService>());
+    builder.Services.AddHttpClient<IGoogleTokenVerifier, GoogleTokenVerifier>();
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+    builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<RolesService>();
 builder.Services.AddScoped<
@@ -82,7 +90,6 @@ builder.Services.AddScoped<
     api.Modules.Circulation.Services.BorrowingService
 >();
     builder.Services.AddScoped<IBookService, BookService>();
-    builder.Services.AddScoped<IAuthorService, AuthorService>();
     builder.Services.AddScoped<IReviewService, ReviewService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
@@ -111,14 +118,19 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<ICopyService, CopyService>();
 
     builder.Services.AddScoped<IBookRepository, BookRepository>();
-    builder.Services.AddScoped<IChapterRepository, ChapterRepository>();
-    builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
-    builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
     builder.Services.AddScoped<ICopyRepository, CopyRepository>();
-    builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+
+    // ===== PAYMENT & CLOUDINARY MODULES =====
+    builder.Services.Configure<SePaySettings>(builder.Configuration.GetSection("SePay"));
+    builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
+    builder.Services.AddScoped<IPaymentService, PaymentService>();
+    builder.Services.AddSingleton<IMediaProcessor, ImageSharpMediaProcessor>();
+    builder.Services.AddHttpClient<ICloudinaryClient, CloudinaryClient>();
 
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
@@ -232,10 +244,16 @@ builder.Services.AddScoped<
         try
         {
             var indexCreator = services.GetRequiredService<IndexCreator>();
-            var seedRunner = services.GetRequiredService<SeedRunner>();
-
             await indexCreator.CreateIndexesAsync();
-            await seedRunner.RunSeedAsync();
+
+            var shouldSeed = args.Contains("--seed") || args.Contains("seed");
+            if (shouldSeed)
+            {
+                Log.Information("Running database seed on demand (--seed flag detected)...");
+                var seedRunner = services.GetRequiredService<SeedRunner>();
+                await seedRunner.RunSeedAsync();
+                Log.Information("Database seed completed successfully.");
+            }
         }
         catch (Exception ex)
         {
@@ -246,7 +264,6 @@ builder.Services.AddScoped<
     app.UseMiddleware<TraceIdMiddleware>();
     app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
-    app.UseMiddleware<RateLimitMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
 
     if (app.Environment.IsDevelopment())
@@ -258,6 +275,7 @@ builder.Services.AddScoped<
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<api.Modules.Payment.Hubs.PaymentHub>("/hubs/payment");
 
     await app.RunAsync();
 }
@@ -269,3 +287,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

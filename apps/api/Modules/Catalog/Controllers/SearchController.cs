@@ -11,19 +11,13 @@ namespace api.Modules.Catalog.Controllers
     [Route("api/[controller]")]
     public class SearchController : ControllerBase
     {
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly IAuthorRepository _authorRepository;
         private readonly IBookRepository _bookRepository;
         private readonly ILogger<SearchController> _logger;
 
         public SearchController(
-            ICategoryRepository categoryRepository,
-            IAuthorRepository authorRepository,
             IBookRepository bookRepository,
             ILogger<SearchController> logger)
         {
-            _categoryRepository = categoryRepository;
-            _authorRepository = authorRepository;
             _bookRepository = bookRepository;
             _logger = logger;
         }
@@ -41,22 +35,30 @@ namespace api.Modules.Catalog.Controllers
         {
             try
             {
-                var categories = await _categoryRepository.GetAllAsync();
-                var authors = await _authorRepository.GetAllAsync();
+                var books = await _bookRepository.GetAllAsync();
+                
+                var categories = books.SelectMany(b => b.Categories)
+                    .GroupBy(c => c.CategoryId)
+                    .Select(g => g.First())
+                    .OrderBy(c => c.Name)
+                    .ToList();
+                
+                var authors = books.SelectMany(b => b.Authors)
+                    .GroupBy(a => a.AuthorId)
+                    .Select(g => g.First())
+                    .OrderBy(a => a.Name)
+                    .ToList();
 
                 var publishedCount = await _bookRepository.CountByStatusAsync("PUBLISHED");
 
                 var result = new
                 {
                     Categories = categories
-                        .Where(c => c.Status == "ACTIVE")
-                        .Select(c => new { c.Id, c.Name, c.Slug, c.ParentId })
-                        .OrderBy(c => c.Name)
+                        .Select(c => new { Id = c.CategoryId, c.Name, c.Slug, ParentId = (string?)null })
                         .ToList(),
 
                     Authors = authors
-                        .Select(a => new { a.Id, a.Name, a.Slug })
-                        .OrderBy(a => a.Name)
+                        .Select(a => new { Id = a.AuthorId, a.Name, a.Slug })
                         .ToList(),
 
                     SortOptions = new[]

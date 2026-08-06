@@ -30,15 +30,9 @@ public class MongoDbContext
     public IMongoCollection<LibraryBranch> LibraryBranches => _database.GetCollection<LibraryBranch>("library_branches");
 
     // ===== CATALOG (M03) =====
-    public IMongoCollection<Author> Authors => _database.GetCollection<Author>("authors");
-    public IMongoCollection<Publisher> Publishers => _database.GetCollection<Publisher>("publishers"); // ← THÊM DÒNG NÀY
-    public IMongoCollection<Category> Categories => _database.GetCollection<Category>("categories");
     public IMongoCollection<Book> Books => _database.GetCollection<Book>("books");
-    public IMongoCollection<BookAuthor> BookAuthors => _database.GetCollection<BookAuthor>("book_authors");
-    public IMongoCollection<BookCategory> BookCategories => _database.GetCollection<BookCategory>("book_categories");
 
     // ===== DIGITAL CONTENT (M04) =====
-    public IMongoCollection<Chapter> Chapters => _database.GetCollection<Chapter>("chapters");
     public IMongoCollection<DigitalAsset> DigitalAssets => _database.GetCollection<DigitalAsset>("digital_assets");
 
     // ===== INVENTORY (M05) =====
@@ -59,12 +53,21 @@ public class MongoDbContext
 
     // ===== NOTIFICATIONS (M13) =====
     public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("notifications");
+    public IMongoCollection<EmailCampaign> EmailCampaigns => _database.GetCollection<EmailCampaign>("email_campaigns");
 
     // ===== REVIEWS (M11) =====
     public IMongoCollection<Review> Reviews => _database.GetCollection<Review>("reviews");
 
+    // ===== PAYMENTS & PROMOTIONS (SEPAY & PROMO) =====
+    public IMongoCollection<PaymentOrder> PaymentOrders => _database.GetCollection<PaymentOrder>("payment_orders");
+    public IMongoCollection<UserBookAccess> UserBookAccesses => _database.GetCollection<UserBookAccess>("user_book_accesses");
+    public IMongoCollection<Voucher> Vouchers => _database.GetCollection<Voucher>("vouchers");
+    public IMongoCollection<Banner> Banners => _database.GetCollection<Banner>("banners");
+    public IMongoCollection<FlashSale> FlashSales => _database.GetCollection<FlashSale>("flash_sales");
+
     // ===== SYSTEM SETTINGS (M15) =====
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("system_settings");
+    public IMongoCollection<FileAsset> FileAssets => _database.GetCollection<FileAsset>("file_assets");
 
     // Generic helper to get any collection by name
     public IMongoCollection<T> GetCollection<T>(string name)

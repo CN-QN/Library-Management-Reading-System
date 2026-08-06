@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, History, Library } from 'lucide-react';
+import { BookOpen, History, Library, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ProfileTabType } from '@/types/Profile';
@@ -20,13 +20,14 @@ export interface ProfileTabsNavProps {
     reading: number;
     history: number;
     borrowed: number;
+    payments?: number;
   };
 }
 
 /**
  * ProfileTabsNav - Thanh tab điều hướng giữa các khu vực nội dung trong hồ sơ độc giả.
  *
- * Cho phép chuyển đổi URL-driven giữa: Sách đang đọc dở, Lịch sử sách đã đọc xong, và Sách mượn vật lý.
+ * Cho phép chuyển đổi URL-driven giữa: Sách đang đọc dở, Lịch sử sách đã đọc xong, Sách mượn vật lý và Lịch sử thanh toán.
  *
  * Dùng ở: Trang hồ sơ cá nhân độc giả (/profile).
  */
@@ -49,6 +50,12 @@ export function ProfileTabsNav({ activeTab, onChangeTab, counts }: ProfileTabsNa
       label: 'Sách mượn thư viện',
       icon: Library,
       count: counts.borrowed,
+    },
+    {
+      id: 'payments' as ProfileTabType,
+      label: 'Lịch sử mua sách',
+      icon: CreditCard,
+      count: counts.payments ?? 0,
     },
   ];
 

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using api.Auth;
 using api.Common.Models;
+using api.Common.Constants;
 using api.Modules.Catalog.DTOs;
 using api.Modules.Catalog.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -202,6 +203,28 @@ namespace api.Modules.Catalog.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi duyệt bài đánh giá {Id}.", id);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi duyệt đánh giá."));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Lấy danh sách tất cả bài đánh giá trên toàn hệ thống
+        /// </summary>
+        [HttpGet("admin/all")]
+        [RequirePermission(Permissions.ReviewModerate)]
+        public async Task<IActionResult> GetAllReviews(
+            [FromQuery] string? status,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var result = await _reviewService.GetAllReviewsAsync(status, page, pageSize);
+                return Ok(ApiResponse<PagedResult<ReviewResponseDto>>.SuccessResponse(result, "Lấy tất cả bài đánh giá thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách đánh giá cho admin.");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy đánh giá."));
             }
         }
 

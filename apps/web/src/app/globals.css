@@ -130,3 +130,13 @@
     @apply font-sans;
   }
 }
+
+.book-summary p { margin: 0.5rem 0; }
+.book-summary h1, .book-summary h2, .book-summary h3 { margin: 0.85rem 0 0.4rem; color: hsl(var(--foreground)); font-weight: 700; }
+.book-summary h1 { font-size: 1.35rem; }
+.book-summary h2 { font-size: 1.2rem; }
+.book-summary h3 { font-size: 1.05rem; }
+.book-summary ul { margin: 0.5rem 0; list-style: disc; padding-left: 1.5rem; }
+.book-summary ol { margin: 0.5rem 0; list-style: decimal; padding-left: 1.5rem; }
+.book-summary blockquote { margin: 0.75rem 0; border-left: 3px solid hsl(var(--primary)); padding-left: 0.9rem; font-style: italic; }
+.book-summary a { color: hsl(var(--primary)); text-decoration: underline; }

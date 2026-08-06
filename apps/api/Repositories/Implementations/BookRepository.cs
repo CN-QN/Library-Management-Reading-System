@@ -1,7 +1,8 @@
+using api.Common.Validation;
 using api.Database.Entities;
 using api.Repositories.Interfaces;
+using MongoDB.Bson;
 using MongoDB.Driver;
-using MongoDB.Bson; 
 
 namespace api.Repositories.Implementations
 {
@@ -45,6 +46,7 @@ namespace api.Repositories.Implementations
 
         public async Task UpdateAsync(string id, Book book)
         {
+            BookDocumentSizeGuard.Validate(book);
             var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
             await _collection.ReplaceOneAsync(filter, book);
         }
@@ -57,13 +59,13 @@ namespace api.Repositories.Implementations
 
         // [SỬA LỖI] Cập nhật SearchAsync để lọc theo CategoryId, AuthorId, AccessType, Availability và sắp xếp động
         public async Task<(List<Book> Items, long Total)> SearchAsync(
-            string? keyword, 
-            string? categoryId, 
-            string? authorId, 
-            string? status, 
+            string? keyword,
+            string? categoryId,
+            string? authorId,
+            string? status,
             string? availability,
             string? accessType,
-            int page, 
+            int page,
             int limit,
             string sortBy = "createdAt",
             string sortOrder = "desc")
@@ -79,16 +81,18 @@ namespace api.Repositories.Implementations
                 filters.Add(keywordFilter);
             }
 
-            // Lọc theo CategoryId
+            // Lọc theo CategoryId (embedded snapshot)
             if (!string.IsNullOrEmpty(categoryId))
             {
-                filters.Add(filterBuilder.AnyEq(b => b.CategoryIds, categoryId));
+                filters.Add(filterBuilder.ElemMatch(b => b.Categories,
+                    Builders<BookCategorySnapshot>.Filter.Eq(c => c.CategoryId, categoryId)));
             }
 
-            // Lọc theo AuthorId
+            // Lọc theo AuthorId (embedded snapshot)
             if (!string.IsNullOrEmpty(authorId))
             {
-                filters.Add(filterBuilder.AnyEq(b => b.AuthorIds, authorId));
+                filters.Add(filterBuilder.ElemMatch(b => b.Authors,
+                    Builders<BookAuthorSnapshot>.Filter.Eq(a => a.AuthorId, authorId)));
             }
 
             // Lọc theo status
@@ -107,7 +111,7 @@ namespace api.Repositories.Implementations
             if (!string.IsNullOrEmpty(availability))
             {
                 var copiesCollection = _collection.Database.GetCollection<BookCopy>("book_copies");
-                
+
                 // Lấy tất cả book ID có ít nhất 1 bản sao AVAILABLE
                 var availableBookIds = await copiesCollection
                     .Distinct<string>("bookId", Builders<BookCopy>.Filter.Eq(c => c.Status, "AVAILABLE"))
@@ -125,7 +129,7 @@ namespace api.Repositories.Implementations
 
             // Kết hợp tất cả filters
             var filter = filters.Any() ? filterBuilder.And(filters) : filterBuilder.Empty;
-            
+
             // Đếm tổng số bản ghi
             var total = await _collection.CountDocumentsAsync(filter);
 
@@ -197,6 +201,108 @@ namespace api.Repositories.Implementations
             if (string.IsNullOrEmpty(isbn)) return false;
             var filter = Builders<Book>.Filter.Eq(b => b.ISBN, isbn);
             return await _collection.Find(filter).AnyAsync();
+        }
+
+        // ── Embedded chapter operations ──────────────────────────────────────
+
+        public async Task<BookChapter?> GetChapterByIdAsync(string bookId, string chapterId)
+        {
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
+            var book = await _collection.Find(filter).FirstOrDefaultAsync();
+            return book?.Chapters.FirstOrDefault(c => c.ChapterId == chapterId);
+        }
+
+        public async Task<List<BookChapter>> GetChaptersByBookIdAsync(string bookId)
+        {
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
+            var book = await _collection.Find(filter).FirstOrDefaultAsync();
+            return book?.Chapters ?? new List<BookChapter>();
+        }
+
+        public async Task<BookChapter?> GetChapterByNumberAsync(string bookId, int number)
+        {
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
+            var book = await _collection.Find(filter).FirstOrDefaultAsync();
+            return book?.Chapters.FirstOrDefault(c => c.Number == number);
+        }
+
+        public async Task<bool> AddChapterAsync(string bookId, BookChapter chapter)
+        {
+            chapter.CreatedAt = DateTime.UtcNow;
+            chapter.UpdatedAt = DateTime.UtcNow;
+
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
+            var update = Builders<Book>.Update
+                .Push(b => b.Chapters, chapter)
+                .Inc(b => b.TotalChapters, 1)
+                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> ReplaceChapterAsync(string bookId, string chapterId, BookChapter chapter)
+        {
+            // Load the current book to validate size after replace
+            var existingBook = await GetByIdAsync(bookId);
+            if (existingBook is null) return false;
+
+            chapter.UpdatedAt = DateTime.UtcNow;
+
+            var idx = existingBook.Chapters.FindIndex(c => c.ChapterId == chapterId);
+            if (idx < 0) return false;
+
+            existingBook.Chapters[idx] = chapter;
+            existingBook.UpdatedAt = DateTime.UtcNow;
+
+            BookDocumentSizeGuard.Validate(existingBook);
+
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId) &
+                         Builders<Book>.Filter.ElemMatch(b => b.Chapters,
+                             Builders<BookChapter>.Filter.Eq(c => c.ChapterId, chapterId));
+
+            var update = Builders<Book>.Update
+                .Set("chapters.$", chapter)
+                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> ReplaceChaptersAsync(string bookId, IReadOnlyList<BookChapter> chapters)
+        {
+            var existingBook = await GetByIdAsync(bookId);
+            if (existingBook is null) return false;
+
+            existingBook.Chapters = chapters.ToList();
+            existingBook.TotalChapters = chapters.Count;
+            existingBook.UpdatedAt = DateTime.UtcNow;
+
+            BookDocumentSizeGuard.Validate(existingBook);
+
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
+            var update = Builders<Book>.Update
+                .Set(b => b.Chapters, chapters.ToList())
+                .Set(b => b.TotalChapters, chapters.Count)
+                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> ArchiveChapterAsync(string bookId, string chapterId)
+        {
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId) &
+                         Builders<Book>.Filter.ElemMatch(b => b.Chapters,
+                             Builders<BookChapter>.Filter.Eq(c => c.ChapterId, chapterId));
+
+            var update = Builders<Book>.Update
+                .Set("chapters.$.status", "ARCHIVED")
+                .Set("chapters.$.updatedAt", DateTime.UtcNow)
+                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
         }
     }
 }

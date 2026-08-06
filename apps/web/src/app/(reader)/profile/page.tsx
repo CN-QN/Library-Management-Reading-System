@@ -23,7 +23,7 @@ interface ProfilePageProps {
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const resolvedParams = await searchParams;
 
-  const validTabs: ProfileTabType[] = ['reading', 'history', 'borrowed'];
+  const validTabs: ProfileTabType[] = ['reading', 'history', 'borrowed', 'payments'];
   const tab: ProfileTabType = validTabs.includes(resolvedParams.tab as ProfileTabType)
     ? (resolvedParams.tab as ProfileTabType)
     : 'reading';

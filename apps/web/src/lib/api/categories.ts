@@ -1,60 +1,13 @@
 import { API_URL } from '../api-client';
-import { Category } from '@/types/Category';
-import { Book } from '@/types/Book';
+import { Book, BookCategorySnapshot } from '@/types/Book';
 import { PaginatedBookResponse } from './books';
 
 /**
- * Lấy toàn bộ danh sách thể loại sách (có thể truyền parentId để lấy danh mục con)
- */
-export async function getCategories(parentId?: string): Promise<Category[]> {
-  const url = new URL(`${API_URL}/Categories`);
-  if (parentId) {
-    url.searchParams.append('parentId', parentId);
-  }
-
-  const res = await fetch(url.toString(), {
-    next: { revalidate: 1800 }, // ISR cache 30 mins
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch categories');
-  }
-
-  const payload = await res.json();
-  const data = payload.data || payload;
-
-  return Array.isArray(data) ? data : [];
-}
-
-/**
- * Lấy chi tiết một thể loại theo Slug hoặc ID
- */
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  const categories = await getCategories();
-  const matched = categories.find((c) => c.slug === slug || c.id === slug);
-  
-  if (matched) return matched;
-
-  // Fallback to fetch by ID
-  try {
-    const res = await fetch(`${API_URL}/Categories/${slug}`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const payload = await res.json();
-    return payload.data || payload;
-  } catch {
-    return null;
-  }
-}
-
-export interface SearchBooksByCategoryParams {
-  categorySlug: string;
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-}
-
-/**
- * Lấy danh sách sách theo thể loại
+ * Lấy danh sách sách theo thể loại.
+ *
+ * Category browsing now goes through the /Books endpoint with CategoryId filter
+ * and extracts category metadata from `Book.categories[].slug` — NOT from
+ * the removed standalone /api/categories endpoint.
  */
 export async function getBooksByCategory(
   categoryIdOrSlug: string,
@@ -80,15 +33,32 @@ export async function getBooksByCategory(
   const data = payload.data || payload;
   const rawItems = data.items || data || [];
 
-  const items: Book[] = rawItems.map((item: any) => ({
-    id: item.id || item.bookId || '',
-    title: item.title || 'Chưa có tiêu đề',
-    author: item.authorNames?.join(', ') || item.author || 'Không rõ tác giả',
-    coverImage: item.coverImage || item.coverImageUrl || '',
-    rating: item.rating || 0,
-    status: item.status || 'PUBLISHED',
-    createdAt: item.createdAt,
-  }));
+  const items: Book[] = rawItems.map((item: Record<string, unknown>) => {
+    const authors = Array.isArray(item['authors']) ? item['authors'] : [];
+    const categories = Array.isArray(item['categories']) ? item['categories'] : [];
+    const publisher = typeof item['publisher'] === 'object' ? item['publisher'] : null;
+    const authorDisplay =
+      authors.length > 0
+        ? authors.map((a: { name?: string }) => a.name ?? '').join(', ')
+        : (Array.isArray(item['authorNames']) ? (item['authorNames'] as string[]).join(', ') : '') ||
+          'Không rõ tác giả';
+
+    return {
+      id: (item['id'] as string) || (item['bookId'] as string) || '',
+      slug: (item['slug'] as string) || undefined,
+      title: (item['title'] as string) || 'Chưa có tiêu đề',
+      author: authorDisplay,
+      authors,
+      categories,
+      publisher,
+      coverImage: (item['coverImage'] as string) || (item['coverImageUrl'] as string) || '',
+      rating: (item['rating'] as number) || 0,
+      accessType: (item['accessType'] as string) || 'FREE',
+      price: (item['price'] as number) || 0,
+      status: (item['status'] as string) || 'PUBLISHED',
+      createdAt: item['createdAt'] as string | undefined,
+    };
+  });
 
   return {
     items,
@@ -98,4 +68,29 @@ export async function getBooksByCategory(
     totalPages: data.totalPages || Math.ceil((data.totalItems || items.length) / limit) || 1,
     hasNext: data.hasNext || data.hasNextPage || false,
   };
+}
+
+/**
+ * Derive unique categories from a list of books using the embedded
+ * `Book.categories[].slug` field — does NOT call /api/categories.
+ */
+export function deriveCategoriesFromBooks(books: Book[]): BookCategorySnapshot[] {
+  const seen = new Set<string>();
+  const result: BookCategorySnapshot[] = [];
+  for (const book of books) {
+    for (const cat of book.categories ?? []) {
+      if (cat.slug && !seen.has(cat.slug)) {
+        seen.add(cat.slug);
+        result.push(cat);
+      }
+    }
+  }
+  return result;
+}
+
+export interface SearchBooksByCategoryParams {
+  categorySlug: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
 }

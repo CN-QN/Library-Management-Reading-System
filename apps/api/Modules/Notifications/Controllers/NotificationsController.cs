@@ -1,4 +1,5 @@
 using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Modules.Notifications.DTOs;
 using api.Modules.Notifications.Services;
@@ -202,5 +203,6 @@ namespace api.Modules.Notifications.Controllers
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi phát thông báo."));
             }
         }
+
     }
 }

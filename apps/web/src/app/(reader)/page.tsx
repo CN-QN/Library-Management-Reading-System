@@ -1,3 +1,5 @@
+import BannerCarousel from '@/components/home/BannerCarousel';
+import FlashSaleSection from '@/components/home/FlashSaleSection';
 import { HeroSearch } from '@/components/home/HeroSearch';
 import { CategoryChips } from '@/components/home/CategoryChips';
 import { ContinueReading } from '@/components/home/ContinueReading';
@@ -20,7 +22,11 @@ const SECTIONS = [
 export default function HomePage() {
   return (
     <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8 md:space-y-12">
+      <BannerCarousel />
+      
       <HeroSearch />
+
+      <FlashSaleSection />
       
       <AsyncSection fallback={<div className="h-14 w-full flex items-center justify-center animate-pulse bg-muted/20 rounded-full" />}>
         <CategoryChips />

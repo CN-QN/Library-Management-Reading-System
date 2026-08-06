@@ -51,6 +51,8 @@ export function useReadingSession({
   useEffect(() => {
     // Không khởi tạo phiên nếu thiếu thông tin, tắt tracking, hoặc đang chạy ở môi trường Server (SSR)
     if (!enabled || !bookId || !chapterId || typeof window === 'undefined') {
+      // Keep hook state aligned with the disabled external tracking lifecycle.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSessionId(null);
       setIsTracking(false);
       return;
