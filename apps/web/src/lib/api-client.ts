@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API URL
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5210/api';
 
 // Create an Axios instance with credentials enabled to send HttpOnly cookies
 const apiClient = axios.create({
@@ -9,6 +9,8 @@ const apiClient = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
   },
 });
 

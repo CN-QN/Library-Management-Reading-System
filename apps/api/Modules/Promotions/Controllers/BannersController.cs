@@ -12,19 +12,25 @@ namespace api.Modules.Promotions.Controllers;
 public class BannersController : ControllerBase
 {
     private readonly MongoDbContext _context;
+    private readonly RedisContext _redisContext;
 
-    public BannersController(MongoDbContext context)
+    public BannersController(MongoDbContext context, RedisContext redisContext)
     {
         _context = context;
+        _redisContext = redisContext;
     }
 
     /// <summary>
     /// Lấy danh sách Banner active (Cho Trang chủ & Admin)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetList()
+    public async Task<IActionResult> GetList([FromQuery] bool? activeOnly = null)
     {
-        var items = await _context.Banners.Find(Builders<Banner>.Filter.Empty)
+        var filter = activeOnly == true
+            ? Builders<Banner>.Filter.Eq(b => b.IsActive, true)
+            : Builders<Banner>.Filter.Empty;
+
+        var items = await _context.Banners.Find(filter)
             .SortBy(b => b.SortOrder)
             .ToListAsync();
 
@@ -40,6 +46,14 @@ public class BannersController : ControllerBase
     {
         dto.CreatedAt = DateTime.UtcNow;
         await _context.Banners.InsertOneAsync(dto);
+
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("banners_list");
+        }
+        catch { }
+
         return Ok(ApiResponse<Banner>.SuccessResponse(dto, "Tạo Banner thành công."));
     }
 
@@ -56,6 +70,13 @@ public class BannersController : ControllerBase
         var update = Builders<Banner>.Update.Set(b => b.IsActive, !banner.IsActive);
         await _context.Banners.UpdateOneAsync(b => b.Id == id, update);
 
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("banners_list");
+        }
+        catch { }
+
         return Ok(ApiResponse<object>.SuccessResponse(new { id, isActive = !banner.IsActive }, "Cập nhật trạng thái thành công."));
     }
 
@@ -67,6 +88,14 @@ public class BannersController : ControllerBase
     public async Task<IActionResult> Delete(string id)
     {
         await _context.Banners.DeleteOneAsync(b => b.Id == id);
+
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("banners_list");
+        }
+        catch { }
+
         return Ok(ApiResponse<object>.SuccessResponse(new { id }, "Xóa Banner thành công."));
     }
 }

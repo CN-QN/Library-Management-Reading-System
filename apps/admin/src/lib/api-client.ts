@@ -54,10 +54,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
+    cache: "no-store",
     credentials: "include",
     headers: {
-      // Omit Content-Type for FormData: the browser must set it itself
-      // (including the multipart boundary), so only default to JSON here.
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...headers,
     },

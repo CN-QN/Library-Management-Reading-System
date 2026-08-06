@@ -12,10 +12,12 @@ namespace api.Modules.Promotions.Controllers;
 public class FlashSaleController : ControllerBase
 {
     private readonly MongoDbContext _context;
+    private readonly RedisContext _redisContext;
 
-    public FlashSaleController(MongoDbContext context)
+    public FlashSaleController(MongoDbContext context, RedisContext redisContext)
     {
         _context = context;
+        _redisContext = redisContext;
     }
 
     /// <summary>
@@ -78,6 +80,15 @@ public class FlashSaleController : ControllerBase
         dto.CreatedAt = DateTime.UtcNow;
         dto.Status = "RUNNING";
         await _context.FlashSales.InsertOneAsync(dto);
+
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("flashsale_current");
+            await db.KeyDeleteAsync("flashsale_all");
+        }
+        catch { }
+
         return Ok(ApiResponse<FlashSale>.SuccessResponse(dto, "Tạo sự kiện Flash Sale thành công."));
     }
 
@@ -89,6 +100,15 @@ public class FlashSaleController : ControllerBase
     public async Task<IActionResult> Delete(string id)
     {
         await _context.FlashSales.DeleteOneAsync(s => s.Id == id);
+
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("flashsale_current");
+            await db.KeyDeleteAsync("flashsale_all");
+        }
+        catch { }
+
         return Ok(ApiResponse<object>.SuccessResponse(new { id }, "Xóa Flash Sale thành công."));
     }
 }
