@@ -16,6 +16,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter, usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+
+const NAV_ITEMS = [
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Tất cả sách', href: '/books' },
+  { label: 'Thể loại', href: '/categories' },
+];
 
 export default function ReaderLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -37,7 +44,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card">
+      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           
           {/* Logo & Main Nav */}
@@ -47,16 +54,29 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
               <span>LibraryHub</span>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
-                Trang chủ
-              </Link>
-              <Link href="/books" className="text-muted-foreground hover:text-foreground transition-colors">
-                Tất cả sách
-              </Link>
-              <Link href="/categories" className="text-muted-foreground hover:text-foreground transition-colors">
-                Thể loại
-              </Link>
+            <nav className="hidden md:flex items-center gap-7 text-sm font-medium">
+              {NAV_ITEMS.map((item) => {
+                const isActive =
+                  item.href === '/'
+                    ? pathname === '/'
+                    : pathname ? pathname.startsWith(item.href) : false;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'relative py-1.5 transition-colors duration-200 select-none',
+                      'after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:h-[2.5px] after:w-0 after:rounded-full after:bg-primary after:transition-all after:duration-300 after:ease-out hover:after:w-full',
+                      isActive
+                        ? 'text-primary font-bold'
+                        : 'text-muted-foreground hover:text-primary'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
