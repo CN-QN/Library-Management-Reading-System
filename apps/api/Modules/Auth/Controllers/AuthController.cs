@@ -15,11 +15,13 @@ public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
     private readonly MongoDbContext _context;
+    private readonly IConfiguration _config;
 
-    public AuthController(AuthService authService, MongoDbContext context)
+    public AuthController(AuthService authService, MongoDbContext context, IConfiguration config)
     {
         _authService = authService;
         _context = context;
+        _config = config;
     }
 
     private string GetDeviceNameFromUserAgent()
