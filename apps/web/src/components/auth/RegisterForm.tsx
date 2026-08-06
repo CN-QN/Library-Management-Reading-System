@@ -14,8 +14,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordRequirements } from './PasswordRequirements';
 
 const registerSchema = z.object({
-  fullName: z.string().min(1, 'Họ và tên là bắt buộc'),
-  studentCode: z.string().optional(),
+  fullName: z.string().min(2, 'Họ và tên độc giả phải có ít nhất 2 ký tự'),
   email: z.string().email('Email không đúng định dạng'),
   password: z
     .string()
@@ -55,7 +54,6 @@ export function RegisterForm() {
     mode: 'onChange',
     defaultValues: {
       fullName: '',
-      studentCode: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -73,7 +71,6 @@ export function RegisterForm() {
         email: data.email,
         password: data.password,
         fullName: data.fullName,
-        studentCode: data.studentCode || undefined,
       });
       setIsSuccess(true);
     } catch (err: unknown) {
@@ -97,7 +94,7 @@ export function RegisterForm() {
           </div>
           <h2 className="text-2xl font-bold text-foreground">Đăng ký thành công!</h2>
           <p className="text-muted-foreground text-sm">
-            Tài khoản của bạn đã được khởi tạo. Chào mừng bạn gia nhập LibraryHub.
+            Tài khoản độc giả của bạn đã được khởi tạo. Chào mừng bạn gia nhập LibraryHub.
           </p>
           <Button onClick={handleSuccessOk} size="lg" className="w-full font-semibold rounded-xl">
             Đăng nhập ngay
@@ -131,7 +128,7 @@ export function RegisterForm() {
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-foreground">
-              Họ và tên *
+              Họ và tên độc giả *
             </label>
             <div className="mt-1 relative">
               <Input
@@ -140,26 +137,11 @@ export function RegisterForm() {
                 autoComplete="name"
                 {...register('fullName')}
                 className={`w-full pr-10 ${(touchedFields.fullName && errors.fullName) ? 'border-destructive' : ''}`}
-                placeholder="Nguyễn Văn A"
+                placeholder="Nhập họ và tên đầy đủ..."
               />
               <FeedbackIcon fieldName="fullName" hasError={!!errors.fullName} />
             </div>
             {touchedFields.fullName && errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
-          </div>
-
-          <div>
-            <label htmlFor="studentCode" className="block text-sm font-medium text-foreground">
-              Mã số sinh viên (Không bắt buộc)
-            </label>
-            <div className="mt-1">
-              <Input
-                id="studentCode"
-                type="text"
-                {...register('studentCode')}
-                className="w-full"
-                placeholder="VD: 20230001"
-              />
-            </div>
           </div>
 
           <div>

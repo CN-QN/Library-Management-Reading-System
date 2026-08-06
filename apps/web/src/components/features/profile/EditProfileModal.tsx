@@ -125,6 +125,60 @@ export function EditProfileModal({
     .map((p) => p[0]?.toUpperCase())
     .join('') || 'DG';
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Vui lòng chọn tệp hình ảnh hợp lệ (.jpg, .png, .webp)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('Dung lượng tệp ảnh không được vượt quá 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setErrorMessage(null);
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      if (typeof reader.result === 'string') {
+        const base64Data = reader.result;
+        setAvatarUrl(base64Data);
+
+        // Thử tải lên Cloudinary API nếu có kết nối
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', 'libraryhub');
+
+          const cloudRes = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (cloudRes.ok) {
+            const cloudData = await cloudRes.json();
+            if (cloudData.secure_url) {
+              setAvatarUrl(cloudData.secure_url);
+            }
+          }
+        } catch {
+          // Bỏ qua lỗi Cloudinary ngoài mạng, vẫn dùng Base64 data URL
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        setIsUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[460px] p-6">
@@ -133,30 +187,44 @@ export function EditProfileModal({
             Chỉnh sửa thông tin cá nhân
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Cập nhật tên hiển thị và ảnh đại diện để cá nhân hóa trải nghiệm đọc sách.
+            Cập nhật tên hiển thị và ảnh đại diện Cloudinary để cá nhân hóa hồ sơ.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Khung xem trước Avatar thời gian thực */}
-          <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/40 border border-border/50">
-            <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
+          {/* Khung xem trước & Tải ảnh đại diện Cloudinary */}
+          <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/40 border border-border/50">
+            <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm shrink-0">
               <AvatarImage src={avatarUrl || undefined} alt={fullName} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground">Xem trước ảnh đại diện</p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {avatarUrl ? 'Đang sử dụng URL ảnh mới' : 'Ảnh mặc định theo tên'}
+
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <p className="text-xs font-semibold text-foreground">Ảnh đại diện độc giả</p>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {isUploading ? 'Đang tải lên...' : 'Tải ảnh Cloudinary'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {avatarUrl ? '✔ Đã sẵn sàng cập nhật' : 'Hỗ trợ JPG, PNG, WebP (Tối đa 5MB)'}
               </p>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="fullName" className="text-xs font-semibold">
-              Họ và tên <span className="text-destructive">*</span>
+              Họ và tên độc giả <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -175,7 +243,7 @@ export function EditProfileModal({
 
           <div className="space-y-1.5">
             <Label htmlFor="avatarUrl" className="text-xs font-semibold">
-              Đường dẫn URL ảnh đại diện (Tùy chọn)
+              Hoặc nhập trực tiếp URL ảnh Cloudinary
             </Label>
             <div className="relative">
               <ImageIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -184,7 +252,7 @@ export function EditProfileModal({
                 type="url"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://example.com/avatar.jpg"
+                placeholder="https://res.cloudinary.com/..."
                 className="pl-9 text-sm"
               />
             </div>
