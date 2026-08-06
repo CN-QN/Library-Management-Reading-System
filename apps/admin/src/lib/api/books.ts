@@ -1,5 +1,45 @@
 import { apiClient } from "@/lib/api-client";
 
+// ---------------------------------------------------------------------------
+// Embedded catalog snapshot types — mirrors the backend DTOs produced by
+// Task 3 (MongoDB embedded aggregate migration).
+// ---------------------------------------------------------------------------
+
+export interface BookAuthorSnapshot {
+  authorId: string;
+  name: string;
+  slug: string;
+  role: string;
+  order: number;
+}
+
+export interface BookCategorySnapshot {
+  categoryId: string;
+  name: string;
+  slug: string;
+}
+
+export interface BookPublisherSnapshot {
+  publisherId: string;
+  name: string;
+  slug: string;
+}
+
+export interface BookChapterSummary {
+  id: string;
+  bookId: string;
+  title: string;
+  number: number;
+  summary: string | null;
+  status: string;
+  wordCount: number;
+  readingTime: number;
+}
+
+// ---------------------------------------------------------------------------
+// Response shape — mirrors `BookResponseDto`.
+// ---------------------------------------------------------------------------
+
 /** Mirrors `BookResponseDto` (apps/api/Modules/Catalog/DTOs/Responses). */
 export interface Book {
   id: string;
@@ -7,7 +47,6 @@ export interface Book {
   slug: string;
   isbn?: string | null;
   summary?: string | null;
-  publisherName?: string | null;
   publicationYear?: number | null;
   language: string;
   accessType: string;
@@ -16,10 +55,17 @@ export interface Book {
   totalChapters: number;
   viewCount: number;
   rating: number;
+  /** Embedded author snapshots. */
+  authors: BookAuthorSnapshot[];
+  /** Embedded category snapshots. */
+  categories: BookCategorySnapshot[];
+  /** Embedded publisher snapshot (null if none). */
+  publisher: BookPublisherSnapshot | null;
+  /** Convenience flat arrays kept for backward-compatible display. */
   authorNames: string[];
   categoryNames: string[];
-  categoryIds: string[];
-  authorIds: string[];
+  /** @deprecated Use publisher.name instead */
+  publisherName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,33 +94,33 @@ export interface BookQuery {
 }
 
 /**
- * Mirrors `CreateBookDto`. Note: the backend has no Authors/Categories
- * list endpoints yet, so `authorIds`/`categoryIds` are entered as raw
- * IDs for now (see BookForm) instead of a proper multi-select.
+ * Mirrors `CreateBookDto`.
+ * Authors, categories, and publisher are sent as embedded snapshots —
+ * NOT as foreign-key ID arrays.
  */
 export interface CreateBookInput {
   title: string;
   slug: string;
   isbn?: string;
   summary?: string;
-  publisherId?: string;
   publicationYear?: number;
   language?: string;
   accessType?: string;
-  authorIds: string[];
-  categoryIds: string[];
+  authors: BookAuthorSnapshot[];
+  categories: BookCategorySnapshot[];
+  publisher?: BookPublisherSnapshot;
 }
 
-/** Mirrors `UpdateBookDto` — now also supports publisher/authors/categories. */
+/** Mirrors `UpdateBookDto`. */
 export interface UpdateBookInput {
   title?: string;
   summary?: string;
-  publisherId?: string;
   publicationYear?: number;
   language?: string;
   accessType?: string;
-  categoryIds?: string[];
-  authorIds?: string[];
+  authors?: BookAuthorSnapshot[];
+  categories?: BookCategorySnapshot[];
+  publisher?: BookPublisherSnapshot | null;
 }
 
 function buildQueryString(query: BookQuery): string {

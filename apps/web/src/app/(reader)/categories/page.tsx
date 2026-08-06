@@ -2,16 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, FolderTree, Search, ChevronRight, Layers } from 'lucide-react';
-import { getCategories } from '@/lib/api/categories';
-import { Category } from '@/types/Category';
+import { BookOpen, FolderTree, Search, ChevronRight } from 'lucide-react';
+import { deriveCategoriesFromBooks } from '@/lib/api/categories';
+import { searchBooks } from '@/lib/api/books';
+import { BookCategorySnapshot } from '@/types/Book';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants, Button } from '@/components/ui/button';
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<BookCategorySnapshot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -19,8 +20,10 @@ export default function CategoriesPage() {
     async function fetchAllCategories() {
       try {
         setIsLoading(true);
-        const data = await getCategories();
-        setCategories(data);
+        // Derive categories from embedded book metadata — does NOT call /api/categories
+        const booksResult = await searchBooks({ Limit: 200, Page: 1 });
+        const derived = deriveCategoriesFromBooks(booksResult.items);
+        setCategories(derived);
       } catch (err) {
         console.error('Error loading categories:', err);
       } finally {
@@ -31,13 +34,8 @@ export default function CategoriesPage() {
   }, []);
 
   const filteredCategories = categories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (cat.description && cat.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const parentCategories = filteredCategories.filter((cat) => !cat.parentId);
-  const getSubcategories = (parentId: string) =>
-    categories.filter((cat) => cat.parentId === parentId);
 
   return (
     <div className="space-y-8 pb-12">
@@ -82,79 +80,43 @@ export default function CategoriesPage() {
             </Card>
           ))}
         </div>
-      ) : parentCategories.length > 0 ? (
+      ) : filteredCategories.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {parentCategories.map((cat) => {
-            const subcats = getSubcategories(cat.id);
-            return (
-              <Card
-                key={cat.id}
-                className="group hover:shadow-lg transition-all border-border/60 hover:border-primary/50 bg-card flex flex-col"
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-xl group-hover:text-primary transition-colors flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-primary shrink-0" />
-                        <Link href={`/categories/${cat.slug}`} className="hover:underline">
-                          {cat.name}
-                        </Link>
-                      </CardTitle>
-                      {cat.description && (
-                        <CardDescription className="line-clamp-2 text-xs">
-                          {cat.description}
-                        </CardDescription>
-                      )}
-                    </div>
-                    {cat.bookCount !== undefined && (
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        {cat.bookCount} sách
-                      </Badge>
-                    )}
+          {filteredCategories.map((cat) => (
+            <Card
+              key={cat.categoryId}
+              className="group hover:shadow-lg transition-all border-border/60 hover:border-primary/50 bg-card flex flex-col"
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-primary shrink-0" />
+                      <Link href={`/categories/${cat.slug}`} className="hover:underline">
+                        {cat.name}
+                      </Link>
+                    </CardTitle>
                   </div>
-                </CardHeader>
+                </div>
+              </CardHeader>
 
-                {/* Subcategories List */}
-                <CardContent className="flex-1 flex flex-col justify-between pt-0 space-y-4">
-                  {subcats.length > 0 ? (
-                    <div className="space-y-2 pt-2 border-t border-border/40">
-                      <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                        <Layers className="w-3 h-3" /> Danh mục con:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {subcats.map((sub) => (
-                          <Link key={sub.id} href={`/categories/${sub.slug}`}>
-                            <Badge
-                              variant="outline"
-                              className="hover:bg-primary/10 hover:border-primary/40 cursor-pointer text-xs transition-colors"
-                            >
-                              {sub.name}
-                            </Badge>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground italic pt-2">Tất cả các tài nguyên thuộc thể loại này</div>
-                  )}
-
-                  {/* Explore Button */}
-                  <div className="pt-3 flex justify-end">
-                    <Link
-                      href={`/categories/${cat.slug}`}
-                      className={buttonVariants({
-                        variant: 'ghost',
-                        size: 'sm',
-                        className: 'group-hover:translate-x-1 transition-transform text-primary hover:text-primary font-medium',
-                      })}
-                    >
-                      Xem sách <ChevronRight className="w-4 h-4 ml-1" />
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+              <CardContent className="flex-1 flex flex-col justify-between pt-0 space-y-4">
+                {/* Explore Button */}
+                <div className="pt-3 flex justify-end">
+                  <Link
+                    href={`/categories/${cat.slug}`}
+                    className={buttonVariants({
+                      variant: 'ghost',
+                      size: 'sm',
+                      className: 'group-hover:translate-x-1 transition-transform text-primary hover:text-primary font-medium',
+                    })}
+                  >
+                    Xem sách <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : (
         /* Empty State */

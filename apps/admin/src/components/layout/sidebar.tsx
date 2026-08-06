@@ -40,12 +40,7 @@ const NAV_ITEMS: NavItem[] = [
     epic: "E5.7",
     permissions: [Permissions.ReportView],
   },
-  {
-    href: "/categories",
-    label: "Thể loại & Tác giả",
-    epic: "E5.8",
-    permissions: [Permissions.BookRead],
-  },
+
   {
     href: "/settings",
     label: "Cấu hình hệ thống",

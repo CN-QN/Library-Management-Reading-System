@@ -1,3 +1,5 @@
+import type { BookAuthorSnapshot, BookCategorySnapshot, BookPublisherSnapshot } from './Book';
+
 /**
  * Chi tiết thông tin sách dành riêng cho trang Reader Portal Book Detail.
  */
@@ -10,8 +12,6 @@ export interface BookDetail {
   title: string;
   /** Tóm tắt / mô tả nội dung sách, null nếu chưa có */
   summary: string | null;
-  /** Tên nhà xuất bản, null nếu không có */
-  publisherName: string | null;
   /** Năm xuất bản, null nếu không có */
   publicationYear: number | null;
   /** Mã số chuẩn quốc tế cho sách (ISBN), null nếu không có */
@@ -28,14 +28,17 @@ export interface BookDetail {
   viewCount: number;
   /** Điểm đánh giá trung bình (1-5) */
   rating: number;
-  /** Danh sách tên tác giả */
+  /** Embedded author snapshots */
+  authors: BookAuthorSnapshot[];
+  /** Embedded category snapshots */
+  categories: BookCategorySnapshot[];
+  /** Embedded publisher snapshot (null if not set) */
+  publisher: BookPublisherSnapshot | null;
+  /** Convenience flat arrays for display */
   authorNames: string[];
-  /** Danh sách tên thể loại */
   categoryNames: string[];
-  /** Danh sách ID thể loại */
-  categoryIds: string[];
-  /** Danh sách ID tác giả */
-  authorIds: string[];
+  /** @deprecated Use publisher.name instead */
+  publisherName?: string | null;
 }
 
 /**

@@ -135,7 +135,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   ];
 
   const publishItems: { label: string; value: string | number | null; icon?: React.ReactNode }[] = [
-    { label: 'Nhà xuất bản', value: book.publisherName },
+    { label: 'Nhà xuất bản', value: book.publisher?.name ?? book.publisherName ?? null },
     { label: 'Năm xuất bản', value: book.publicationYear, icon: <Calendar className="w-3.5 h-3.5" /> },
     { label: 'Ngôn ngữ', value: book.language, icon: <Globe className="w-3.5 h-3.5" /> },
     { label: 'ISBN', value: book.isbn },

@@ -1,6 +1,6 @@
 import { API_URL } from '../api-client';
 
-import { Book } from '@/types/Book';
+import { Book, BookAuthorSnapshot, BookCategorySnapshot, BookPublisherSnapshot } from '@/types/Book';
 
 /**
  * Lấy danh sách sách đang thịnh hành.
@@ -58,6 +58,12 @@ type RawBook = {
   title?: string;
   authorNames?: string[];
   AuthorNames?: string[];
+  authors?: BookAuthorSnapshot[];
+  Authors?: BookAuthorSnapshot[];
+  categories?: BookCategorySnapshot[];
+  Categories?: BookCategorySnapshot[];
+  publisher?: BookPublisherSnapshot | null;
+  Publisher?: BookPublisherSnapshot | null;
   coverImage?: string;
   coverImageUrl?: string;
   coverAssetId?: string;
@@ -68,11 +74,23 @@ type RawBook = {
 };
 
 function normalizeRawBook(item: RawBook): Book {
+  const authors: BookAuthorSnapshot[] = item.authors ?? item.Authors ?? [];
+  const categories: BookCategorySnapshot[] = item.categories ?? item.Categories ?? [];
+  const publisher: BookPublisherSnapshot | null = item.publisher ?? item.Publisher ?? null;
+  // Derive display author string: prefer embedded, fall back to flat name arrays.
+  const authorDisplay =
+    authors.length > 0
+      ? authors.map((a) => a.name).join(', ')
+      : item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả';
+
   return {
     id: item.id || item.bookId || '',
     slug: item.slug || item.Slug,
     title: item.title || 'Chưa có tiêu đề',
-    author: item.authorNames?.join(', ') || item.AuthorNames?.join(', ') || 'Không rõ tác giả',
+    author: authorDisplay,
+    authors,
+    categories,
+    publisher,
     coverImage: item.coverImage || item.coverImageUrl || item.coverAssetId || item.CoverAssetId || '',
     rating: item.rating || 0,
     status: item.status || 'PUBLISHED',
