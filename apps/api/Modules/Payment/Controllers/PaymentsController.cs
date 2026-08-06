@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using api.Common.Models;
+using api.Configuration;
 using api.Modules.Payment.DTOs;
 using api.Modules.Payment.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace api.Modules.Payment.Controllers;
 
@@ -12,11 +14,16 @@ namespace api.Modules.Payment.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
+    private readonly SePaySettings _sePaySettings;
     private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IPaymentService paymentService, ILogger<PaymentsController> logger)
+    public PaymentsController(
+        IPaymentService paymentService,
+        IOptions<SePaySettings> sePayOptions,
+        ILogger<PaymentsController> logger)
     {
         _paymentService = paymentService;
+        _sePaySettings = sePayOptions.Value;
         _logger = logger;
     }
 
@@ -54,8 +61,24 @@ public class PaymentsController : ControllerBase
     /// </summary>
     [HttpPost("sepay-webhook")]
     [AllowAnonymous]
-    public async Task<IActionResult> SePayWebhook([FromBody] SePayWebhookDto dto)
+    public async Task<IActionResult> SePayWebhook(
+        [FromBody] SePayWebhookDto dto,
+        [FromHeader(Name = "Authorization")] string? authHeader)
     {
+        if (!string.IsNullOrWhiteSpace(_sePaySettings.ApiKey))
+        {
+            var expectedToken = _sePaySettings.ApiKey.Trim();
+            var providedToken = authHeader?.Replace("Apikey", "", StringComparison.OrdinalIgnoreCase)
+                                          .Replace("Bearer", "", StringComparison.OrdinalIgnoreCase)
+                                          .Trim() ?? "";
+
+            if (!string.Equals(expectedToken, providedToken, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("SePay Webhook Authorization header verification failed");
+                return Unauthorized(new { status = 401, message = "Unauthorized webhook request" });
+            }
+        }
+
         try
         {
             var success = await _paymentService.ProcessSePayWebhookAsync(dto);
