@@ -26,7 +26,7 @@ export default function DashboardPage() {
           Chào mừng trở lại, {user?.fullName ?? "..."}
         </h1>
         <p className="text-sm text-slate-500">
-          Vai trò hiện tại: {user?.roles.join(", ") || "—"}
+          Vai trò hiện tại: {user?.roles?.join(", ") || "—"}
         </p>
       </div>
 
