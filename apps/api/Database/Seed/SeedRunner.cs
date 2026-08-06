@@ -58,7 +58,7 @@ public class SeedRunner
     private async Task CleanupDevelopmentCollectionsAsync()
     {
         var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        if (env == "Development")
+        if (string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInformation("Development environment detected. Dropping obsolete collections...");
             var obsoleteCollections = new[] { "authors", "categories", "publishers", "chapters", "book_authors", "book_categories" };
