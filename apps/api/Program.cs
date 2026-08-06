@@ -128,11 +128,13 @@ builder.Services.AddScoped<
     builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
+    builder.Services.AddSingleton<api.Common.Middleware.IRedisRateLimiterService, api.Common.Middleware.RedisRateLimiterService>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddSingleton<IMediaProcessor, ImageSharpMediaProcessor>();
     builder.Services.AddHttpClient<ICloudinaryClient, CloudinaryClient>();
 
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
+    builder.Services.AddScoped<api.Modules.DigitalContent.Services.IRedisReadingBufferService, api.Modules.DigitalContent.Services.RedisReadingBufferService>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
     builder.Services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
 

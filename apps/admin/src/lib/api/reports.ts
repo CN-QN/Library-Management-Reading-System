@@ -6,5 +6,10 @@ export interface DashboardSummary { statCards: { totalBooks: StatCardData; total
 export interface StatusCount { status: string; count: number; }
 export interface FineSummary { status: string; count: number; totalAmount: number; }
 export interface StatisticsSummary { bookStatusBreakdown: StatusCount[]; userStatusBreakdown: StatusCount[]; borrowingStatusBreakdown: StatusCount[]; fineSummary: FineSummary[]; }
-export const reportsApi = { getDashboardSummary: () => apiClient.get<DashboardSummary>("/api/admin/reports/dashboard"), trend: () => apiClient.get<BorrowingTrendPoint[]>("/api/admin/reports/borrowing-trend"), statusBreakdowns: () => apiClient.get<StatisticsSummary>("/api/admin/reports/status-breakdowns") };
+export const reportsApi = {
+  getDashboardSummary: () => apiClient.get<DashboardSummary>("/api/admin/reports/dashboard"),
+  trend: () => apiClient.get<BorrowingTrendPoint[]>("/api/admin/reports/borrowing-trend"),
+  statusBreakdowns: () => apiClient.get<StatisticsSummary>("/api/admin/reports/status-breakdowns"),
+  getOnlineCount: () => apiClient.get<{ count: number }>("/api/Presence/online-count"),
+};
 export const statisticsApi = { getSummary: reportsApi.statusBreakdowns };

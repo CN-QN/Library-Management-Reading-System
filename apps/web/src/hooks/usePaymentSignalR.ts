@@ -26,7 +26,7 @@ export function usePaymentSignalR({
     if (!enabled || !orderCode) return;
 
     // Chuyển URL API dạng http://localhost:5000/api sang websocket hub http://localhost:5000/hubs/payment
-    const baseUrl = API_URL.replace(/\/api\/?$/, '');
+    const baseUrl = (API_URL || '').replace(/\/api\/?$/, '');
     const hubUrl = `${baseUrl}/hubs/payment`;
 
     const connection = new signalR.HubConnectionBuilder()

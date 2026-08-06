@@ -30,7 +30,7 @@ function normalizeFileUrl(url: string | undefined | null): string | null {
   }
   if (url.startsWith('/')) {
     try {
-      const apiOrigin = new URL(API_URL).origin;
+      const apiOrigin = new URL(API_URL || 'http://localhost:5000').origin;
       return `${apiOrigin}${url}`;
     } catch {
       return url;

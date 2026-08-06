@@ -11,7 +11,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Đặt biến môi trường giả để tránh lỗi fetch khi build
-ENV NEXT_PUBLIC_API_URL=http://localhost:5000
+ENV NEXT_PUBLIC_API_URL=http://localhost:5210
 
 RUN npm run build
 

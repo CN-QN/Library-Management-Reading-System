@@ -30,18 +30,28 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentQrResponse> CreatePaymentQrAsync(string userId, string bookId)
     {
-        var book = await _context.Books.Find(b => b.Id == bookId).FirstOrDefaultAsync();
-        if (book == null)
-        {
-            throw new KeyNotFoundException($"Không tìm thấy sách với ID: {bookId}");
-        }
+         var book = await _context.Books
+        .Find(b => b.Id == bookId && b.Status == "PUBLISHED")
+        .FirstOrDefaultAsync();
+            if (book == null)
+    {
+        throw new KeyNotFoundException("Sách không tồn tại hoặc chưa được xuất bản.");
+    }
 
         // Tạo mã đơn hàng độc nhất dạng LH10293
         var randomNum = Random.Shared.Next(100000, 999999);
         var orderCode = $"LH{randomNum}";
+       // 1. Chỉ cho phép tìm sách ĐÃ XUẤT BẢN (Status == "PUBLISHED")
+   
 
-        // Số tiền chuẩn cho sách Paid (10,000 VNĐ)
-        decimal amount = book.Price > 0 ? book.Price : 10000;
+    // 2. Nếu là sách MIỄN PHÍ thì không cho tạo mã QR thanh toán!
+    if (string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException("Đây là sách miễn phí, bạn có thể đọc ngay mà không cần thanh toán.");
+    }
+    
+    // 4. Lấy ĐÚNG 100% giá bán của sách
+    decimal amount = book.Price;
 
         // Nội dung chuyển khoản chuẩn theo SePay
 

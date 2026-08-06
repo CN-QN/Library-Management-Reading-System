@@ -204,6 +204,37 @@ export async function saveReadingProgress(
 }
 
 /**
+ * Ghi tạm tiến độ đọc sách vào Redis RAM Buffer với độ trễ < 1ms
+ */
+export async function saveReadingProgressBuffer(payload: SaveReadingProgressPayload): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await apiClient.post('/Reading/progress/buffer', {
+      bookId: payload.bookId,
+      chapterId: payload.chapterId,
+      scrollPosition: Math.max(0, Math.round(payload.scrollPosition || 0)),
+      percentage: Math.min(100, Math.max(0, Math.round(payload.percentage || 0))),
+    });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Flush đồng bộ bản ghi tiến độ mới nhất từ Redis RAM xuống MongoDB
+ */
+export async function flushReadingProgressBuffer(bookId: string, chapterId: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await apiClient.post('/Reading/progress/flush', { bookId, chapterId });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Lưu tiến độ đọc sách dành riêng cho các sự kiện rời trang `visibilitychange`, `pagehide`, `beforeunload`.
  * 
  * Sử dụng `fetch` kèm `keepalive: true` và `credentials: 'include'` để trình duyệt tiếp tục
