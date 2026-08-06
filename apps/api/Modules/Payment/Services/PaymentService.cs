@@ -223,7 +223,10 @@ public class PaymentService : IPaymentService
             PaymentContent = order.PaymentContent,
             BookId = order.BookId,
             BookTitle = order.BookTitle,
-            Status = order.Status
+            Status = order.Status,
+            UserId = order.UserId,
+            CreatedAt = order.CreatedAt,
+            PaidAt = order.PaidAt
         }).ToList();
     }
 

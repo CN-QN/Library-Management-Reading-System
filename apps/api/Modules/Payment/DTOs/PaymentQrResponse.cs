@@ -9,4 +9,7 @@ public class PaymentQrResponse
     public string BookId { get; set; } = string.Empty;
     public string BookTitle { get; set; } = string.Empty;
     public string Status { get; set; } = "PENDING";
+    public string UserId { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? PaidAt { get; set; }
 }

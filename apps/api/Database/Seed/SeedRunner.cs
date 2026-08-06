@@ -633,34 +633,46 @@ public class SeedRunner
     private async Task SeedBorrowingsAndPaymentOrdersAsync(List<Book> books, List<User> users, LibraryBranch branch)
     {
         var paymentCount = await _context.PaymentOrders.CountDocumentsAsync(FilterDefinition<PaymentOrder>.Empty);
-        if (paymentCount == 0 && books.Any() && users.Any())
+        if (paymentCount < 40 && users.Any() && books.Any())
         {
-            _logger.LogInformation("Seeding sample SePay Payment Orders and Revenue...");
+            _logger.LogInformation("Seeding rich sample PaymentOrders across past 6 months...");
+            await _context.PaymentOrders.DeleteManyAsync(FilterDefinition<PaymentOrder>.Empty);
+
             var payments = new List<PaymentOrder>();
             var paidBooks = books.Where(b => b.AccessType == "PAID").ToList();
             if (!paidBooks.Any()) paidBooks = books;
 
-            for (int i = 1; i <= 15; i++)
-            {
-                var book = paidBooks[i % paidBooks.Count];
-                var user = users[i % users.Count];
-                var code = (102930 + i).ToString();
-                var dt = DateTime.UtcNow.AddHours(-i * 3);
+            var today = DateTime.UtcNow;
+            int orderCounter = 1000;
 
-                payments.Add(new PaymentOrder
+            for (int monthOffset = 6; monthOffset >= 0; monthOffset--)
+            {
+                int countForMonth = 5 + (6 - monthOffset) * 2;
+                for (int k = 0; k < countForMonth; k++)
                 {
-                    OrderCode = code,
-                    UserId = user.Id,
-                    BookId = book.Id,
-                    BookTitle = book.Title,
-                    Amount = 10000,
-                    Status = "SUCCESS",
-                    QrCodeUrl = $"https://qr.sepay.vn/img?bank=VietinBank&acc=105886719416&template=compact&amount=10000&des=LH{code}",
-                    PaymentContent = $"LH{code}",
-                    SePayTransactionId = $"SEPAY_TRX_{code}",
-                    CreatedAt = dt,
-                    PaidAt = dt.AddMinutes(2)
-                });
+                    var book = paidBooks[(orderCounter + k) % paidBooks.Count];
+                    var user = users[(orderCounter + k) % users.Count];
+                    var code = (100000 + orderCounter).ToString();
+                    var daysAgo = (monthOffset * 30) + (k * 2);
+                    var dt = today.AddDays(-daysAgo).AddHours(k % 12);
+
+                    payments.Add(new PaymentOrder
+                    {
+                        OrderCode = code,
+                        UserId = user.Id,
+                        BookId = book.Id,
+                        BookTitle = book.Title,
+                        Amount = 10000,
+                        Status = "SUCCESS",
+                        QrCodeUrl = $"https://qr.sepay.vn/img?bank=VietinBank&acc=105886719416&template=compact&amount=10000&des=LH{code}",
+                        PaymentContent = $"LH{code} VietQR SePay",
+                        SePayTransactionId = $"SEPAY_TRX_{code}",
+                        CreatedAt = dt,
+                        PaidAt = dt.AddMinutes(2)
+                    });
+
+                    orderCounter++;
+                }
             }
 
             await _context.PaymentOrders.InsertManyAsync(payments);

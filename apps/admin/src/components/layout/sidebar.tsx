@@ -23,6 +23,7 @@ import {
   Library,
   ShieldCheck,
   Mail,
+  CreditCard,
 } from "lucide-react";
 
 interface NavItem {
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/users", label: "Người dùng", epic: "E5.5", permissions: [Permissions.UserRead], icon: Users },
   { href: "/roles", label: "Vai trò & Phân quyền", epic: "E5.16", permissions: [], icon: ShieldCheck },
   { href: "/borrowings", label: "Mượn / Trả", epic: "E5.6", permissions: [Permissions.LoanCreate, Permissions.LoanReturn, Permissions.LoanExtend], icon: Repeat },
+  { href: "/transactions", label: "Quản lý Thanh toán", epic: "E5.18", permissions: [], icon: CreditCard },
   { href: "/vouchers", label: "Quản lý Voucher", epic: "E5.11", permissions: [], icon: Ticket },
   { href: "/banners", label: "Quản lý Banner UI", epic: "E5.12", permissions: [], icon: ImageIcon },
   { href: "/flash-sale", label: "Sự kiện Flash Sale", epic: "E5.13", permissions: [], icon: Zap },
