@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { BookCover } from "@/components/ui/book-cover";
 import { useToast } from "@/components/ui/toast";
 import { slugify } from "@/lib/slugify";
@@ -23,12 +23,12 @@ const ACCESS_TYPES = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
 
 interface CreateFormValues {
   title: string;
-  slug: string;
   isbn: string;
   summary: string;
   publicationYear: string;
   language: string;
   accessType: string;
+  price: string;
   // Publisher inline
   publisherId: string;
   publisherName: string;
@@ -41,6 +41,7 @@ interface EditFormValues {
   publicationYear: string;
   language: string;
   accessType: string;
+  price: string;
   // Publisher inline
   publisherId: string;
   publisherName: string;
@@ -285,7 +286,6 @@ function buildPublisher(id: string, name: string, slug: string): BookPublisherSn
 export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void }) {
   const { showToast } = useToast();
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [slugTouched, setSlugTouched] = useState(false);
   const [authors, setAuthors] = useState<BookAuthorSnapshot[]>([emptyAuthor(1)]);
   const [categories, setCategories] = useState<BookCategorySnapshot[]>([emptyCategory()]);
   const {
@@ -294,11 +294,11 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
     watch,
     setValue,
     setError,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateFormValues>({
     defaultValues: {
       title: "",
-      slug: "",
       isbn: "",
       summary: "",
       publisherId: "",
@@ -307,10 +307,12 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       publicationYear: "",
       language: "vi",
       accessType: "FREE",
+      price: "0",
     },
   });
 
   const title = watch("title");
+  const accessType = watch("accessType");
 
   function updateAuthor(index: number, a: BookAuthorSnapshot) {
     setAuthors((prev) => prev.map((x, i) => (i === index ? a : x)));
@@ -333,18 +335,11 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
   }
 
   function autoSlugPublisher(name: string) {
-    if (!slugTouched) setValue("publisherSlug", slugify(name));
+    setValue("publisherSlug", slugify(name));
   }
 
   async function onSubmit(values: CreateFormValues) {
     try {
-      if (values.slug) {
-        const slugCheck = await booksApi.validateSlug(values.slug);
-        if (!slugCheck.isValid) {
-          setError("slug", { message: "Slug này đã tồn tại, vui lòng chọn slug khác." });
-          return;
-        }
-      }
       if (values.isbn) {
         const isbnCheck = await booksApi.validateIsbn(values.isbn);
         if (!isbnCheck.isValid) {
@@ -358,12 +353,12 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
 
       const payload: CreateBookInput = {
         title: values.title,
-        slug: values.slug || slugify(values.title),
         isbn: values.isbn || undefined,
         summary: values.summary || undefined,
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
+        price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
         publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
@@ -384,20 +379,7 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         <Input
           label="Tên sách"
           error={errors.title?.message}
-          {...register("title", {
-            required: "Vui lòng nhập tên sách.",
-            onChange: (e) => {
-              if (!slugTouched) setValue("slug", slugify(e.target.value));
-            },
-          })}
-        />
-        <Input
-          label="Slug"
-          error={errors.slug?.message}
-          {...register("slug", {
-            required: "Vui lòng nhập slug.",
-            onChange: () => setSlugTouched(true),
-          })}
+          {...register("title", { required: "Vui lòng nhập tên sách." })}
         />
         <Input label="ISBN" error={errors.isbn?.message} {...register("isbn")} />
         <Input
@@ -413,9 +395,24 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
             </option>
           ))}
         </Select>
+        <Input
+          label="Giá mở khóa (VND)"
+          type="number"
+          min={accessType === "FREE" ? 0 : 1000}
+          step={1000}
+          disabled={accessType === "FREE"}
+          {...register("price", {
+            validate: (value) => accessType === "FREE" || Number(value) > 0 || "Sách Premium phải có giá lớn hơn 0.",
+          })}
+          error={errors.price?.message}
+        />
       </div>
 
-      <Textarea label="Tóm tắt" {...register("summary")} />
+      <Controller
+        name="summary"
+        control={control}
+        render={({ field }) => <RichTextEditor label="Tóm tắt" value={field.value} onChange={field.onChange} />}
+      />
 
       {/* Publisher */}
       <div>
@@ -511,6 +508,7 @@ export function EditBookForm({
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<EditFormValues>({
     defaultValues: {
@@ -522,10 +520,12 @@ export function EditBookForm({
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
       language: book.language,
       accessType: book.accessType,
+      price: String(book.price ?? 0),
     },
   });
 
   const title = watch("title");
+  const accessType = watch("accessType");
 
   function updateAuthor(index: number, a: BookAuthorSnapshot) {
     setAuthors((prev) => prev.map((x, i) => (i === index ? a : x)));
@@ -558,6 +558,7 @@ export function EditBookForm({
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
+        price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
         publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
@@ -574,12 +575,10 @@ export function EditBookForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Input label="Slug" value={book.slug} readOnly disabled />
         <Input label="ISBN" value={book.isbn ?? "—"} readOnly disabled />
       </div>
       <p className="text-xs text-slate-400">
-        Slug/ISBN chỉ đặt được lúc tạo sách — API cập nhật sách vẫn chưa hỗ trợ sửa 2 trường
-        này.
+        Slug được backend tự tạo và giữ ổn định; ISBN hiện không hỗ trợ thay đổi.
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -601,6 +600,17 @@ export function EditBookForm({
             </option>
           ))}
         </Select>
+        <Input
+          label="Giá mở khóa (VND)"
+          type="number"
+          min={accessType === "FREE" ? 0 : 1000}
+          step={1000}
+          disabled={accessType === "FREE"}
+          {...register("price", {
+            validate: (value) => accessType === "FREE" || Number(value) > 0 || "Sách Premium phải có giá lớn hơn 0.",
+          })}
+          error={errors.price?.message}
+        />
       </div>
 
       {/* Publisher */}
@@ -659,7 +669,11 @@ export function EditBookForm({
         </button>
       </div>
 
-      <Textarea label="Tóm tắt" {...register("summary")} />
+      <Controller
+        name="summary"
+        control={control}
+        render={({ field }) => <RichTextEditor label="Tóm tắt" value={field.value} onChange={field.onChange} />}
+      />
 
       <CoverPicker title={title} file={coverFile} onChange={setCoverFile} />
 

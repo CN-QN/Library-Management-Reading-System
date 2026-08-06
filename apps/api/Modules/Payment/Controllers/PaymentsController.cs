@@ -1,11 +1,17 @@
+using System.Security.Cryptography;
 using System.Security.Claims;
+using System.Text;
+using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Configuration;
+using api.Database;
 using api.Modules.Payment.DTOs;
 using api.Modules.Payment.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 
 namespace api.Modules.Payment.Controllers;
 
@@ -14,15 +20,18 @@ namespace api.Modules.Payment.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
+    private readonly MongoDbContext _context;
     private readonly SePaySettings _sePaySettings;
     private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
         IPaymentService paymentService,
+        MongoDbContext context,
         IOptions<SePaySettings> sePayOptions,
         ILogger<PaymentsController> logger)
     {
         _paymentService = paymentService;
+        _context = context;
         _sePaySettings = sePayOptions.Value;
         _logger = logger;
     }
@@ -61,28 +70,28 @@ public class PaymentsController : ControllerBase
     /// </summary>
     [HttpPost("sepay-webhook")]
     [AllowAnonymous]
-    public async Task<IActionResult> SePayWebhook(
-        [FromBody] SePayWebhookDto dto,
-        [FromHeader(Name = "Authorization")] string? authHeader)
+    public async Task<IActionResult> SePayWebhook([FromBody] SePayWebhookDto dto)
     {
-        if (!string.IsNullOrWhiteSpace(_sePaySettings.ApiKey))
+        var storedApiKey = await _context.SystemSettings.Find(x => x.Key == "SEPAY_API_KEY")
+            .Project(x => x.Value).FirstOrDefaultAsync();
+        var expectedToken = !string.IsNullOrWhiteSpace(storedApiKey) ? storedApiKey : _sePaySettings.ApiKey;
+        if (string.IsNullOrWhiteSpace(expectedToken))
         {
-            var expectedToken = _sePaySettings.ApiKey.Trim();
+            _logger.LogError("SePay webhook rejected because its API key is not configured.");
+            return StatusCode(503, new { status = 503, message = "Webhook authentication is not configured." });
+        }
 
-            // Kiểm tra token ở tất cả các vị trí header SePay có thể gửi
-            var authHeaderStr = Request.Headers["Authorization"].ToString();
-            var xApiKeyHeaderStr = Request.Headers["x-sepay-api-key"].ToString();
-            var apiKeyHeaderStr = Request.Headers["Apikey"].ToString();
-            var customHeaderStr = Request.Headers["api-key"].ToString();
-
-            var combinedHeaders = $"{authHeaderStr} {xApiKeyHeaderStr} {apiKeyHeaderStr} {customHeaderStr}".Trim();
-
-            if (string.IsNullOrWhiteSpace(combinedHeaders) || !combinedHeaders.Contains(expectedToken, StringComparison.Ordinal))
-            {
-                _logger.LogWarning("SePay Webhook Authorization verification failed. Expected ApiKey: '{Expected}', Received headers: Authorization='{Auth}', x-sepay-api-key='{XApi}', Apikey='{Apikey}'",
-                    expectedToken, authHeaderStr, xApiKeyHeaderStr, apiKeyHeaderStr);
-                return Unauthorized(new { status = 401, message = "Unauthorized webhook request. Secret token mismatch." });
-            }
+        var suppliedTokens = new[]
+        {
+            Request.Headers["Authorization"].ToString(),
+            Request.Headers["x-sepay-api-key"].ToString(),
+            Request.Headers["Apikey"].ToString(),
+            Request.Headers["api-key"].ToString()
+        };
+        if (!suppliedTokens.Any(value => CredentialMatches(value, expectedToken)))
+        {
+            _logger.LogWarning("SePay webhook rejected because its credential was missing or invalid.");
+            return Unauthorized(new { status = 401, message = "Unauthorized webhook request." });
         }
 
         try
@@ -108,13 +117,32 @@ public class PaymentsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<ApiResponse<PaymentQrResponse>>> GetOrderStatus(string orderCode)
     {
-        var order = await _paymentService.GetOrderStatusAsync(orderCode);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized(ApiResponse.ErrorResponse(401, "Chưa đăng nhập"));
+        var order = await _paymentService.GetOrderStatusAsync(userId, orderCode);
         if (order == null)
         {
             return NotFound(ApiResponse<PaymentQrResponse>.ErrorResponse(404, "Không tìm thấy đơn hàng"));
         }
 
         return Ok(ApiResponse<PaymentQrResponse>.SuccessResponse(order));
+    }
+
+    private static bool CredentialMatches(string supplied, string expected)
+    {
+        var value = supplied.Trim();
+        foreach (var prefix in new[] { "Bearer ", "Apikey ", "ApiKey " })
+        {
+            if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                value = value[prefix.Length..].Trim();
+                break;
+            }
+        }
+
+        var suppliedHash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        var expectedHash = SHA256.HashData(Encoding.UTF8.GetBytes(expected.Trim()));
+        return CryptographicOperations.FixedTimeEquals(suppliedHash, expectedHash);
     }
 
     /// <summary>
@@ -155,6 +183,7 @@ public class PaymentsController : ControllerBase
     /// Admin: Lấy toàn bộ đơn hàng thanh toán SePay
     /// </summary>
     [HttpGet("admin/all-orders")]
+    [RequireAnyPermission(Permissions.PaymentRead, Permissions.ReportView)]
     public async Task<ActionResult<ApiResponse<List<PaymentQrResponse>>>> GetAllOrders()
     {
         var orders = await _paymentService.GetAllOrdersAsync();
@@ -165,9 +194,24 @@ public class PaymentsController : ControllerBase
     /// Admin: Lấy thống kê doanh thu SePay
     /// </summary>
     [HttpGet("admin/revenue-stats")]
+    [RequireAnyPermission(Permissions.PaymentRead, Permissions.ReportView)]
     public async Task<ActionResult<ApiResponse<RevenueStatsResponse>>> GetRevenueStats()
     {
         var stats = await _paymentService.GetRevenueStatsAsync();
         return Ok(ApiResponse<RevenueStatsResponse>.SuccessResponse(stats));
+    }
+
+    /// <summary>
+    /// Lấy thông tin ngân hàng thụ hưởng SePay (public – không cần đăng nhập)
+    /// </summary>
+    [HttpGet("bank-info")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetBankInfo()
+    {
+        var storedSettings = await _context.SystemSettings.Find(x => x.Scope == "SEPAY").ToListAsync();
+        var bankName = storedSettings.FirstOrDefault(x => x.Key == "SEPAY_BANK_NAME")?.Value ?? _sePaySettings.BankName;
+        var bankAccount = storedSettings.FirstOrDefault(x => x.Key == "SEPAY_BANK_ACCOUNT")?.Value ?? _sePaySettings.BankAccount;
+        var accountName = storedSettings.FirstOrDefault(x => x.Key == "SEPAY_ACCOUNT_NAME")?.Value ?? _sePaySettings.AccountName;
+        return Ok(ApiResponse<object>.SuccessResponse(new { bankName, bankAccount, accountName }));
     }
 }

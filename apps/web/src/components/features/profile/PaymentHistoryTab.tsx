@@ -25,6 +25,8 @@ export function PaymentHistoryTab() {
   };
 
   useEffect(() => {
+    // Fetch once when the history tab mounts; subsequent refreshes are user-driven.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrders();
   }, []);
 

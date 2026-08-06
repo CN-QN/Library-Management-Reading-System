@@ -1,4 +1,6 @@
 using api.Common.Models;
+using api.Auth;
+using api.Common.Constants;
 using api.Database;
 using api.Database.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +26,7 @@ public class VouchersController : ControllerBase
     /// Lấy danh sách Voucher (Admin & Reader)
     /// </summary>
     [HttpGet]
+    [RequirePermission(Permissions.PromotionVoucherManage)]
     public async Task<IActionResult> GetList()
     {
         var items = await _context.Vouchers.Find(Builders<Voucher>.Filter.Empty)
@@ -37,7 +40,7 @@ public class VouchersController : ControllerBase
     /// Tạo Voucher mới (Admin)
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionVoucherManage)]
     public async Task<IActionResult> Create([FromBody] Voucher dto)
     {
         dto.Code = dto.Code.ToUpper().Trim();
@@ -101,7 +104,7 @@ public class VouchersController : ControllerBase
     /// Xóa Voucher (Admin)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionVoucherManage)]
     public async Task<IActionResult> Delete(string id)
     {
         await _context.Vouchers.DeleteOneAsync(v => v.Id == id);

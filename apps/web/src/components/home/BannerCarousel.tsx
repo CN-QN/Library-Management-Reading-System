@@ -13,26 +13,16 @@ interface BannerSlide {
   linkUrl: string;
 }
 
-const FALLBACK_SLIDES: BannerSlide[] = [
-  {
-    id: '1',
-    title: 'Chào Hè 2026 - Mở Kho Sách Số 10.000đ',
-    subtitle: 'Khám phá hàng nghìn tác phẩm E-Book bản quyền đọc mượt mà trên mọi thiết bị',
-    imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1200',
-    linkUrl: '/books',
-  },
-];
-
 export default function BannerCarousel() {
-  const [slides, setSlides] = useState<BannerSlide[]>(FALLBACK_SLIDES);
+  const [slides, setSlides] = useState<BannerSlide[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
 
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const res = await apiClient.get('/banners');
+        const res = await apiClient.get<{ data?: BannerSlide[] }>('/banners?activeOnly=true');
         const data = res.data?.data || [];
-        const activeBanners = data.filter((b: any) => b.isActive);
+        const activeBanners = data;
         setSlides(activeBanners);
       } catch (err) {
         console.error('Lỗi khi tải Banner từ API:', err);

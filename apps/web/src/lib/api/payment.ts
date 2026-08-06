@@ -39,34 +39,10 @@ export async function checkBookAccess(bookId: string): Promise<CheckAccessData> 
   return res.data?.data || res.data;
 }
 
-export interface RevenueStatsData {
-  totalRevenue: number;
-  todayRevenue: number;
-  successOrdersCount: number;
-  pendingOrdersCount: number;
-  totalOrdersCount: number;
-}
-
 /**
  * Lấy lịch sử đơn hàng thanh toán của độc giả hiện tại
  */
 export async function getMyOrders(): Promise<PaymentQrData[]> {
   const res = await apiClient.get('/payments/my-orders');
   return res.data?.data || res.data || [];
-}
-
-/**
- * Admin: Lấy danh sách toàn bộ đơn hàng thanh toán
- */
-export async function getAllOrders(): Promise<PaymentQrData[]> {
-  const res = await apiClient.get('/payments/admin/all-orders');
-  return res.data?.data || res.data || [];
-}
-
-/**
- * Admin: Lấy thống kê doanh thu SePay
- */
-export async function getRevenueStats(): Promise<RevenueStatsData> {
-  const res = await apiClient.get('/payments/admin/revenue-stats');
-  return res.data?.data || res.data;
 }

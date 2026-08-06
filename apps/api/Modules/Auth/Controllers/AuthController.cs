@@ -6,6 +6,8 @@ using System.Security.Claims;
 using api.Database.Entities;
 using api.Database;
 using MongoDB.Driver;
+using api.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace api.Auth;
 
@@ -16,12 +18,22 @@ public class AuthController : ControllerBase
     private readonly AuthService _authService;
     private readonly MongoDbContext _context;
     private readonly IConfiguration _config;
+    private readonly IGoogleTokenVerifier _googleTokenVerifier;
+    private readonly IPasswordRecoveryService _passwordRecovery;
+    private readonly IWebHostEnvironment _environment;
+    private readonly string _googleClientId;
 
-    public AuthController(AuthService authService, MongoDbContext context, IConfiguration config)
+    public AuthController(AuthService authService, MongoDbContext context, IConfiguration config,
+        IGoogleTokenVerifier googleTokenVerifier, IPasswordRecoveryService passwordRecovery, IWebHostEnvironment environment,
+        IOptions<GoogleSettings> googleSettings)
     {
         _authService = authService;
         _context = context;
         _config = config;
+        _googleTokenVerifier = googleTokenVerifier;
+        _passwordRecovery = passwordRecovery;
+        _environment = environment;
+        _googleClientId = googleSettings.Value.ClientId;
     }
 
     private string GetDeviceNameFromUserAgent()
@@ -53,7 +65,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = false, // Set to true if using HTTPS in prod, false is fine for localhost HTTP development
+            Secure = !_environment.IsDevelopment(),
             SameSite = SameSiteMode.Lax,
             Expires = DateTime.UtcNow.AddDays(7),
             Path = "/api/auth"
@@ -66,7 +78,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = false, // Set to true if using HTTPS in prod, false is fine for localhost HTTP development
+            Secure = !_environment.IsDevelopment(),
             SameSite = SameSiteMode.Lax,
             Expires = DateTime.UtcNow.AddMinutes(15),
             Path = "/"
@@ -79,6 +91,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
+            Secure = !_environment.IsDevelopment(),
             SameSite = SameSiteMode.Lax,
             Path = "/"
         };
@@ -90,6 +103,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
+            Secure = !_environment.IsDevelopment(),
             SameSite = SameSiteMode.Lax,
             Path = "/api/auth"
         };
@@ -227,103 +241,80 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Yêu cầu quên mật khẩu (Tạo mã Token 6 chữ số)
+    /// Yêu cầu quên mật khẩu và gửi liên kết dùng một lần qua email.
     /// </summary>
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest dto, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(dto.Email))
         {
             return BadRequest(ApiResponse.ErrorResponse(400, "Vui lòng nhập Email."));
         }
 
-        var email = dto.Email.Trim().ToLower();
-        var user = await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
-        if (user == null)
-        {
-            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại trong hệ thống."));
-        }
-
-        // Tạo mã Token 6 chữ số ngẫu nhiên
-        var random = new Random();
-        var resetToken = random.Next(100000, 999999).ToString();
-        var expires = DateTime.UtcNow.AddMinutes(15);
-
-        var update = Builders<User>.Update
-            .Set(u => u.ResetToken, resetToken)
-            .Set(u => u.ResetTokenExpires, expires);
-
-        await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update);
-
-        return Ok(ApiResponse<object>.SuccessResponse(new
-        {
-            email = user.Email,
-            resetToken = resetToken,
-            message = $"Mã token khôi phục 6 chữ số ({resetToken}) đã được tạo và gửi đến email {user.Email} (Có hiệu lực 15 phút)."
-        }));
+        await _passwordRecovery.RequestAsync(dto.Email, cancellationToken);
+        return Ok(ApiResponse.SuccessResponse("Nếu email tồn tại, LibraryHub đã gửi hướng dẫn đặt lại mật khẩu."));
     }
 
     /// <summary>
-    /// Kiểm tra Token & Đặt lại mật khẩu mới
+    /// Kiểm tra token dùng một lần và đặt lại mật khẩu mới.
     /// </summary>
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest dto, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.NewPassword))
         {
-            return BadRequest(ApiResponse.ErrorResponse(400, "Email, Mã Token 6 chữ số và Mật khẩu mới là bắt buộc."));
+            return BadRequest(ApiResponse.ErrorResponse(400, "Email, token và mật khẩu mới là bắt buộc."));
         }
 
-        var email = dto.Email.Trim().ToLower();
-        var token = dto.Token.Trim();
-
-        var user = await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
-        if (user == null)
-        {
-            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại trong hệ thống."));
-        }
-
-        // BẮT BUỘC KIỂM TRA MÃ TOKEN XÁC THỰC VÀ THỜI HẠN
-        if (string.IsNullOrEmpty(user.ResetToken) || user.ResetToken != token || user.ResetTokenExpires == null || user.ResetTokenExpires < DateTime.UtcNow)
-        {
-            return BadRequest(ApiResponse.ErrorResponse(400, "Mã Token 6 chữ số không hợp lệ hoặc đã hết hạn. Vui lòng xin mã mới!"));
-        }
-
-        var newHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-        var update = Builders<User>.Update
-            .Set(u => u.PasswordHash, newHash)
-            .Unset(u => u.ResetToken)
-            .Unset(u => u.ResetTokenExpires);
-
-        await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update);
+        if (!await _passwordRecovery.ResetAsync(dto.Email, dto.Token, dto.NewPassword, cancellationToken))
+            return BadRequest(ApiResponse.ErrorResponse(400, "Token không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới."));
 
         return Ok(ApiResponse.SuccessResponse("Đặt lại mật khẩu mới thành công! Bạn có thể đăng nhập ngay bằng mật khẩu mới."));
+    }
+
+    /// <summary>
+    /// Trả cấu hình công khai cần thiết để Google Identity Services hiển thị nút đăng nhập.
+    /// Client ID là metadata OAuth công khai; client secret không bao giờ được trả về.
+    /// </summary>
+    [HttpGet("google/config")]
+    public IActionResult GetGoogleConfig()
+    {
+        if (string.IsNullOrWhiteSpace(_googleClientId))
+            return StatusCode(503, ApiResponse.ErrorResponse(503, "Google login chưa được cấu hình."));
+
+        return Ok(ApiResponse<object>.SuccessResponse(new { clientId = _googleClientId }));
     }
 
     /// <summary>
     /// Đăng nhập bằng Google OAuth2
     /// </summary>
     [HttpPost("google")]
-    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest dto, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(dto.Email))
+        if (string.IsNullOrWhiteSpace(dto.Credential))
         {
             return BadRequest(ApiResponse.ErrorResponse(400, "Thông tin Google không hợp lệ."));
         }
 
-        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        VerifiedGoogleIdentity identity;
+        try { identity = await _googleTokenVerifier.VerifyAsync(dto.Credential, cancellationToken); }
+        catch (UnauthorizedAccessException) { return Unauthorized(ApiResponse.ErrorResponse(401, "Google credential không hợp lệ.")); }
+
+        var user = await _context.Users.Find(u => u.GoogleSubject == identity.Subject || u.Email == identity.Email).FirstOrDefaultAsync(cancellationToken);
         if (user == null)
         {
             user = new User
             {
-                Email = dto.Email.Trim().ToLower(),
-                FullName = dto.Name ?? "Độc giả Google",
-                Avatar = dto.Avatar,
+                Email = identity.Email,
+                StudentCode = $"GOOGLE-{identity.Subject}",
+                FullName = identity.Name,
+                Avatar = identity.AvatarUrl,
+                GoogleSubject = identity.Subject,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
                 Status = "ACTIVE",
                 CreatedAt = DateTime.UtcNow
             };
-            await _context.Users.InsertOneAsync(user);
+            await _context.Users.InsertOneAsync(user, cancellationToken: cancellationToken);
 
             // Assign MEMBER_READER role
             var readerRole = await _context.Roles.Find(r => r.Code == "MEMBER_READER").FirstOrDefaultAsync();
@@ -336,6 +327,11 @@ public class AuthController : ControllerBase
                 });
             }
         }
+        else if (string.IsNullOrWhiteSpace(user.GoogleSubject))
+        {
+            await _context.Users.UpdateOneAsync(u => u.Id == user.Id,
+                Builders<User>.Update.Set(u => u.GoogleSubject, identity.Subject), cancellationToken: cancellationToken);
+        }
 
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "::1";
         var deviceName = GetDeviceNameFromUserAgent();
@@ -346,24 +342,4 @@ public class AuthController : ControllerBase
 
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Đăng nhập Google thành công."));
     }
-}
-
-public class ForgotPasswordDto
-{
-    public string Email { get; set; } = string.Empty;
-}
-
-public class ResetPasswordDto
-{
-    public string Email { get; set; } = string.Empty;
-    public string Token { get; set; } = string.Empty;
-    public string NewPassword { get; set; } = string.Empty;
-}
-
-public class GoogleLoginDto
-{
-    public string Email { get; set; } = string.Empty;
-    public string? Name { get; set; }
-    public string? GoogleId { get; set; }
-    public string? Avatar { get; set; }
 }

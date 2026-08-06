@@ -5,6 +5,9 @@ using api.Modules.Catalog.DTOs.Responses;
 using api.Repositories.Interfaces;
 using api.Common.Models;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace api.Modules.Catalog.Services
 {
@@ -67,8 +70,10 @@ namespace api.Modules.Catalog.Services
 
         public async Task<BookResponseDto> CreateAsync(CreateBookDto dto, string userId)
         {
-            if (await _bookRepository.ExistsBySlugAsync(dto.Slug))
-                throw new InvalidOperationException($"Slug '{dto.Slug}' already exists");
+            var slug = await GenerateUniqueSlugAsync(dto.Title);
+            var accessType = string.IsNullOrWhiteSpace(dto.AccessType)
+                ? "FREE"
+                : dto.AccessType.ToUpperInvariant();
 
             if (!string.IsNullOrEmpty(dto.ISBN) && await _bookRepository.ExistsByISBNAsync(dto.ISBN))
                 throw new InvalidOperationException($"ISBN '{dto.ISBN}' already exists");
@@ -76,12 +81,15 @@ namespace api.Modules.Catalog.Services
             var book = new Book
             {
                 Title = dto.Title,
-                Slug = dto.Slug,
+                Slug = slug,
                 ISBN = dto.ISBN,
                 Summary = dto.Summary,
                 PublicationYear = dto.PublicationYear,
                 Language = dto.Language ?? "vi",
-                AccessType = dto.AccessType ?? "FREE",
+                AccessType = accessType,
+                Price = string.Equals(accessType, "FREE", StringComparison.OrdinalIgnoreCase)
+                    ? 0
+                    : dto.Price ?? 10000,
                 Status = "DRAFT",
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
@@ -139,7 +147,13 @@ namespace api.Modules.Catalog.Services
             if (!string.IsNullOrEmpty(dto.Summary)) book.Summary = dto.Summary;
             if (dto.PublicationYear.HasValue) book.PublicationYear = dto.PublicationYear;
             if (!string.IsNullOrEmpty(dto.Language)) book.Language = dto.Language;
-            if (!string.IsNullOrEmpty(dto.AccessType)) book.AccessType = dto.AccessType;
+            if (!string.IsNullOrEmpty(dto.AccessType)) book.AccessType = dto.AccessType.ToUpperInvariant();
+            if (string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase))
+                book.Price = 0;
+            else if (dto.Price.HasValue)
+                book.Price = dto.Price.Value;
+            if (!string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase) && book.Price <= 0)
+                throw new InvalidOperationException("Premium books must have a price greater than zero.");
 
             // Update embedded author snapshots if supplied
             if (dto.Authors != null)
@@ -237,6 +251,7 @@ namespace api.Modules.Catalog.Services
                 PublicationYear = book.PublicationYear,
                 Language = book.Language,
                 AccessType = book.AccessType,
+                Price = book.Price,
                 Status = book.Status,
                 TotalChapters = book.TotalChapters,
                 CoverAssetId = book.CoverAssetId,
@@ -266,6 +281,31 @@ namespace api.Modules.Catalog.Services
                 },
                 Chapters = book.Chapters ?? new List<BookChapter>()
             };
+        }
+
+        private async Task<string> GenerateUniqueSlugAsync(string title)
+        {
+            var normalized = (title ?? string.Empty)
+                .Replace('đ', 'd')
+                .Replace('Đ', 'D')
+                .Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+            foreach (var character in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+                    builder.Append(character);
+            }
+
+            var baseSlug = Regex.Replace(builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant(), "[^a-z0-9]+", "-")
+                .Trim('-');
+            if (string.IsNullOrWhiteSpace(baseSlug)) baseSlug = "sach";
+            if (baseSlug.Length > 90) baseSlug = baseSlug[..90].TrimEnd('-');
+
+            var slug = baseSlug;
+            var suffix = 2;
+            while (await _bookRepository.ExistsBySlugAsync(slug))
+                slug = $"{baseSlug}-{suffix++}";
+            return slug;
         }
     }
 }

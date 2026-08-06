@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using api.Auth;
 using api.Common.Models;
+using api.Common.Constants;
 using api.Modules.Catalog.DTOs;
 using api.Modules.Catalog.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -209,6 +210,7 @@ namespace api.Modules.Catalog.Controllers
         /// Admin: Lấy danh sách tất cả bài đánh giá trên toàn hệ thống
         /// </summary>
         [HttpGet("admin/all")]
+        [RequirePermission(Permissions.ReviewModerate)]
         public async Task<IActionResult> GetAllReviews(
             [FromQuery] string? status,
             [FromQuery] int page = 1,

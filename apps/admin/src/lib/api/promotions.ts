@@ -1,0 +1,9 @@
+import { apiClient } from "@/lib/api-client";
+export interface Banner { id: string; title: string; subtitle: string; imageUrl: string; mediaId?: string; linkUrl: string; isActive: boolean; sortOrder: number; }
+export interface FlashSale { id: string; name: string; originalPrice: number; salePrice: number; startTime: string; endTime: string; status: string; }
+export interface Voucher { id: string; code: string; discountType: string; discountValue: number; minOrderValue: number; maxUsage: number; usedCount: number; expiresAt: string; status: string; }
+export const promotionsApi = {
+  banners: { list: () => apiClient.get<Banner[]>("/api/admin/banners"), create: (input: Omit<Banner, "id" | "imageUrl"> & { mediaId: string }) => apiClient.post<Banner>("/api/admin/banners", input), update: (id: string, input: Omit<Banner, "id" | "imageUrl"> & { mediaId: string }) => apiClient.put<Banner>(`/api/admin/banners/${id}`, input), remove: (id: string) => apiClient.delete<void>(`/api/admin/banners/${id}`) },
+  flashSales: { list: () => apiClient.get<FlashSale[]>("/api/admin/flash-sales"), create: (input: Omit<FlashSale, "id" | "status">) => apiClient.post<FlashSale>("/api/admin/flash-sales", input), update: (id: string, input: Omit<FlashSale, "id" | "status">) => apiClient.put<FlashSale>(`/api/admin/flash-sales/${id}`, input), remove: (id: string) => apiClient.delete<void>(`/api/admin/flash-sales/${id}`) },
+  vouchers: { list: () => apiClient.get<Voucher[]>("/api/admin/vouchers"), create: (input: Omit<Voucher, "id" | "usedCount" | "status">) => apiClient.post<Voucher>("/api/admin/vouchers", input), update: (id: string, input: Omit<Voucher, "id" | "usedCount">) => apiClient.put<Voucher>(`/api/admin/vouchers/${id}`, input), remove: (id: string) => apiClient.delete<void>(`/api/admin/vouchers/${id}`) },
+};

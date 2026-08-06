@@ -18,6 +18,9 @@ public class Banner
     [BsonElement("imageUrl")]
     public string ImageUrl { get; set; } = string.Empty;
 
+    [BsonElement("mediaId")]
+    public string? MediaId { get; set; }
+
     [BsonElement("linkUrl")]
     public string LinkUrl { get; set; } = "/books";
 

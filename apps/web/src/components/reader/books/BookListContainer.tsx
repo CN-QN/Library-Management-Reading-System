@@ -83,6 +83,8 @@ export function BookListContainer({ books }: BookListContainerProps) {
         <div className="flex flex-col gap-4">
           {books.map((book) => {
             const detailHref = `/books/${encodeURIComponent(book.slug || book.id)}`;
+            const isPremium = ['PREMIUM', 'PAID'].includes((book.accessType || 'FREE').toUpperCase());
+            const actionHref = isPremium ? detailHref : `${detailHref}/read`;
             return (
               <div key={book.id} className="flex gap-4 p-4 border rounded-lg bg-card hover:shadow-md transition-shadow">
                 <Link href={detailHref} className="shrink-0 relative w-24 sm:w-32 aspect-[2/3] overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -107,8 +109,8 @@ export function BookListContainer({ books }: BookListContainerProps) {
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <StarRating rating={book.rating || 0} />
-                    <Link href={detailHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                      Đọc ngay
+                    <Link href={actionHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                      {isPremium ? 'Mua để đọc' : 'Đọc ngay'}
                     </Link>
                   </div>
                 </div>

@@ -12,6 +12,8 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { TrendingBooksWidget } from "@/components/dashboard/trending-books-widget";
 import { RecentBooksWidget } from "@/components/dashboard/recent-books-widget";
 import { BorrowingTrendChart } from "@/components/dashboard/borrowing-trend-chart";
+import { RevenueWidget } from "@/components/dashboard/revenue-widget";
+import { BookOpen, Users, RefreshCcw, AlertTriangle } from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -21,12 +23,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-bold text-slate-900">
           Chào mừng trở lại, {user?.fullName ?? "..."}
         </h1>
         <p className="text-sm text-slate-500">
-          Vai trò hiện tại: {user?.roles?.join(", ") || "—"}
+          Vai trò hiện tại: <span className="font-medium text-slate-700">{user?.roles?.join(", ") || "—"}</span>
         </p>
       </div>
 
@@ -45,20 +48,45 @@ export default function DashboardPage() {
 
       {!isLoading && !error && data && (
         <>
+          {/* Stat Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Tổng số sách" stat={data.statCards.totalBooks} />
-            <StatCard label="Tổng số người dùng" stat={data.statCards.totalUsers} />
-            <StatCard label="Đang mượn" stat={data.statCards.activeBorrowings} />
-            <StatCard label="Quá hạn" stat={data.statCards.overdueBorrowings} />
+            <StatCard
+              label="Tổng số sách"
+              stat={data.statCards.totalBooks}
+              variant="blue"
+              icon={<BookOpen className="h-4 w-4" />}
+              trend={{ value: 1, label: "Thư viện đang hoạt động" }}
+            />
+            <StatCard
+              label="Tổng số người dùng"
+              stat={data.statCards.totalUsers}
+              variant="violet"
+              icon={<Users className="h-4 w-4" />}
+              trend={{ value: 1, label: "Độc giả đã đăng ký" }}
+            />
+            <StatCard
+              label="Đang mượn"
+              stat={data.statCards.activeBorrowings}
+              variant="emerald"
+              icon={<RefreshCcw className="h-4 w-4" />}
+              trend={{ value: 0, label: "Phiếu mượn đang mở" }}
+            />
+            <StatCard
+              label="Quá hạn"
+              stat={data.statCards.overdueBorrowings}
+              variant="rose"
+              icon={<AlertTriangle className="h-4 w-4" />}
+              trend={{ value: -1, label: "Cần xử lý khẩn" }}
+            />
           </div>
 
-          <div>
-            <BorrowingTrendChart data={data.borrowingTrend} />
-            <p className="mt-1 text-xs text-slate-400">
-              Tính từ 100 phiếu mượn gần nhất (chưa có API thống kê theo thời gian ở backend).
-            </p>
-          </div>
+          {/* Revenue Widget */}
+          <RevenueWidget />
 
+          {/* Borrowing Trend Chart */}
+          <BorrowingTrendChart data={data.borrowingTrend} />
+
+          {/* Books Widgets */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <TrendingBooksWidget books={data.trendingBooks} />
             <RecentBooksWidget books={data.recentBooks} />

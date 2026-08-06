@@ -55,6 +55,11 @@ export const Permissions = {
   SettingUpdate: "setting.update",
   AuditRead: "audit.read",
   FileManage: "file.manage",
+  PaymentRead: "payment.read",
+  PromotionBannerManage: "promotion.banner.manage",
+  PromotionFlashSaleManage: "promotion.flash_sale.manage",
+  PromotionVoucherManage: "promotion.voucher.manage",
+  NotificationBroadcast: "notification.broadcast",
 } as const;
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];

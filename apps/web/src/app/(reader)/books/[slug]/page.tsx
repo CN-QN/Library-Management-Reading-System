@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import sanitizeHtml from 'sanitize-html';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ArrowLeft, Eye, Star, Calendar, Globe, BookMarked, ShieldCheck } from 'lucide-react';
@@ -46,7 +47,9 @@ export async function generateMetadata({ params }: BookDetailPageProps): Promise
     const cover = await getBookCover(book.id).catch(() => null);
 
     const title = `${book.title}${BOOK_DETAIL_COPY.pageTitleSuffix}`;
-    const description = book.summary || `${book.title} - Tác giả: ${book.authorNames.join(', ') || BOOK_DETAIL_COPY.missingAuthor}`;
+    const description = book.summary
+      ? sanitizeHtml(book.summary, { allowedTags: [], allowedAttributes: {} })
+      : `${book.title} - Tác giả: ${book.authorNames.join(', ') || BOOK_DETAIL_COPY.missingAuthor}`;
     const images = cover?.fileUrl ? [cover.fileUrl] : [];
 
     return {
@@ -126,12 +129,20 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 
   // Xác định URL ảnh bìa (ưu tiên từ API cover -> tiếp theo từ thuộc tính book)
   const displayCoverUrl = coverFile?.fileUrl || book.coverImage || null;
+  const safeSummary = book.summary
+    ? sanitizeHtml(book.summary, {
+        allowedTags: ['p', 'br', 'strong', 'em', 'u', 's', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'blockquote', 'a', 'span'],
+        allowedAttributes: { a: ['href', 'target', 'rel'], span: ['class'], p: ['class'] },
+        allowedSchemes: ['http', 'https', 'mailto'],
+      })
+    : '';
 
   const metaItems: { label: string; icon: React.ReactNode; value: React.ReactNode }[] = [
     { label: 'Đánh giá', icon: <Star className="w-3.5 h-3.5 text-amber-500" />, value: <StarRating rating={book.rating || 0} /> },
     { label: 'Lượt xem', icon: <Eye className="w-3.5 h-3.5 text-blue-500" />, value: book.viewCount.toLocaleString('vi-VN') },
     { label: 'Số chương', icon: <BookMarked className="w-3.5 h-3.5 text-purple-500" />, value: book.totalChapters },
     { label: 'Quyền truy cập', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />, value: book.accessType },
+    ...(book.price > 0 ? [{ label: 'Giá mở khóa', icon: <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />, value: `${book.price.toLocaleString('vi-VN')} ₫` }] : []),
   ];
 
   const publishItems: { label: string; value: string | number | null; icon?: React.ReactNode }[] = [
@@ -260,9 +271,14 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
           {/* Khối Tóm tắt nội dung */}
           <div className="space-y-2 pt-2 border-t">
             <h2 className="text-base font-semibold">Tóm tắt nội dung</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {book.summary || BOOK_DETAIL_COPY.missingSummary}
-            </p>
+            {safeSummary ? (
+              <div
+                className="book-summary text-sm text-muted-foreground leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: safeSummary }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">{BOOK_DETAIL_COPY.missingSummary}</p>
+            )}
           </div>
 
           {/* Khối Hành động CTA chính & Tiến độ đọc trong Hero */}

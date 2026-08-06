@@ -20,13 +20,15 @@ export interface BookCardProps {
  */
 export function BookCard({ book, className }: BookCardProps) {
   const detailHref = `/books/${encodeURIComponent(book.slug || book.id)}`;
+  const isPremium = ['PREMIUM', 'PAID'].includes((book.accessType || 'FREE').toUpperCase());
+  const actionHref = isPremium ? detailHref : `${detailHref}/read`;
 
   return (
-    <Link href={detailHref} className={cn("group h-full block select-none", className)}>
+    <div className={cn("group h-full block select-none", className)}>
       <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-md border-muted/60 bg-card hover:-translate-y-1 select-none">
         <CardContent className="p-0 flex flex-col flex-1 h-full">
           {/* Ảnh bìa */}
-          <div className="relative aspect-[2/3] w-full bg-muted overflow-hidden flex shrink-0">
+          <Link href={detailHref} className="relative aspect-[2/3] w-full bg-muted overflow-hidden flex shrink-0">
             {book.coverImage ? (
               <Image 
                 src={book.coverImage} 
@@ -50,30 +52,30 @@ export function BookCard({ book, className }: BookCardProps) {
                 </Badge>
               </div>
             )}
-          </div>
+          </Link>
           
           {/* Thông tin */}
           <div className="p-4 flex flex-col flex-1 gap-1">
-            <h3 className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors" title={book.title}>
+            <Link href={detailHref} className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors" title={book.title}>
               {book.title}
-            </h3>
+            </Link>
             <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{book.author}</p>
             
             <div className="mt-auto pt-4 flex flex-col gap-3">
               <StarRating rating={book.rating || 0} />
               
               {/* Nút hành động */}
-              <div className={cn(
+              <Link href={actionHref} className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }), 
                 "w-full h-8 px-3 transition-colors group-hover:bg-primary group-hover:text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground flex items-center justify-center gap-1.5"
               )}>
                 <BookOpen className="w-4 h-4" />
-                <span className="font-medium">Đọc ngay</span>
-              </div>
+                <span className="font-medium">{isPremium ? 'Mua để đọc' : 'Đọc ngay'}</span>
+              </Link>
             </div>
           </div>
         </CardContent>
       </Card>
-    </Link>
+    </div>
   );
 }

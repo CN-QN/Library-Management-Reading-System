@@ -20,6 +20,8 @@ export interface BookDetail {
   language: string | null;
   /** Loại truy cập (vd: "Free", "Premium", "MemberOnly") */
   accessType: string;
+  /** Giá mở khóa nội dung số, tính bằng VND. */
+  price: number;
   /** Trạng thái của sách (vd: "Published", "Draft") */
   status: string;
   /** Tổng số chương sách hiện có */

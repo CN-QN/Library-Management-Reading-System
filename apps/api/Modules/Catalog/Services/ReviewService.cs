@@ -227,7 +227,7 @@ namespace api.Modules.Catalog.Services
                 .ToListAsync();
 
             var dtos = reviews.Select(MapToDto).ToList();
-            return new PagedResult<ReviewResponseDto>(dtos, (int)totalCount, page, pageSize);
+            return new PagedResult<ReviewResponseDto>(dtos, page, pageSize, totalCount);
         }
 
         private async Task UpdateBookRatingStatsAsync(string bookId)

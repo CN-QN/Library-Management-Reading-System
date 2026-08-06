@@ -21,6 +21,12 @@ export interface PaymentModalProps {
   onPaymentSuccess: () => void;
 }
 
+interface BankInfo {
+  bankName: string;
+  bankAccount: string;
+  accountName: string;
+}
+
 export function PaymentModal({
   isOpen,
   onClose,
@@ -35,18 +41,29 @@ export function PaymentModal({
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [timeLeft, setTimeLeft] = useState(600); // 10 phút
+  const [bankInfo, setBankInfo] = useState<BankInfo | null>(null);
 
-  // Khởi tạo mã VietQR khi modal mở
+  // Khởi tạo mã VietQR + bank info khi modal mở
   useEffect(() => {
     if (isOpen && bookId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true);
       setError(null);
       setIsSuccess(false);
       setTimeLeft(600);
 
-      createPaymentQr(bookId)
-        .then((data) => {
-          setQrData(data);
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5210';
+
+      Promise.all([
+        createPaymentQr(bookId),
+        fetch(`${apiBase}/api/payments/bank-info`)
+          .then((r) => r.json())
+          .then((res) => (res?.data as BankInfo) ?? null)
+          .catch(() => null),
+      ])
+        .then(([qr, bank]) => {
+          setQrData(qr);
+          if (bank) setBankInfo(bank);
         })
         .catch(() => {
           setError('Không thể tạo mã QR thanh toán. Vui lòng thử lại.');
@@ -100,6 +117,7 @@ export function PaymentModal({
     }, 4000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isSuccess, qrData?.orderCode]);
 
   const copyToClipboard = (text: string, type: 'content' | 'amount') => {
@@ -119,9 +137,13 @@ export function PaymentModal({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const bankLabel = bankInfo
+    ? `${bankInfo.bankName} – TK: ${bankInfo.bankAccount}`
+    : 'VietinBank – STK: 105886719416';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] p-6 rounded-2xl">
+      <DialogContent className="sm:max-w-[480px] p-6 rounded-2xl bg-white">
         <DialogHeader className="text-center">
           <DialogTitle className="text-xl font-bold flex items-center justify-center gap-2 text-foreground">
             <QrCode className="w-5 h-5 text-primary" />
@@ -159,9 +181,8 @@ export function PaymentModal({
         ) : qrData ? (
           <div className="space-y-5 py-2">
             {/* Khung VietQR Code */}
-            <div className="flex flex-col items-center justify-center p-4 bg-muted/30 border rounded-xl relative">
-              <div className="w-56 h-56 bg-white p-2 rounded-lg shadow-sm border flex items-center justify-center">
-                {/* eslint-disable-next-html-shortcut */}
+            <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl relative">
+              <div className="w-56 h-56 bg-white p-2 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center">
                 <img
                   src={qrData.qrCodeUrl}
                   alt="VietQR SePay"
@@ -175,13 +196,13 @@ export function PaymentModal({
             </div>
 
             {/* Chi tiết chuyển khoản */}
-            <div className="space-y-2.5 text-xs bg-card p-3.5 rounded-xl border">
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
+            <div className="space-y-2.5 text-xs bg-white p-3.5 rounded-xl ring-1 ring-slate-200">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
                 <span className="text-muted-foreground">Ngân hàng thụ hưởng:</span>
-                <span className="font-bold text-foreground">MBBank (Ngân hàng Quân Đội)</span>
+                <span className="font-bold text-foreground">{bankLabel}</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
                 <span className="text-muted-foreground">Số tiền thanh toán:</span>
                 <div className="flex items-center gap-1.5 font-bold text-primary text-sm">
                   <span>{qrData.amount.toLocaleString('vi-VN')} VNĐ</span>
@@ -211,7 +232,7 @@ export function PaymentModal({
             </div>
 
             {/* Chú thích SePay Real-time */}
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-secondary/30 p-2.5 rounded-lg border border-border/40">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-slate-50 p-2.5 rounded-lg ring-1 ring-slate-100">
               <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
               <span>Hệ thống sử dụng **SePay + Redis Pub/Sub** tự động xác nhận trong vài giây ngay khi bạn hoàn tất chuyển khoản.</span>
             </div>

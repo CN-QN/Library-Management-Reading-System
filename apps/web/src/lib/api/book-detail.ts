@@ -102,6 +102,7 @@ function normalizeBookDetail(raw: Record<string, unknown> | null): BookDetail {
     isbn: pickRaw<string | null>(raw, 'isbn', 'Isbn'),
     language: pickRaw<string | null>(raw, 'language', 'Language'),
     accessType: pickRaw<string>(raw, 'accessType', 'AccessType') || 'Free',
+    price: pickRaw<number>(raw, 'price', 'Price') ?? 0,
     status: pickRaw<string>(raw, 'status', 'Status') || 'PUBLISHED',
     totalChapters: pickRaw<number>(raw, 'totalChapters', 'TotalChapters') ?? 0,
     viewCount: pickRaw<number>(raw, 'viewCount', 'ViewCount') ?? 0,

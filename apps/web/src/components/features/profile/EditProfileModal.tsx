@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Loader2, User, Mail, Phone, Bell, Image as ImageIcon } from 'lucide-react';
 import {
   Dialog,
@@ -48,17 +48,6 @@ export function EditProfileModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && currentUser) {
-      setFullName(currentUser.fullName || '');
-      setEmail(currentUser.email || '');
-      setPhoneNumber(currentUser.phoneNumber || '');
-      setAvatarUrl(currentUser.avatar || '');
-      setNotifyBookAvailable(currentUser.notifyBookAvailable ?? true);
-      setErrorMessage(null);
-    }
-  }, [isOpen, currentUser]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || fullName.trim().length < 2) {
@@ -81,8 +70,8 @@ export function EditProfileModal({
       await axios.put('http://localhost:5210/api/auth/profile', payload, { withCredentials: true });
       onSuccess(payload);
       onClose();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Không thể cập nhật hồ sơ độc giả vào database.';
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) ? err.response?.data?.message : 'Không thể cập nhật hồ sơ độc giả vào database.';
       setErrorMessage(msg);
     } finally {
       setIsLoading(false);
@@ -107,17 +96,17 @@ export function EditProfileModal({
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await axios.post('http://localhost:5210/api/media/upload', formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5210/api'}/media/avatar`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         withCredentials: true,
       });
 
-      const url = res.data?.data?.secure_url || res.data?.data?.url;
+      const url = res.data?.data?.fileUrl;
       if (url) {
         setAvatarUrl(url);
       }
-    } catch (err: any) {
-      setErrorMessage(err.response?.data?.message || 'Không thể tải ảnh lên server.');
+    } catch (err: unknown) {
+      setErrorMessage(axios.isAxiosError(err) ? err.response?.data?.message : 'Không thể tải ảnh lên server.');
     } finally {
       setIsUploading(false);
     }

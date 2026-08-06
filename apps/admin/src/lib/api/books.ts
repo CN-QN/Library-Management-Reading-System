@@ -50,6 +50,7 @@ export interface Book {
   publicationYear?: number | null;
   language: string;
   accessType: string;
+  price: number;
   status: string;
   coverAssetId?: string | null;
   totalChapters: number;
@@ -100,12 +101,12 @@ export interface BookQuery {
  */
 export interface CreateBookInput {
   title: string;
-  slug: string;
   isbn?: string;
   summary?: string;
   publicationYear?: number;
   language?: string;
   accessType?: string;
+  price?: number;
   authors: BookAuthorSnapshot[];
   categories: BookCategorySnapshot[];
   publisher?: BookPublisherSnapshot;
@@ -118,6 +119,7 @@ export interface UpdateBookInput {
   publicationYear?: number;
   language?: string;
   accessType?: string;
+  price?: number;
   authors?: BookAuthorSnapshot[];
   categories?: BookCategorySnapshot[];
   publisher?: BookPublisherSnapshot | null;
@@ -161,15 +163,17 @@ export const booksApi = {
     apiClient.get<{ isValid: boolean }>(`/api/books/validate-isbn/${encodeURIComponent(isbn)}`),
 
   /**
-   * Uploads a book cover via the real Files module
-   * (`POST /api/files/upload-cover/{bookId}`, requires `file.manage`).
+   * Uploads and links a book cover through the unified admin media pipeline.
    */
   uploadCover: (bookId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("usageType", "book-cover");
+    formData.append("category", "book-cover");
+    formData.append("referenceId", bookId);
     return apiClient
-      .post<{ fileId: string; fileName: string; fileUrl: string; fileType: string; fileSize: number }>(
-        `/api/files/upload-cover/${bookId}`,
+      .post<{ id: string; fileUrl: string }>(
+        "/api/admin/media/upload",
         formData
       )
       .then((res) => ({ url: res.fileUrl }));

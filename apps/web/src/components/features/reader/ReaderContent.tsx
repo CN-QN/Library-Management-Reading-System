@@ -320,7 +320,7 @@ export function ReaderContent({
               </h3>
               <p className={cn('text-xs sm:text-sm leading-relaxed', themeClasses.mutedText)}>
                 Bạn đã đọc xong toàn bộ các chương của cuốn sách{' '}
-                <strong className="font-semibold text-current">"{bookTitle}"</strong>. Hãy chia sẻ cảm xúc và đánh giá cuốn sách này nhé!
+                <strong className="font-semibold text-current">&ldquo;{bookTitle}&rdquo;</strong>. Hãy chia sẻ cảm xúc và đánh giá cuốn sách này nhé!
               </p>
             </div>
 

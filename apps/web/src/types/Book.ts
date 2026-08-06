@@ -38,6 +38,9 @@ export interface Book {
   /** Embedded publisher snapshot */
   publisher?: BookPublisherSnapshot | null;
   rating?: number;
+  /** FREE đọc ngay; PREMIUM/PAID cần thanh toán trước. */
+  accessType?: string;
+  price?: number;
   /** Trạng thái xuất bản: "Published", "Draft", v.v. */
   status?: string;
   /** Chuỗi ISO 8601 (vd: "2026-07-29T10:00:00Z") */

@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace api.Auth;
 
-public class AuthService
+public class AuthService : IUserPermissionResolver
 {
     private readonly MongoDbContext _context;
     private readonly RedisContext _redisContext;

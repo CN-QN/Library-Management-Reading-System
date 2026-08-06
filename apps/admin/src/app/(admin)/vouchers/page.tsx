@@ -1,143 +1,142 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiClient } from "@/lib/api-client";
+import { useCallback, useEffect, useState } from "react";
+import { Edit2, Power, Plus, Ticket, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { promotionsApi, type Voucher } from "@/lib/api/promotions";
 
-interface VoucherItem {
-  id: string;
+interface VoucherForm {
   code: string;
-  discountType: "PERCENT" | "FIXED";
-  discountValue: number;
-  minOrderValue: number;
-  maxUsage: number;
-  usedCount: number;
+  discountType: string;
+  discountValue: string;
+  minOrderValue: string;
+  maxUsage: string;
   expiresAt: string;
-  status: "ACTIVE" | "EXPIRED";
+  status: string;
 }
 
-export default function VouchersAdminPage() {
+const EMPTY_FORM: VoucherForm = { code: "", discountType: "PERCENT", discountValue: "10", minOrderValue: "0", maxUsage: "100", expiresAt: "", status: "ACTIVE" };
+const PAGE_SIZE = 15;
+
+const toLocalInput = (value: string) => {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
+export default function VouchersPage() {
   const { showToast } = useToast();
-  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [allItems, setAllItems] = useState<Voucher[]>([]);
+  const [form, setForm] = useState<VoucherForm>(EMPTY_FORM);
+  const [editing, setEditing] = useState<Voucher | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
-  const [code, setCode] = useState("");
-  const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">("PERCENT");
-  const [discountValue, setDiscountValue] = useState(50);
-  const [maxUsage, setMaxUsage] = useState(100);
-  const [expiresAt, setExpiresAt] = useState("2026-12-31");
-
-  async function fetchVouchers() {
-    setIsLoading(true);
-    try {
-      const data = await apiClient.get<VoucherItem[]>("/api/vouchers");
-      setVouchers(data || []);
-    } catch {
-      showToast("Không thể tải danh sách Voucher.", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchVouchers();
+  const load = useCallback(async () => {
+    setIsLoading(true); setError("");
+    try { setAllItems(await promotionsApi.vouchers.list()); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể tải voucher."); }
+    finally { setIsLoading(false); }
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) {
-      showToast("Vui lòng nhập Mã Voucher!", "error");
-      return;
-    }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
-    try {
-      await apiClient.post("/api/vouchers", {
-        code: code.toUpperCase().trim(),
-        discountType,
-        discountValue: Number(discountValue),
-        minOrderValue: 10000,
-        maxUsage: Number(maxUsage),
-        expiresAt: new Date(expiresAt).toISOString(),
-        status: "ACTIVE",
-      });
-      showToast("Tạo Voucher thành công!", "success");
-      setIsModalOpen(false);
-      setCode("");
-      fetchVouchers();
-    } catch {
-      showToast("Lỗi khi tạo Voucher.", "error");
-    }
+  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  const items = allItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function openCreate() { setEditing(null); setForm(EMPTY_FORM); setIsModalOpen(true); }
+  function openEdit(item: Voucher) {
+    setEditing(item);
+    setForm({ code: item.code, discountType: item.discountType, discountValue: String(item.discountValue), minOrderValue: String(item.minOrderValue), maxUsage: String(item.maxUsage), expiresAt: toLocalInput(item.expiresAt), status: item.status === "EXPIRED" ? "ACTIVE" : item.status });
+    setIsModalOpen(true);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Bạn có chắc muốn xóa Voucher này khỏi cơ sở dữ liệu?")) return;
-    try {
-      await apiClient.delete(`/api/vouchers/${id}`);
-      showToast("Xóa Voucher thành công!", "success");
-      setVouchers((prev) => prev.filter((v) => v.id !== id));
-    } catch {
-      showToast("Không thể xóa Voucher.", "error");
-    }
+  function payload(status = form.status) {
+    return { code: form.code.trim().toUpperCase(), discountType: form.discountType, discountValue: Number(form.discountValue), minOrderValue: Number(form.minOrderValue), maxUsage: Number(form.maxUsage), expiresAt: new Date(form.expiresAt).toISOString(), status };
   }
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault(); setIsSaving(true);
+    try {
+      const value = payload();
+      if (editing) await promotionsApi.vouchers.update(editing.id, value);
+      else {
+        const { status: _status, ...createValue } = value;
+        void _status;
+        await promotionsApi.vouchers.create(createValue);
+      }
+      setIsModalOpen(false); await load(); showToast(editing ? "Đã cập nhật voucher." : "Đã tạo voucher.", "success");
+    } catch (cause) { showToast(cause instanceof Error ? cause.message : "Không thể lưu voucher.", "error"); }
+    finally { setIsSaving(false); }
+  }
+
+  async function toggle(item: Voucher) {
+    try {
+      await promotionsApi.vouchers.update(item.id, { code: item.code, discountType: item.discountType, discountValue: item.discountValue, minOrderValue: item.minOrderValue, maxUsage: item.maxUsage, expiresAt: item.expiresAt, status: item.status === "ACTIVE" ? "DISABLED" : "ACTIVE" });
+      await load(); showToast(item.status === "ACTIVE" ? "Đã tắt voucher." : "Đã bật voucher.", "success");
+    } catch (cause) { showToast(cause instanceof Error ? cause.message : "Không thể đổi trạng thái voucher.", "error"); }
+  }
+
+  async function remove(item: Voucher) {
+    if (!confirm(`Xóa voucher "${item.code}"?`)) return;
+    try { await promotionsApi.vouchers.remove(item.id); await load(); showToast("Đã xóa voucher.", "success"); }
+    catch (cause) { showToast(cause instanceof Error ? cause.message : "Không thể xóa voucher.", "error"); }
+  }
+
+  const statusVariant = (status: string): "success" | "warning" | "neutral" => status === "ACTIVE" ? "success" : status === "DISABLED" ? "warning" : "neutral";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Quản Lý Voucher & Mã Giảm Giá (Backend API Real)</h1>
-          <p className="text-sm text-slate-500">
-            Tạo và quản lý các mã giảm giá mua quyền đọc sách số 10.000 VNĐ lưu trong MongoDB.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          + Tạo Voucher Mới
-        </button>
-      </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><h1 className="text-xl font-bold text-slate-900">Quản lý Voucher</h1><p className="mt-1 text-sm text-slate-500">Quản lý loại giảm giá, điều kiện, hạn dùng và số lượt sử dụng.</p></div>
+        <Button onClick={openCreate}><Plus className="h-4 w-4" />Thêm voucher</Button>
+      </header>
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Đang tải Voucher từ MongoDB...</div>
-        ) : vouchers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">Chưa có Voucher nào trong MongoDB.</div>
+          <p className="p-8 text-center text-sm text-slate-500">Đang tải voucher…</p>
+        ) : allItems.length === 0 ? (
+          <p className="p-10 text-center text-sm text-slate-500"><Ticket className="mx-auto mb-2 h-8 w-8" />Chưa có voucher.</p>
         ) : (
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">Mã Voucher</th>
+                <th className="px-4 py-3">Mã</th>
                 <th className="px-4 py-3">Mức giảm</th>
-                <th className="px-4 py-3">Lượt đã dùng</th>
-                <th className="px-4 py-3">Hạn sử dụng</th>
+                <th className="px-4 py-3">Điều kiện</th>
+                <th className="px-4 py-3">Sử dụng</th>
+                <th className="px-4 py-3">Hết hạn</th>
                 <th className="px-4 py-3">Trạng thái</th>
                 <th className="px-4 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              {vouchers.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3.5 font-mono font-bold text-slate-900">{v.code}</td>
-                  <td className="px-4 py-3.5 font-medium">
-                    {v.discountType === "PERCENT" ? `Giảm ${v.discountValue}%` : `Giảm ${v.discountValue.toLocaleString("vi-VN")} VNĐ`}
-                  </td>
-                  <td className="px-4 py-3.5">{v.usedCount} / {v.maxUsage}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs">{new Date(v.expiresAt).toLocaleDateString("vi-VN")}</td>
-                  <td className="px-4 py-3.5">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${v.status === "ACTIVE" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
-                      {v.status === "ACTIVE" ? "Đang chạy" : "Hết hạn"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(v.id)}
-                      className="text-xs font-medium text-rose-600 hover:underline"
-                    >
-                      Xóa
-                    </button>
+            <tbody className="divide-y divide-slate-100">
+              {items.map((item) => (
+                <tr key={item.id} className="bg-white hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3 font-mono font-bold">{item.code}</td>
+                  <td className="px-4 py-3 font-semibold text-emerald-700">{item.discountType === "PERCENT" ? `${item.discountValue}%` : `${item.discountValue.toLocaleString("vi-VN")}₫`}</td>
+                  <td className="px-4 py-3">Từ {item.minOrderValue.toLocaleString("vi-VN")}₫</td>
+                  <td className="px-4 py-3">{item.usedCount}/{item.maxUsage}</td>
+                  <td className="px-4 py-3">{new Date(item.expiresAt).toLocaleString("vi-VN")}</td>
+                  <td className="px-4 py-3"><Badge variant={statusVariant(item.status)}>{item.status}</Badge></td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="outline" disabled={item.status === "EXPIRED"} onClick={() => void toggle(item)}><Power className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(item)}><Edit2 className="h-4 w-4" />Sửa</Button>
+                      <Button size="sm" variant="danger" onClick={() => void remove(item)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -146,74 +145,24 @@ export default function VouchersAdminPage() {
         )}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 space-y-4 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-base font-semibold text-slate-900">Tạo Mã Voucher Mới</h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Mã Voucher (Viết hoa)</label>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="VD: LH50OFF"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono uppercase"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Loại giảm</label>
-                  <select
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as any)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  >
-                    <option value="PERCENT">Phần trăm (%)</option>
-                    <option value="FIXED">Số tiền (VNĐ)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Giá trị</label>
-                  <input
-                    type="number"
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(Number(e.target.value))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Lượt dùng tối đa</label>
-                  <input
-                    type="number"
-                    value={maxUsage}
-                    onChange={(e) => setMaxUsage(Number(e.target.value))}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ngày hết hạn</label>
-                  <input
-                    type="date"
-                    value={expiresAt}
-                    onChange={(e) => setExpiresAt(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border px-3 py-1.5 text-sm">Hủy</button>
-                <button type="submit" className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white">Lưu Voucher</button>
-              </div>
-            </form>
-          </div>
+      {allItems.length > 0 && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs text-slate-500">
+            Hiển thị {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, allItems.length)} / {allItems.length} voucher
+          </p>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Chỉnh sửa voucher" : "Thêm voucher"} footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="voucher-form" type="submit" isLoading={isSaving}>Lưu</Button></>}>
+        <form id="voucher-form" onSubmit={save} className="space-y-4">
+          <Input label="Mã voucher *" required value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} />
+          <div className="grid grid-cols-2 gap-3"><Select label="Loại giảm" value={form.discountType} onChange={(event) => setForm({ ...form, discountType: event.target.value })}><option value="PERCENT">Phần trăm</option><option value="FIXED">Số tiền</option></Select><Input label="Giá trị *" type="number" min={1} required value={form.discountValue} onChange={(event) => setForm({ ...form, discountValue: event.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3"><Input label="Đơn tối thiểu" type="number" min={0} required value={form.minOrderValue} onChange={(event) => setForm({ ...form, minOrderValue: event.target.value })} /><Input label="Lượt tối đa *" type="number" min={1} required value={form.maxUsage} onChange={(event) => setForm({ ...form, maxUsage: event.target.value })} /></div>
+          <Input label="Hết hạn *" type="datetime-local" required value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
+          {editing && <Select label="Trạng thái" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="ACTIVE">Đang hoạt động</option><option value="DISABLED">Tạm tắt</option></Select>}
+        </form>
+      </Modal>
     </div>
   );
 }

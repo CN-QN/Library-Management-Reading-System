@@ -53,6 +53,8 @@ export async function getBooksByCategory(
       publisher,
       coverImage: (item['coverImage'] as string) || (item['coverImageUrl'] as string) || '',
       rating: (item['rating'] as number) || 0,
+      accessType: (item['accessType'] as string) || 'FREE',
+      price: (item['price'] as number) || 0,
       status: (item['status'] as string) || 'PUBLISHED',
       createdAt: item['createdAt'] as string | undefined,
     };

@@ -86,6 +86,7 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
     : null;
 
   const progressPercent = progress ? Math.min(100, Math.max(0, progress.percentage)) : 0;
+  const canRead = !isPaidBook || hasPaidAccess;
 
   return (
     <div className="space-y-4 pt-2">
@@ -112,7 +113,7 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
 
       {/* Khối Nút Hành động */}
       <div className="flex flex-wrap items-center gap-4">
-        {readHref ? (
+        {readHref && canRead ? (
           <Link
             href={readHref}
             className={cn(
@@ -123,6 +124,21 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
             <BookOpen className="w-5 h-5 mr-2" />
             {isContinue ? BOOK_DETAIL_COPY.continueReading : BOOK_DETAIL_COPY.startReading}
           </Link>
+        ) : isPaidBook && !hasPaidAccess ? (
+          <Button
+            size="lg"
+            onClick={() => {
+              if (!isAuthenticated) {
+                window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+                return;
+              }
+              setIsPaymentOpen(true);
+            }}
+            className="min-w-[190px] font-semibold shadow-md"
+          >
+            <QrCode className="w-5 h-5 mr-2" />
+            Mua để đọc{book.price > 0 ? ` · ${book.price.toLocaleString('vi-VN')} ₫` : ''}
+          </Button>
         ) : (
           <Button disabled variant="secondary" size="lg" className="min-w-[160px]">
             <BookOpen className="w-5 h-5 mr-2" />
@@ -131,30 +147,12 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
         )}
 
         {/* Nút Mua sách Premium qua VietQR SePay */}
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => {
-            if (!isAuthenticated) {
-              window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
-              return;
-            }
-            setIsPaymentOpen(true);
-          }}
-          className="border-primary/40 text-primary hover:bg-primary/10 font-semibold"
-        >
-          {hasPaidAccess ? (
-            <>
-              <CheckCircle2 className="w-5 h-5 mr-2 text-green-500" />
-              Đã mở khóa Premium
-            </>
-          ) : (
-            <>
-              <QrCode className="w-5 h-5 mr-2" />
-              Mua VietQR SePay
-            </>
-          )}
-        </Button>
+        {isPaidBook && hasPaidAccess && (
+          <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+            <CheckCircle2 className="w-5 h-5" />
+            Đã mở khóa Premium
+          </span>
+        )}
 
         {/* Nút Bookmark */}
         <Button

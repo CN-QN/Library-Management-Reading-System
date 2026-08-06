@@ -6,6 +6,7 @@ using api.Common.Models;
 using System.Security.Claims;
 using api.Auth;
 using api.Common.Constants;
+using api.Modules.Payment.Services;
 namespace api.Modules.DigitalContent.Controllers
 {
     [ApiController]
@@ -15,11 +16,38 @@ namespace api.Modules.DigitalContent.Controllers
     {
         private readonly IChapterService _chapterService;
         private readonly ILogger<ChaptersController> _logger;
+        private readonly IPaymentService _paymentService;
+        private readonly IUserPermissionResolver _permissionResolver;
 
-        public ChaptersController(IChapterService chapterService, ILogger<ChaptersController> logger)
+        public ChaptersController(
+            IChapterService chapterService,
+            ILogger<ChaptersController> logger,
+            IPaymentService paymentService,
+            IUserPermissionResolver permissionResolver)
         {
             _chapterService = chapterService;
             _logger = logger;
+            _paymentService = paymentService;
+            _permissionResolver = permissionResolver;
+        }
+
+        private async Task<IActionResult?> DenyIfBookIsLockedAsync(string bookId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var permissions = await _permissionResolver.GetCachedPermissionsAsync(userId);
+                if (permissions.Contains(Permissions.BookUpdate) || permissions.Contains(Permissions.ChapterUpdate))
+                    return null;
+            }
+
+            if (await _paymentService.CheckBookAccessAsync(userId ?? string.Empty, bookId))
+                return null;
+
+            return string.IsNullOrWhiteSpace(userId)
+                ? Unauthorized(ApiResponse.ErrorResponse(401, "Vui lòng đăng nhập và mua sách để đọc nội dung này."))
+                : StatusCode(StatusCodes.Status402PaymentRequired,
+                    ApiResponse.ErrorResponse(402, "Sách có bản quyền này cần được thanh toán trước khi đọc."));
         }
 
         /// <summary>
@@ -33,7 +61,19 @@ namespace api.Modules.DigitalContent.Controllers
             {
                 var chapters = await _chapterService.GetByBookIdAsync(bookId);
                 return Ok(ApiResponse<object>.SuccessResponse(
-                    chapters,
+                    chapters.Select(chapter => new
+                    {
+                        chapterId = chapter.ChapterId,
+                        chapter.Number,
+                        chapter.Title,
+                        chapter.Summary,
+                        chapter.Status,
+                        chapter.WordCount,
+                        chapter.ReadingTime,
+                        chapter.PublishedAt,
+                        chapter.CreatedAt,
+                        chapter.UpdatedAt
+                    }),
                     "Chapters retrieved successfully"
                 ));
             }
@@ -57,6 +97,9 @@ namespace api.Modules.DigitalContent.Controllers
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
+                var accessDenied = await DenyIfBookIsLockedAsync(bookId);
+                if (accessDenied != null) return accessDenied;
+
                 return Ok(ApiResponse<object>.SuccessResponse(
                     chapter,
                     "Chapter retrieved successfully"
@@ -73,10 +116,14 @@ namespace api.Modules.DigitalContent.Controllers
         /// Lấy nội dung chapter
         /// </summary>
         [HttpGet("{chapterId}/content")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetContent(string bookId, string chapterId)
         {
             try
             {
+                var accessDenied = await DenyIfBookIsLockedAsync(bookId);
+                if (accessDenied != null) return accessDenied;
+
                 var content = await _chapterService.GetContentAsync(bookId, chapterId);
                 if (content == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter content not found"));

@@ -1,297 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiClient } from "@/lib/api-client";
+import { useCallback, useEffect, useState } from "react";
+import { Edit2, Plus, Trash2, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Zap, Plus, Trash2, Edit2, Pause, Play, CheckCircle2, X } from "lucide-react";
+import { promotionsApi, type FlashSale } from "@/lib/api/promotions";
 
-interface FlashSaleItem {
-  id: string;
+interface FlashSaleForm {
   name: string;
-  originalPrice: number;
-  salePrice: number;
+  originalPrice: string;
+  salePrice: string;
   startTime: string;
   endTime: string;
-  status: "RUNNING" | "UPCOMING" | "ENDED";
 }
 
-const DEFAULT_FLASH_SALES: FlashSaleItem[] = [
-  {
-    id: "1",
-    name: "Giờ Vàng Giá Sách 5.000 VNĐ - Mùa Hè 2026",
-    originalPrice: 10000,
-    salePrice: 5000,
-    startTime: new Date().toISOString(),
-    endTime: new Date(Date.now() + 86400000 * 7).toISOString(),
-    status: "RUNNING",
-  },
-];
+const EMPTY_FORM: FlashSaleForm = { name: "", originalPrice: "10000", salePrice: "5000", startTime: "", endTime: "" };
+const toLocalInput = (value: string) => {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
 
-export default function FlashSaleAdminPage() {
+export default function FlashSalesPage() {
   const { showToast } = useToast();
-  const [sales, setSales] = useState<FlashSaleItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Modal State
+  const [items, setItems] = useState<FlashSale[]>([]);
+  const [form, setForm] = useState<FlashSaleForm>(EMPTY_FORM);
+  const [editing, setEditing] = useState<FlashSale | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSale, setEditingSale] = useState<FlashSaleItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const [name, setName] = useState("");
-  const [salePrice, setSalePrice] = useState(5000);
-  const [endTime, setEndTime] = useState("2026-08-15T23:59");
-
-  async function fetchSales() {
+  const load = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const data = await apiClient.get<FlashSaleItem[]>("/api/flashsale").catch(() =>
-        apiClient.get<FlashSaleItem[]>("/api/flashsale/all")
-      );
-      setSales(data && data.length > 0 ? data : DEFAULT_FLASH_SALES);
-    } catch {
-      setSales(DEFAULT_FLASH_SALES);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchSales();
+    setError("");
+    try { setItems(await promotionsApi.flashSales.list()); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể tải flash sale."); }
+    finally { setIsLoading(false); }
   }, []);
 
-  const handleOpenCreate = () => {
-    setEditingSale(null);
-    setName("");
-    setSalePrice(5000);
-    setEndTime("2026-08-15T23:59");
-    setIsModalOpen(true);
-  };
+  useEffect(() => {
+    // Synchronize the page with the persisted admin API on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
-  const handleOpenEdit = (sale: FlashSaleItem) => {
-    setEditingSale(sale);
-    setName(sale.name);
-    setSalePrice(sale.salePrice);
-    setEndTime(new Date(sale.endTime).toISOString().slice(0, 16));
+  function openCreate() {
+    setEditing(null);
+    setForm(EMPTY_FORM);
     setIsModalOpen(true);
-  };
+  }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      showToast("Vui lòng nhập tên chương trình Flash Sale!", "error");
+  function openEdit(item: FlashSale) {
+    setEditing(item);
+    setForm({ name: item.name, originalPrice: String(item.originalPrice), salePrice: String(item.salePrice), startTime: toLocalInput(item.startTime), endTime: toLocalInput(item.endTime) });
+    setIsModalOpen(true);
+  }
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    const payload = {
+      name: form.name.trim(),
+      originalPrice: Number(form.originalPrice),
+      salePrice: Number(form.salePrice),
+      startTime: new Date(form.startTime).toISOString(),
+      endTime: new Date(form.endTime).toISOString(),
+    };
+    if (payload.salePrice >= payload.originalPrice) {
+      showToast("Giá sale phải nhỏ hơn giá gốc.", "error");
       return;
     }
-
-    if (editingSale) {
-      // Edit existing
-      setSales(
-        sales.map((s) =>
-          s.id === editingSale.id
-            ? {
-                ...s,
-                name: name.trim(),
-                salePrice: Number(salePrice),
-                endTime: new Date(endTime).toISOString(),
-              }
-            : s
-        )
-      );
-      showToast(`Đã cập nhật sự kiện "${name}" thành công!`, "success");
-    } else {
-      // Create new
-      try {
-        await apiClient.post("/api/flashsale", {
-          name: name.trim(),
-          originalPrice: 10000,
-          salePrice: Number(salePrice),
-          startTime: new Date().toISOString(),
-          endTime: new Date(endTime).toISOString(),
-          status: "RUNNING",
-        });
-      } catch {
-        // Fallback
-      }
-
-      const newSale: FlashSaleItem = {
-        id: Date.now().toString(),
-        name: name.trim(),
-        originalPrice: 10000,
-        salePrice: Number(salePrice),
-        startTime: new Date().toISOString(),
-        endTime: new Date(endTime).toISOString(),
-        status: "RUNNING",
-      };
-
-      setSales([newSale, ...sales]);
-      showToast("Bật đợt Flash Sale thành công!", "success");
-    }
-
-    setIsModalOpen(false);
-  }
-
-  const handleToggleStatus = (id: string) => {
-    setSales(
-      sales.map((s) =>
-        s.id === id ? { ...s, status: s.status === "RUNNING" ? "ENDED" : "RUNNING" } : s
-      )
-    );
-    showToast("Đã cập nhật trạng thái hoạt động Flash Sale!", "success");
-  };
-
-  async function handleDelete(id: string) {
-    if (!confirm("Bạn có chắc muốn xóa đợt Flash Sale này khỏi database?")) return;
+    setIsSaving(true);
     try {
-      await apiClient.delete(`/api/flashsale/${id}`);
-    } catch {
-      // Local sync
-    }
-    setSales((prev) => prev.filter((s) => s.id !== id));
-    showToast("Xóa Flash Sale thành công!", "success");
+      if (editing) await promotionsApi.flashSales.update(editing.id, payload);
+      else await promotionsApi.flashSales.create(payload);
+      setIsModalOpen(false);
+      await load();
+      showToast(editing ? "Đã cập nhật flash sale." : "Đã tạo flash sale.", "success");
+    } catch (cause) {
+      showToast(cause instanceof Error ? cause.message : "Không thể lưu flash sale.", "error");
+    } finally { setIsSaving(false); }
   }
+
+  async function remove(item: FlashSale) {
+    if (!confirm(`Xóa flash sale “${item.name}”?`)) return;
+    try { await promotionsApi.flashSales.remove(item.id); await load(); showToast("Đã xóa flash sale.", "success"); }
+    catch (cause) { showToast(cause instanceof Error ? cause.message : "Không thể xóa flash sale.", "error"); }
+  }
+
+  const statusVariant = (status: string): "success" | "warning" | "neutral" => status === "RUNNING" ? "success" : status === "UPCOMING" ? "warning" : "neutral";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Quản Lý Sự Kiện Flash Sale Đọc Sách 5.000đ</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Tạo, chỉnh sửa thời gian và tạm dừng/bật sự kiện ưu đãi đếm ngược thời gian thực trên trang chủ độc giả.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleOpenCreate}
-          className="rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-700 gap-1.5 flex items-center shadow-sm cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          + Tạo Sự Kiện Flash Sale Mới
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Đang tải dữ liệu Flash Sale...</div>
-        ) : (
-          sales.map((sale) => {
-            const isRunning = sale.status === "RUNNING";
-            return (
-              <div
-                key={sale.id}
-                className={`rounded-2xl border bg-white p-5 shadow-sm border-l-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-                  isRunning ? "border-amber-200 border-l-amber-500" : "border-slate-200 border-l-slate-400 opacity-80"
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Zap className={`h-5 w-5 ${isRunning ? "text-amber-500 fill-amber-500 animate-pulse" : "text-slate-400"}`} />
-                    <h3 className="font-bold text-sm text-slate-900">{sale.name}</h3>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
-                        isRunning ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {isRunning ? "🔥 ĐANG CHẠY TRÊN HOMEPAGE" : "⏸️ ĐANG TẠM DỪNG"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600">
-                    Giá ưu đãi: <strong className="text-amber-600 text-sm">{sale.salePrice.toLocaleString("vi-VN")} VNĐ</strong> (Giá gốc: {sale.originalPrice.toLocaleString("vi-VN")} VNĐ) | Hạn kết thúc: {new Date(sale.endTime).toLocaleString("vi-VN")}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStatus(sale.id)}
-                    className={`font-bold text-xs flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded-xl border ${
-                      isRunning ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                    }`}
-                  >
-                    {isRunning ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                    {isRunning ? "Tạm Dừng" : "Bật Chạy"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(sale)}
-                    className="font-bold text-xs text-slate-700 hover:text-slate-900 flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50"
-                  >
-                    <Edit2 className="h-3.5 w-3.5 text-amber-600" />
-                    Chỉnh Sửa
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(sale.id)}
-                    className="font-bold text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded-xl border border-rose-100 bg-rose-50 hover:bg-rose-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Xóa
-                  </button>
-                </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><h1 className="text-xl font-bold text-slate-900">Quản lý Flash Sale</h1><p className="mt-1 text-sm text-slate-500">Tạo và chỉnh sửa khung giờ, giá gốc và giá khuyến mãi.</p></div>
+        <Button onClick={openCreate}><Plus className="h-4 w-4" />Thêm flash sale</Button>
+      </header>
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        {isLoading ? <p className="p-8 text-center text-sm text-slate-500">Đang tải flash sale…</p> : items.length === 0 ? <p className="p-10 text-center text-sm text-slate-500"><Zap className="mx-auto mb-2 h-8 w-8" />Chưa có flash sale.</p> : (
+          <div className="divide-y">
+            {items.map((item) => <article key={item.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2"><h2 className="font-semibold text-slate-900">{item.name}</h2><Badge variant={statusVariant(item.status)}>{item.status}</Badge></div>
+                <p className="text-sm"><span className="font-semibold text-red-600">{item.salePrice.toLocaleString("vi-VN")}₫</span><span className="ml-2 text-slate-400 line-through">{item.originalPrice.toLocaleString("vi-VN")}₫</span></p>
+                <p className="text-xs text-slate-500">{new Date(item.startTime).toLocaleString("vi-VN")} → {new Date(item.endTime).toLocaleString("vi-VN")}</p>
               </div>
-            );
-          })
+              <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => openEdit(item)}><Edit2 className="h-4 w-4" />Sửa</Button><Button size="sm" variant="danger" onClick={() => void remove(item)}><Trash2 className="h-4 w-4" />Xóa</Button></div>
+            </article>)}
+          </div>
         )}
       </div>
-
-      {/* Create / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-amber-600" />
-                {editingSale ? `Chỉnh Sửa Flash Sale: ${editingSale.name}` : "Tạo Đợt Flash Sale Mới"}
-              </h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Tên chương trình *</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="VD: Giờ Vàng Giá Sách 5.000 VNĐ"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Giá bán Flash Sale (VNĐ) *</label>
-                <input
-                  type="number"
-                  required
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-amber-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Thời gian kết thúc *</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border px-3 py-2 text-xs font-semibold">Hủy</button>
-                <button type="submit" className="rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-sm">
-                  {editingSale ? "Lưu Thay Đổi" : "Bật Flash Sale"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Chỉnh sửa flash sale" : "Thêm flash sale"} footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="flash-sale-form" type="submit" isLoading={isSaving}>Lưu</Button></>}>
+        <form id="flash-sale-form" onSubmit={save} className="space-y-4">
+          <Input label="Tên sự kiện *" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          <div className="grid grid-cols-2 gap-3"><Input label="Giá gốc *" type="number" min={1} required value={form.originalPrice} onChange={(event) => setForm({ ...form, originalPrice: event.target.value })} /><Input label="Giá sale *" type="number" min={0} required value={form.salePrice} onChange={(event) => setForm({ ...form, salePrice: event.target.value })} /></div>
+          <Input label="Bắt đầu *" type="datetime-local" required value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
+          <Input label="Kết thúc *" type="datetime-local" required value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
+        </form>
+      </Modal>
     </div>
   );
 }

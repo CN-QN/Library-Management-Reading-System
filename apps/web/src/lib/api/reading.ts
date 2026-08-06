@@ -377,6 +377,13 @@ export async function endReadingSession(sessionId: string): Promise<boolean> {
  * @param bookId - ID cuốn sách
  * @param chapterId - ID chương sách
  */
+export class BookAccessError extends Error {
+  constructor(public readonly status: number) {
+    super(status === 401 ? 'Bạn cần đăng nhập để đọc sách này.' : 'Sách cần được thanh toán trước khi đọc.');
+    this.name = 'BookAccessError';
+  }
+}
+
 export async function getChapterDetail(
   bookId: string,
   chapterId: string
@@ -407,6 +414,10 @@ export async function getChapterDetail(
       ...(isServer ? {} : { credentials: 'include' as const }),
     }
   );
+
+  if (res.status === 401 || res.status === 402) {
+    throw new BookAccessError(res.status);
+  }
 
   if (!res.ok) {
     throw new Error(`Lỗi khi lấy dữ liệu chương sách (${res.status})`);

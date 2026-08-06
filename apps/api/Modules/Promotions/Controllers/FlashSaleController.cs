@@ -1,4 +1,6 @@
 using api.Common.Models;
+using api.Auth;
+using api.Common.Constants;
 using api.Database;
 using api.Database.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -31,14 +33,6 @@ public class FlashSaleController : ControllerBase
             .SortByDescending(s => s.CreatedAt)
             .FirstOrDefaultAsync();
 
-        if (sale == null)
-        {
-            sale = await _context.FlashSales
-                .Find(Builders<FlashSale>.Filter.Empty)
-                .SortByDescending(s => s.CreatedAt)
-                .FirstOrDefaultAsync();
-        }
-
         return Ok(ApiResponse<FlashSale>.SuccessResponse(sale, "Lấy thông tin Flash Sale thành công."));
     }
 
@@ -46,6 +40,7 @@ public class FlashSaleController : ControllerBase
     /// Lấy danh sách Flash Sale (Cho Admin & FE)
     /// </summary>
     [HttpGet]
+    [RequirePermission(Permissions.PromotionFlashSaleManage)]
     public async Task<IActionResult> GetList()
     {
         var items = await _context.FlashSales
@@ -60,6 +55,7 @@ public class FlashSaleController : ControllerBase
     /// Lấy tất cả sự kiện Flash Sale (Admin)
     /// </summary>
     [HttpGet("all")]
+    [RequirePermission(Permissions.PromotionFlashSaleManage)]
     public async Task<IActionResult> GetAll()
     {
         var items = await _context.FlashSales
@@ -74,7 +70,7 @@ public class FlashSaleController : ControllerBase
     /// Tạo sự kiện Flash Sale mới (Admin)
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionFlashSaleManage)]
     public async Task<IActionResult> Create([FromBody] FlashSale dto)
     {
         dto.CreatedAt = DateTime.UtcNow;
@@ -96,7 +92,7 @@ public class FlashSaleController : ControllerBase
     /// Xóa Flash Sale (Admin)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionFlashSaleManage)]
     public async Task<IActionResult> Delete(string id)
     {
         await _context.FlashSales.DeleteOneAsync(s => s.Id == id);

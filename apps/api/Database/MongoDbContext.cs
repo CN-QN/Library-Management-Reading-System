@@ -53,6 +53,7 @@ public class MongoDbContext
 
     // ===== NOTIFICATIONS (M13) =====
     public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("notifications");
+    public IMongoCollection<EmailCampaign> EmailCampaigns => _database.GetCollection<EmailCampaign>("email_campaigns");
 
     // ===== REVIEWS (M11) =====
     public IMongoCollection<Review> Reviews => _database.GetCollection<Review>("reviews");
@@ -66,6 +67,7 @@ public class MongoDbContext
 
     // ===== SYSTEM SETTINGS (M15) =====
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("system_settings");
+    public IMongoCollection<FileAsset> FileAssets => _database.GetCollection<FileAsset>("file_assets");
 
     // Generic helper to get any collection by name
     public IMongoCollection<T> GetCollection<T>(string name)

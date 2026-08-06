@@ -31,6 +31,9 @@ public class User
     [BsonElement("avatar")]
     public string? Avatar { get; set; }
 
+    [BsonElement("googleSubject")]
+    public string? GoogleSubject { get; set; }
+
     [BsonElement("lastLoginAt")]
     public DateTime? LastLoginAt { get; set; }
 

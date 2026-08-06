@@ -30,6 +30,24 @@ namespace api.Database.Entities
         [BsonElement("fileSize")]
         public long FileSize { get; set; }
 
+        [BsonElement("cloudinaryPublicId")]
+        public string CloudinaryPublicId { get; set; } = string.Empty;
+
+        [BsonElement("width")]
+        public int Width { get; set; }
+
+        [BsonElement("height")]
+        public int Height { get; set; }
+
+        [BsonElement("format")]
+        public string Format { get; set; } = string.Empty;
+
+        [BsonElement("category")]
+        public string Category { get; set; } = "general";
+
+        [BsonElement("usageType")]
+        public string UsageType { get; set; } = "generic-media";
+
         [BsonElement("bookId")]
         public string? BookId { get; set; }
 

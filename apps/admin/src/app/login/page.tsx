@@ -36,7 +36,7 @@ export default function LoginPage() {
     try {
       await login(values.email, values.password);
       showToast("Đăng nhập quản trị thành công.", "success");
-      window.location.href = "/dashboard";
+      router.replace("/dashboard");
     } catch (err) {
       const message =
         err instanceof ApiError

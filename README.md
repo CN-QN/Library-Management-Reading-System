@@ -1,5 +1,7 @@
 # LibraryHub - Hệ thống Quản lý Thư viện & Đọc sách Trực tuyến (Monolith Core)
 
+> Admin/API remediation: admin capabilities use permission-protected `/api/admin/*` contracts, a persisted backend media pipeline, verified Google credentials, opaque password recovery, and MongoDB-derived reports. See [Admin API Contracts](docs/admin-api-contracts.md).
+
 LibraryHub là lõi dịch vụ Backend (API) kết hợp ứng dụng Web (Client & Admin) phục vụ quản lý thư viện nội bộ trường học, mượn trả sách vật lý, và cổng đọc sách trực tuyến dành cho sinh viên. Hệ thống được thiết kế theo hướng **Modular Monolith**, sẵn sàng mở rộng thành microservices, sử dụng các công nghệ hiện đại đảm bảo hiệu năng và tính bảo mật cao.
 
 ---

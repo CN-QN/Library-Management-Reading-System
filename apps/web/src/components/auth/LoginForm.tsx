@@ -1,35 +1,47 @@
 'use client';
 
 import axios from 'axios';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Loader2, KeyRound, CheckCircle2, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Loader2, KeyRound, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { authApi } from '@/lib/api/auth';
+
+declare global {
+  interface Window { google?: { accounts: { id: { initialize(options: { client_id: string; callback(response: { credential: string }): void }): void; renderButton(element: HTMLElement, options: Record<string, unknown>): void } } } }
+}
 
 export function LoginForm() {
+  const { login } = useAuthStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const resetEmailParam = searchParams.get('resetEmail') || '';
+  const resetTokenParam = searchParams.get('resetToken') || '';
+  const rawReturnUrl = searchParams.get('returnUrl') || '/';
+  const returnUrl = rawReturnUrl.startsWith('/') ? rawReturnUrl : '/';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleConfigError, setGoogleConfigError] = useState('');
+  const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   // Forgot password modal states
-  const [isForgotOpen, setIsForgotOpen] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
+  const [isForgotOpen, setIsForgotOpen] = useState(Boolean(resetEmailParam && resetTokenParam));
+  const [forgotEmail, setForgotEmail] = useState(resetEmailParam);
+  const [resetToken, setResetToken] = useState(resetTokenParam);
   const [newPassword, setNewPassword] = useState('');
-  const [tokenStep, setTokenStep] = useState(false);
+  const [tokenStep, setTokenStep] = useState(Boolean(resetEmailParam && resetTokenParam));
   const [forgotMessage, setForgotMessage] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
-
-  const { login } = useAuthStore();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawReturnUrl = searchParams.get('returnUrl') || '/';
-  const returnUrl = rawReturnUrl.startsWith('/') ? rawReturnUrl : '/';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -49,21 +61,27 @@ export function LoginForm() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const res = await axios.post('http://localhost:5210/api/auth/google', {
-        email: 'google.reader@libraryhub.com',
-        name: 'Độc giả Google',
-        avatar: 'https://lh3.googleusercontent.com/a/default-user',
-      }, { withCredentials: true });
+  const renderGoogleButton = useCallback(() => {
+    if (!googleClientId || !googleScriptReady || !window.google || !googleButtonRef.current) return;
+    window.google.accounts.id.initialize({ client_id: googleClientId, callback: async ({ credential }) => { try { await authApi.google(credential); window.location.assign(returnUrl); } catch { setError('Đăng nhập bằng Google không thành công.'); } } });
+    googleButtonRef.current.replaceChildren();
+    const width = Math.min(400, Math.max(240, googleButtonRef.current.clientWidth));
+    window.google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', shape: 'pill', size: 'large', width, text: 'continue_with' });
+  }, [googleClientId, googleScriptReady, returnUrl]);
 
-      if (res.data?.success) {
-        window.location.href = returnUrl;
-      }
-    } catch (err) {
-      setError('Đăng nhập bằng Google không thành công.');
-    }
-  };
+  useEffect(() => {
+    let active = true;
+    authApi.googleConfig()
+      .then((response) => {
+        const payload = response.data?.data ?? response.data;
+        if (active && payload?.clientId) setGoogleClientId(payload.clientId);
+      })
+      .catch(() => {
+        if (active) setGoogleConfigError('Đăng nhập Google hiện chưa sẵn sàng.');
+      });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => { renderGoogleButton(); }, [renderGoogleButton]);
 
   const handleRequestToken = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,15 +90,11 @@ export function LoginForm() {
     setIsForgotSubmitting(true);
 
     try {
-      const res = await axios.post('http://localhost:5210/api/auth/forgot-password', { email: forgotEmail });
-      const data = res.data?.data;
-      setForgotMessage(res.data?.message || `Mã Token 6 chữ số (${data?.resetToken}) đã được tạo và gửi đến email ${forgotEmail}!`);
-      if (data?.resetToken) {
-        setResetToken(data.resetToken);
-      }
+      const res = await authApi.forgotPassword(forgotEmail);
+      setForgotMessage(res.data?.message || 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.');
       setTokenStep(true);
-    } catch (err: any) {
-      setForgotError(err.response?.data?.message || 'Email không tồn tại trong hệ thống.');
+    } catch (err: unknown) {
+      setForgotError(axios.isAxiosError(err) ? err.response?.data?.message : 'Không thể gửi yêu cầu khôi phục.');
     } finally {
       setIsForgotSubmitting(false);
     }
@@ -92,18 +106,14 @@ export function LoginForm() {
     setIsForgotSubmitting(true);
 
     try {
-      const res = await axios.post('http://localhost:5210/api/auth/reset-password', {
-        email: forgotEmail,
-        token: resetToken,
-        newPassword: newPassword,
-      });
+      const res = await authApi.resetPassword(forgotEmail, resetToken, newPassword);
       setForgotMessage(res.data?.message || 'Đặt lại mật khẩu mới thành công! Bạn có thể đăng nhập ngay.');
       setTimeout(() => {
         setIsForgotOpen(false);
         setTokenStep(false);
       }, 2000);
-    } catch (err: any) {
-      setForgotError(err.response?.data?.message || 'Mã Token 6 chữ số không hợp lệ hoặc đã hết hạn.');
+    } catch (err: unknown) {
+      setForgotError(axios.isAxiosError(err) ? err.response?.data?.message : 'Liên kết hoặc token không hợp lệ hoặc đã hết hạn.');
     } finally {
       setIsForgotSubmitting(false);
     }
@@ -129,19 +139,16 @@ export function LoginForm() {
       <div className="bg-card/90 backdrop-blur-xl py-8 px-6 sm:px-8 shadow-2xl rounded-3xl border border-primary/15 relative overflow-hidden transition-all">
         <div className="space-y-5">
           {/* Google Login Button */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-border bg-background/80 py-3 px-4 text-sm font-bold text-foreground hover:bg-accent hover:border-primary/40 transition-all shadow-sm group"
-          >
-            <svg className="h-5 w-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z" />
-              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
-              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12.5s.7 2.8 1.9 5.2l3.7-2.9z" />
-              <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 17C3.7 20.7 7.5 24 12 24z" />
-            </svg>
-            Đăng nhập bằng tài khoản Google
-          </button>
+          <Script
+            src="https://accounts.google.com/gsi/client"
+            strategy="afterInteractive"
+            onLoad={() => setGoogleScriptReady(true)}
+            onError={() => setGoogleConfigError('Không thể tải dịch vụ đăng nhập Google.')}
+          />
+          <div ref={googleButtonRef} className="flex min-h-11 w-full justify-center" />
+          {googleConfigError && (
+            <p className="text-center text-xs font-medium text-destructive">{googleConfigError}</p>
+          )}
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border/60" />
@@ -230,7 +237,7 @@ export function LoginForm() {
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-primary" />
-                Khôi Phục Mật Khẩu (Token Check 6 Chữ Số)
+                  Khôi phục mật khẩu
               </h3>
               <button type="button" onClick={() => setIsForgotOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
@@ -251,7 +258,7 @@ export function LoginForm() {
             {!tokenStep ? (
               <form onSubmit={handleRequestToken} className="space-y-4">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Nhập địa chỉ email độc giả đã đăng ký. Hệ thống sẽ tạo **Mã Token 6 chữ số** gửi đến email có hiệu lực trong 15 phút.
+                  Nhập email đã đăng ký. Nếu tài khoản tồn tại, hệ thống sẽ gửi liên kết đặt lại mật khẩu có hiệu lực trong 15 phút.
                 </p>
                 <div>
                   <label className="block text-xs font-bold text-foreground mb-1">Email đăng ký *</label>
@@ -267,20 +274,20 @@ export function LoginForm() {
                 <div className="flex justify-end gap-2 pt-2 border-t border-border">
                   <Button type="button" variant="outline" onClick={() => setIsForgotOpen(false)} className="rounded-xl">Hủy</Button>
                   <Button type="submit" disabled={isForgotSubmitting} className="rounded-xl font-bold">
-                    {isForgotSubmitting ? 'Đang gửi...' : 'Gửi mã token 6 chữ số'}
+                    {isForgotSubmitting ? 'Đang gửi...' : 'Gửi hướng dẫn khôi phục'}
                   </Button>
                 </div>
               </form>
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">Nhập Mã Token Xác Thực (6 Chữ Số) *</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">Token từ email *</label>
                   <Input
                     type="text"
                     required
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
-                    placeholder="VD: 839102"
+                    placeholder="Dán token trong email"
                     className="font-mono tracking-widest font-extrabold text-center text-lg rounded-xl text-primary border-primary/50"
                   />
                 </div>

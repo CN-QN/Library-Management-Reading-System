@@ -27,6 +27,10 @@ public class IndexCreator
             var studentCodeKey = Builders<User>.IndexKeys.Ascending(u => u.StudentCode);
             await _context.Users.Indexes.CreateOneAsync(new CreateIndexModel<User>(studentCodeKey, new CreateIndexOptions { Unique = true }));
 
+            var googleSubjectKey = Builders<User>.IndexKeys.Ascending(u => u.GoogleSubject);
+            await _context.Users.Indexes.CreateOneAsync(new CreateIndexModel<User>(googleSubjectKey,
+                new CreateIndexOptions { Unique = true, Sparse = true }));
+
             // 2. Roles
             var roleCodeKey = Builders<Role>.IndexKeys.Ascending(r => r.Code);
             await _context.Roles.Indexes.CreateOneAsync(new CreateIndexModel<Role>(roleCodeKey, new CreateIndexOptions { Unique = true }));
@@ -149,6 +153,20 @@ public class IndexCreator
 
             var auditResourceCreated = Builders<AuditLog>.IndexKeys.Ascending(al => al.Resource).Ascending(al => al.ResourceId).Descending(al => al.CreatedAt);
             await _context.AuditLogs.Indexes.CreateOneAsync(new CreateIndexModel<AuditLog>(auditResourceCreated));
+
+            var mediaProviderKey = Builders<FileAsset>.IndexKeys.Ascending(x => x.CloudinaryPublicId);
+            await _context.FileAssets.Indexes.CreateOneAsync(new CreateIndexModel<FileAsset>(mediaProviderKey, new CreateIndexOptions { Unique = true }));
+            var mediaBrowseKey = Builders<FileAsset>.IndexKeys.Ascending(x => x.UsageType).Ascending(x => x.Category).Descending(x => x.CreatedAt);
+            await _context.FileAssets.Indexes.CreateOneAsync(new CreateIndexModel<FileAsset>(mediaBrowseKey));
+
+            var settingKey = Builders<SystemSetting>.IndexKeys.Ascending(x => x.Key);
+            await _context.SystemSettings.Indexes.CreateOneAsync(new CreateIndexModel<SystemSetting>(settingKey, new CreateIndexOptions { Unique = true }));
+            var campaignCreated = Builders<EmailCampaign>.IndexKeys.Descending(x => x.CreatedAt);
+            await _context.EmailCampaigns.Indexes.CreateOneAsync(new CreateIndexModel<EmailCampaign>(campaignCreated));
+            var paymentStatusPaid = Builders<PaymentOrder>.IndexKeys.Ascending(x => x.Status).Descending(x => x.PaidAt);
+            await _context.PaymentOrders.Indexes.CreateOneAsync(new CreateIndexModel<PaymentOrder>(paymentStatusPaid));
+            var reviewAdminBrowse = Builders<Review>.IndexKeys.Ascending(x => x.Status).Descending(x => x.CreatedAt);
+            await _context.Reviews.Indexes.CreateOneAsync(new CreateIndexModel<Review>(reviewAdminBrowse));
 
             _logger.LogInformation("Database index creation completed successfully.");
         }

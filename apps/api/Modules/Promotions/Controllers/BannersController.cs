@@ -1,4 +1,6 @@
 using api.Common.Models;
+using api.Auth;
+using api.Common.Constants;
 using api.Database;
 using api.Database.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -24,11 +26,9 @@ public class BannersController : ControllerBase
     /// Lấy danh sách Banner active (Cho Trang chủ & Admin)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] bool? activeOnly = null)
+    public async Task<IActionResult> GetList()
     {
-        var filter = activeOnly == true
-            ? Builders<Banner>.Filter.Eq(b => b.IsActive, true)
-            : Builders<Banner>.Filter.Empty;
+        var filter = Builders<Banner>.Filter.Eq(b => b.IsActive, true);
 
         var items = await _context.Banners.Find(filter)
             .SortBy(b => b.SortOrder)
@@ -41,7 +41,7 @@ public class BannersController : ControllerBase
     /// Tạo Banner mới (Admin)
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionBannerManage)]
     public async Task<IActionResult> Create([FromBody] Banner dto)
     {
         dto.CreatedAt = DateTime.UtcNow;
@@ -61,7 +61,7 @@ public class BannersController : ControllerBase
     /// Chỉnh sửa Banner (Admin)
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionBannerManage)]
     public async Task<IActionResult> Update(string id, [FromBody] Banner dto)
     {
         var existing = await _context.Banners.Find(b => b.Id == id).FirstOrDefaultAsync();
@@ -88,7 +88,7 @@ public class BannersController : ControllerBase
     /// Đổi trạng thái Ẩn/Hiện Banner (Admin)
     /// </summary>
     [HttpPatch("{id}/status")]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionBannerManage)]
     public async Task<IActionResult> ToggleStatus(string id)
     {
         var banner = await _context.Banners.Find(b => b.Id == id).FirstOrDefaultAsync();
@@ -111,7 +111,7 @@ public class BannersController : ControllerBase
     /// Xóa Banner (Admin)
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize]
+    [RequirePermission(Permissions.PromotionBannerManage)]
     public async Task<IActionResult> Delete(string id)
     {
         await _context.Banners.DeleteOneAsync(b => b.Id == id);

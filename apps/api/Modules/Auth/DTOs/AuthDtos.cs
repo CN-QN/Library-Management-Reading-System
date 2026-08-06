@@ -52,3 +52,20 @@ public class UpdateProfileDto
     public string? Avatar { get; set; }
     public bool? NotifyBookAvailable { get; set; }
 }
+
+public sealed class ForgotPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ResetPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public sealed class GoogleLoginRequest
+{
+    public string Credential { get; set; } = string.Empty;
+}

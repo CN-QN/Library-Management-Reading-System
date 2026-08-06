@@ -69,6 +69,10 @@ type RawBook = {
   coverAssetId?: string;
   CoverAssetId?: string;
   rating?: number;
+  accessType?: string;
+  AccessType?: string;
+  price?: number;
+  Price?: number;
   status?: string;
   createdAt?: string;
 };
@@ -93,6 +97,8 @@ function normalizeRawBook(item: RawBook): Book {
     publisher,
     coverImage: item.coverImage || item.coverImageUrl || item.coverAssetId || item.CoverAssetId || '',
     rating: item.rating || 0,
+    accessType: item.accessType || item.AccessType || 'FREE',
+    price: item.price ?? item.Price ?? 0,
     status: item.status || 'PUBLISHED',
     createdAt: item.createdAt,
   };

@@ -1,4 +1,5 @@
 using api.Auth;
+using api.Common.Constants;
 using api.Common.Models;
 using api.Modules.Notifications.DTOs;
 using api.Modules.Notifications.Services;
@@ -203,34 +204,5 @@ namespace api.Modules.Notifications.Controllers
             }
         }
 
-        /// <summary>
-        /// Gửi chiến dịch Email thông báo Sách Mới & Voucher đến danh sách độc giả đăng ký
-        /// </summary>
-        [HttpPost("email-broadcast")]
-        [AllowAnonymous]
-        public async Task<IActionResult> BroadcastEmailCampaign([FromBody] EmailCampaignDto dto)
-        {
-            if (string.IsNullOrWhiteSpace(dto.Subject) || string.IsNullOrWhiteSpace(dto.Body))
-            {
-                return BadRequest(ApiResponse<object>.ErrorResponse(400, "Tiêu đề và Nội dung Email là bắt buộc."));
-            }
-
-            _logger.LogInformation("Gửi chiến dịch Email: {Subject} - Loại: {Type}", dto.Subject, dto.CampaignType);
-
-            return Ok(ApiResponse<object>.SuccessResponse(new
-            {
-                sentCount = 14,
-                subject = dto.Subject,
-                campaignType = dto.CampaignType,
-                message = $"Đã gửi chiến dịch Email '{dto.Subject}' thành công tới 14 độc giả đăng ký nhận tin!"
-            }));
-        }
-    }
-
-    public class EmailCampaignDto
-    {
-        public string Subject { get; set; } = string.Empty;
-        public string Body { get; set; } = string.Empty;
-        public string CampaignType { get; set; } = "NEW_BOOKS"; // NEW_BOOKS, VOUCHER, FLASH_SALE
     }
 }

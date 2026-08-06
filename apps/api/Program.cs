@@ -22,6 +22,7 @@ using api.Modules.Files.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
 using api.Modules.Payment.Services;
+using api.Modules.Media;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -50,6 +51,8 @@ try
     builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDb"));
     builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection("Redis"));
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+    builder.Services.Configure<GoogleSettings>(builder.Configuration.GetSection("Google"));
+    builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 
     builder.Services.AddSingleton<MongoDbContext>();
     builder.Services.AddSingleton<RedisContext>();
@@ -76,6 +79,10 @@ try
 
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<IUserPermissionResolver>(sp => sp.GetRequiredService<AuthService>());
+    builder.Services.AddHttpClient<IGoogleTokenVerifier, GoogleTokenVerifier>();
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+    builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<RolesService>();
 builder.Services.AddScoped<
@@ -122,6 +129,8 @@ builder.Services.AddScoped<
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();
+    builder.Services.AddSingleton<IMediaProcessor, ImageSharpMediaProcessor>();
+    builder.Services.AddHttpClient<ICloudinaryClient, CloudinaryClient>();
 
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
@@ -278,3 +287,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

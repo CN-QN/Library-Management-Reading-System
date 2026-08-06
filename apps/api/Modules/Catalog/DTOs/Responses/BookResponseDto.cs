@@ -15,6 +15,7 @@ public class BookResponseDto
     public int? PublicationYear { get; set; }
     public string Language { get; set; } = "vi";
     public string AccessType { get; set; } = "FREE";
+    public decimal Price { get; set; }
     public string Status { get; set; } = "DRAFT";
     public string? CoverAssetId { get; set; }
     public int TotalChapters { get; set; }

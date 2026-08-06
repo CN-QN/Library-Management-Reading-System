@@ -44,12 +44,17 @@ public class PaymentService : IPaymentService
         decimal amount = book.Price > 0 ? book.Price : 10000;
 
         // Nội dung chuyển khoản chuẩn theo SePay
-        var paymentContent = orderCode;
 
+        // VietinBank yêu cầu nội dung bắt đầu bằng SEVQR
+        var paymentContent = $"SEVQR {orderCode}";
         // Sinh link mã VietQR động SePay chuẩn từ cấu hình appsettings.json
-        var bankAccount = _sePaySettings.BankAccount;
-        var bankName = _sePaySettings.BankName;
-        var qrCodeUrl = $"https://qr.sepay.vn/img?acc={bankAccount}&bank={bankName}&amount={(int)amount}&des={paymentContent}";
+        var storedSettings = await _context.SystemSettings.Find(x => x.Scope == "SEPAY").ToListAsync();
+        var bankAccount = storedSettings.FirstOrDefault(x => x.Key == "SEPAY_BANK_ACCOUNT")?.Value ?? _sePaySettings.BankAccount;
+        var bankName = storedSettings.FirstOrDefault(x => x.Key == "SEPAY_BANK_NAME")?.Value ?? _sePaySettings.BankName;
+        if (string.IsNullOrWhiteSpace(bankAccount) || string.IsNullOrWhiteSpace(bankName))
+            throw new InvalidOperationException("SePay payment settings are not configured.");
+        var encodedPaymentContent = Uri.EscapeDataString(paymentContent);
+        var qrCodeUrl = $"https://qr.sepay.vn/img?acc={bankAccount}&bank={bankName}&amount={(int)amount}&des={encodedPaymentContent}";
 
         var paymentOrder = new PaymentOrder
         {
@@ -82,13 +87,6 @@ public class PaymentService : IPaymentService
     {
         _logger.LogInformation("Processing SePay Webhook: Content='{Content}', Amount={Amount}, Gateway='{Gateway}'",
             dto.Content, dto.TransferAmount, dto.Gateway);
-
-        // Nếu là request kiểm thử từ nút "Gửi thử" trên SePay Dashboard
-        if (dto.Content.Contains("SEPAY TEST WEBHOOK", StringComparison.OrdinalIgnoreCase) || dto.Content.Contains("TEST", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogInformation("SePay test webhook signal verified successfully.");
-            return true;
-        }
 
         // Tìm mã đơn hàng dạng LHxxxxxx trong nội dung chuyển khoản
         var match = Regex.Match(dto.Content, @"LH\d{6}", RegexOptions.IgnoreCase);
@@ -171,9 +169,9 @@ public class PaymentService : IPaymentService
         return hasAccess;
     }
 
-    public async Task<PaymentQrResponse?> GetOrderStatusAsync(string orderCode)
+    public async Task<PaymentQrResponse?> GetOrderStatusAsync(string userId, string orderCode)
     {
-        var order = await _context.PaymentOrders.Find(o => o.OrderCode == orderCode).FirstOrDefaultAsync();
+        var order = await _context.PaymentOrders.Find(o => o.UserId == userId && o.OrderCode == orderCode).FirstOrDefaultAsync();
         if (order == null) return null;
 
         return new PaymentQrResponse

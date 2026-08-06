@@ -70,13 +70,15 @@ export function ProfileContainer({
       try {
         const stored = localStorage.getItem(`user_profile_override_${user.id}`);
         if (stored) {
+          // Synchronize the client-only persisted override after hydration.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setProfileOverride(JSON.parse(stored));
         }
       } catch {
         // Bỏ qua lỗi đọc LocalStorage
       }
     }
-  }, [user?.id]);
+  }, [user]);
 
   // Tải dữ liệu song song từ API thật
   const loadProfileData = useCallback(async () => {
@@ -99,9 +101,11 @@ export function ProfileContainer({
     } finally {
       setIsLoadingData(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
+    // The profile APIs are the external source synchronized by this effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProfileData();
   }, [loadProfileData]);
 

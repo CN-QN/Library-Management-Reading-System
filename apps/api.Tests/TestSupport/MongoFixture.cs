@@ -158,4 +158,66 @@ public sealed class MongoFixture : IAsyncLifetime
         
         await runner.RunSeedAsync();
     }
+
+    /// <summary>
+    /// Returns true when MongoDB integration tests can run.
+    /// </summary>
+    public bool IsMongoAvailable => Database is not null;
+
+    /// <summary>
+    /// Creates a user with direct role-permission assignments for authorization integration tests.
+    /// </summary>
+    public async Task<(string UserId, string RoleId)> CreateUserWithPermissionsAsync(
+        IEnumerable<string> permissionCodes,
+        string emailPrefix = "auth-test")
+    {
+        if (Database is null)
+        {
+            throw new InvalidOperationException("MongoDB test connection is not configured.");
+        }
+
+        var userId = Guid.NewGuid().ToString("N");
+        var roleId = Guid.NewGuid().ToString("N");
+
+        var users = Database.GetCollection<User>("users");
+        var roles = Database.GetCollection<Role>("roles");
+        var permissions = Database.GetCollection<Permission>("permissions");
+        var rolePermissions = Database.GetCollection<RolePermission>("role_permissions");
+        var userRoles = Database.GetCollection<UserRole>("user_roles");
+
+        await users.InsertOneAsync(new User
+        {
+            Id = userId,
+            Email = $"{emailPrefix}-{userId[..8]}@test.libraryhub.local",
+            FullName = "Auth Test User",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("TestPassword123!"),
+            Status = "ACTIVE",
+        });
+
+        await roles.InsertOneAsync(new Role
+        {
+            Id = roleId,
+            Code = $"TEST_{roleId[..8].ToUpperInvariant()}",
+            Name = "Test Role",
+            Status = "ACTIVE",
+        });
+
+        var permDocs = await permissions.Find(p => permissionCodes.Contains(p.Code)).ToListAsync();
+        foreach (var perm in permDocs)
+        {
+            await rolePermissions.InsertOneAsync(new RolePermission
+            {
+                RoleId = roleId,
+                PermissionId = perm.Id,
+            });
+        }
+
+        await userRoles.InsertOneAsync(new UserRole
+        {
+            UserId = userId,
+            RoleId = roleId,
+        });
+
+        return (userId, roleId);
+    }
 }
