@@ -205,6 +205,27 @@ namespace api.Modules.Catalog.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Lấy danh sách tất cả bài đánh giá trên toàn hệ thống
+        /// </summary>
+        [HttpGet("admin/all")]
+        public async Task<IActionResult> GetAllReviews(
+            [FromQuery] string? status,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var result = await _reviewService.GetAllReviewsAsync(status, page, pageSize);
+                return Ok(ApiResponse<PagedResult<ReviewResponseDto>>.SuccessResponse(result, "Lấy tất cả bài đánh giá thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách đánh giá cho admin.");
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy đánh giá."));
+            }
+        }
+
         private string GetCurrentUserId()
         {
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value

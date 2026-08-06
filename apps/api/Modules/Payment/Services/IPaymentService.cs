@@ -8,4 +8,7 @@ public interface IPaymentService
     Task<bool> ProcessSePayWebhookAsync(SePayWebhookDto dto);
     Task<bool> CheckBookAccessAsync(string userId, string bookId);
     Task<PaymentQrResponse?> GetOrderStatusAsync(string orderCode);
+    Task<List<PaymentQrResponse>> GetMyOrdersAsync(string userId);
+    Task<List<PaymentQrResponse>> GetAllOrdersAsync();
+    Task<RevenueStatsResponse> GetRevenueStatsAsync();
 }

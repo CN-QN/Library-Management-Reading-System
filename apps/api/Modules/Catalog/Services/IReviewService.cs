@@ -12,5 +12,6 @@ namespace api.Modules.Catalog.Services
         Task<ReviewResponseDto?> UpdateReviewAsync(string reviewId, string userId, UpdateReviewDto dto);
         Task<bool> DeleteReviewAsync(string reviewId, string userId, bool isAdmin = false);
         Task<bool> ModerateReviewAsync(string reviewId, string status);
+        Task<PagedResult<ReviewResponseDto>> GetAllReviewsAsync(string? status, int page = 1, int pageSize = 20);
     }
 }

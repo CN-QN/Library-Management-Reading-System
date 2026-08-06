@@ -355,6 +355,7 @@ public class SeedRunner
             
             totalEmbeddedChapters += bookChapters.Count;
 
+            var isPaid = random.Next(0, 2) == 0;
             var book = new Book
             {
                 Title = title,
@@ -364,7 +365,8 @@ public class SeedRunner
                 PublicationYear = year,
                 Language = "vi",
                 CoverAssetId = coverUrls[random.Next(coverUrls.Length)],
-                AccessType = random.Next(0, 3) == 0 ? "PREMIUM" : "FREE",
+                AccessType = isPaid ? "PAID" : "FREE",
+                Price = isPaid ? 10000 : 0,
                 Status = "PUBLISHED",
                 TotalChapters = bookChapters.Count,
                 Publisher = publishers[random.Next(publishers.Count)],

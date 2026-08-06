@@ -208,6 +208,28 @@ namespace api.Modules.Catalog.Services
             return false;
         }
 
+        public async Task<PagedResult<ReviewResponseDto>> GetAllReviewsAsync(string? status, int page = 1, int pageSize = 20)
+        {
+            var filterBuilder = Builders<Review>.Filter;
+            var filter = filterBuilder.Empty;
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                filter &= filterBuilder.Eq(r => r.Status, status.ToUpper());
+            }
+
+            var totalCount = await _context.Reviews.CountDocumentsAsync(filter);
+            var reviews = await _context.Reviews
+                .Find(filter)
+                .SortByDescending(r => r.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            var dtos = reviews.Select(MapToDto).ToList();
+            return new PagedResult<ReviewResponseDto>(dtos, (int)totalCount, page, pageSize);
+        }
+
         private async Task UpdateBookRatingStatsAsync(string bookId)
         {
             var reviews = await _context.Reviews.Find(r => r.BookId == bookId && r.Status == "APPROVED").ToListAsync();

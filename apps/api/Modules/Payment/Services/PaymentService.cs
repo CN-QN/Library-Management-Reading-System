@@ -40,8 +40,8 @@ public class PaymentService : IPaymentService
         var randomNum = Random.Shared.Next(100000, 999999);
         var orderCode = $"LH{randomNum}";
 
-        // Số tiền mặc định cho sách Premium (50,000 VNĐ)
-        decimal amount = 50000;
+        // Số tiền chuẩn cho sách Paid (10,000 VNĐ)
+        decimal amount = book.Price > 0 ? book.Price : 10000;
 
         // Nội dung chuyển khoản chuẩn theo SePay
         var paymentContent = orderCode;
@@ -185,6 +185,65 @@ public class PaymentService : IPaymentService
             BookId = order.BookId,
             BookTitle = order.BookTitle,
             Status = order.Status
+        };
+    }
+
+    public async Task<List<PaymentQrResponse>> GetMyOrdersAsync(string userId)
+    {
+        var orders = await _context.PaymentOrders
+            .Find(o => o.UserId == userId)
+            .SortByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
+        return orders.Select(order => new PaymentQrResponse
+        {
+            OrderCode = order.OrderCode,
+            QrCodeUrl = order.QrCodeUrl,
+            Amount = order.Amount,
+            PaymentContent = order.PaymentContent,
+            BookId = order.BookId,
+            BookTitle = order.BookTitle,
+            Status = order.Status
+        }).ToList();
+    }
+
+    public async Task<List<PaymentQrResponse>> GetAllOrdersAsync()
+    {
+        var orders = await _context.PaymentOrders
+            .Find(Builders<PaymentOrder>.Filter.Empty)
+            .SortByDescending(o => o.CreatedAt)
+            .Limit(100)
+            .ToListAsync();
+
+        return orders.Select(order => new PaymentQrResponse
+        {
+            OrderCode = order.OrderCode,
+            QrCodeUrl = order.QrCodeUrl,
+            Amount = order.Amount,
+            PaymentContent = order.PaymentContent,
+            BookId = order.BookId,
+            BookTitle = order.BookTitle,
+            Status = order.Status
+        }).ToList();
+    }
+
+    public async Task<RevenueStatsResponse> GetRevenueStatsAsync()
+    {
+        var allOrders = await _context.PaymentOrders
+            .Find(Builders<PaymentOrder>.Filter.Empty)
+            .ToListAsync();
+
+        var successOrders = allOrders.Where(o => o.Status == "SUCCESS").ToList();
+        var today = DateTime.UtcNow.Date;
+        var todayOrders = successOrders.Where(o => o.PaidAt.HasValue && o.PaidAt.Value.Date == today).ToList();
+
+        return new RevenueStatsResponse
+        {
+            TotalRevenue = successOrders.Sum(o => o.Amount),
+            TodayRevenue = todayOrders.Sum(o => o.Amount),
+            SuccessOrdersCount = successOrders.Count,
+            PendingOrdersCount = allOrders.Count(o => o.Status == "PENDING"),
+            TotalOrdersCount = allOrders.Count
         };
     }
 }

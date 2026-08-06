@@ -133,4 +133,41 @@ public class PaymentsController : ControllerBase
         var hasAccess = await _paymentService.CheckBookAccessAsync(userId, bookId);
         return Ok(ApiResponse<object>.SuccessResponse(new { hasAccess, bookId }));
     }
+
+    /// <summary>
+    /// Lấy danh sách lịch sử đơn hàng thanh toán của Độc giả hiện tại
+    /// </summary>
+    [HttpGet("my-orders")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<PaymentQrResponse>>>> GetMyOrders()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(ApiResponse<List<PaymentQrResponse>>.ErrorResponse(401, "Chưa đăng nhập"));
+        }
+
+        var orders = await _paymentService.GetMyOrdersAsync(userId);
+        return Ok(ApiResponse<List<PaymentQrResponse>>.SuccessResponse(orders));
+    }
+
+    /// <summary>
+    /// Admin: Lấy toàn bộ đơn hàng thanh toán SePay
+    /// </summary>
+    [HttpGet("admin/all-orders")]
+    public async Task<ActionResult<ApiResponse<List<PaymentQrResponse>>>> GetAllOrders()
+    {
+        var orders = await _paymentService.GetAllOrdersAsync();
+        return Ok(ApiResponse<List<PaymentQrResponse>>.SuccessResponse(orders));
+    }
+
+    /// <summary>
+    /// Admin: Lấy thống kê doanh thu SePay
+    /// </summary>
+    [HttpGet("admin/revenue-stats")]
+    public async Task<ActionResult<ApiResponse<RevenueStatsResponse>>> GetRevenueStats()
+    {
+        var stats = await _paymentService.GetRevenueStatsAsync();
+        return Ok(ApiResponse<RevenueStatsResponse>.SuccessResponse(stats));
+    }
 }

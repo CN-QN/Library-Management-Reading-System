@@ -47,6 +47,9 @@ public class Book
     [BsonElement("accessType")]
     public string AccessType { get; set; } = "FREE";
 
+    [BsonElement("price")]
+    public decimal Price { get; set; } = 10000;
+
     [BsonElement("status")]
     public string Status { get; set; } = "DRAFT";
 
