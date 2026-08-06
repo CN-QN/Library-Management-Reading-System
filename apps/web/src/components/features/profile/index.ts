@@ -5,5 +5,6 @@ export * from './ProfileEmptyState';
 export * from './InProgressBooksTab';
 export * from './ReadingHistoryTab';
 export * from './BorrowedBooksTab';
+export * from './PaymentHistoryTab';
 export * from './EditProfileModal';
 export * from './ProfileContainer';

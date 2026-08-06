@@ -2,7 +2,7 @@
 /**
  * Các loại tab điều hướng trên trang hồ sơ cá nhân độc giả.
  */
-export type ProfileTabType = 'reading' | 'history' | 'borrowed';
+export type ProfileTabType = 'reading' | 'history' | 'borrowed' | 'payments';
 
 /**
  * Thông tin cuốn sách đang đọc dở của độc giả phục vụ hiển thị thanh tiến độ và nút Đọc tiếp.

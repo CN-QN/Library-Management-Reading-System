@@ -18,6 +18,7 @@ import {
   InProgressBooksTab,
   ReadingHistoryTab,
   BorrowedBooksTab,
+  PaymentHistoryTab,
   EditProfileModal,
 } from './index';
 import { Button } from '@/components/ui/button';
@@ -208,6 +209,9 @@ export function ProfileContainer({
         )}
         {activeTab === 'borrowed' && (
           <BorrowedBooksTab borrowed={borrowedBooks} isLoading={isLoadingData} />
+        )}
+        {activeTab === 'payments' && (
+          <PaymentHistoryTab />
         )}
       </div>
 
