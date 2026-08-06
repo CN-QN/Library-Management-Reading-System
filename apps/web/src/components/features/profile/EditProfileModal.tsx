@@ -96,21 +96,31 @@ export function EditProfileModal({
     .map((p) => p[0]?.toUpperCase())
     .join('') || 'DG';
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     setErrorMessage(null);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        setAvatarUrl(reader.result);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await axios.post('http://localhost:5210/api/media/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+      });
+
+      const url = res.data?.data?.secure_url || res.data?.data?.url;
+      if (url) {
+        setAvatarUrl(url);
       }
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Không thể tải ảnh lên server.');
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   return (

@@ -31,9 +31,78 @@ public class MediaController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(new
         {
             cloudName = _cloudinarySettings.CloudName,
-            uploadPreset = _cloudinarySettings.UploadPreset,
             apiKey = _cloudinarySettings.ApiKey
         }));
+    }
+
+    /// <summary>
+    /// Tải tệp ảnh từ Frontend về Backend API, ký chữ ký SHA-1 với ApiSecret và đẩy lên Cloudinary Server
+    /// </summary>
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadImage(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(400, "Vui lòng chọn tệp hình ảnh để tải lên"));
+        }
+
+        if (string.IsNullOrWhiteSpace(_cloudinarySettings.ApiKey) || string.IsNullOrWhiteSpace(_cloudinarySettings.ApiSecret))
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var dataUrl = $"data:{file.ContentType};base64,{base64}";
+            
+            return Ok(ApiResponse<object>.SuccessResponse(new
+            {
+                secure_url = dataUrl,
+                url = dataUrl,
+                public_id = $"local_{Guid.NewGuid():N}",
+                message = "Đã nhận tệp ảnh ở Backend (Vui lòng cấu hình ApiKey/ApiSecret trong appsettings.json để đẩy lên Cloudinary Server)"
+            }));
+        }
+
+        try
+        {
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var stringToSign = $"timestamp={timestamp}{_cloudinarySettings.ApiSecret}";
+            var signature = ComputeSha1Hash(stringToSign);
+
+            using var content = new MultipartFormDataContent();
+            using var stream = file.OpenReadStream();
+            content.Add(new StreamContent(stream), "file", file.FileName);
+            content.Add(new StringContent(_cloudinarySettings.ApiKey), "api_key");
+            content.Add(new StringContent(timestamp), "timestamp");
+            content.Add(new StringContent(signature), "signature");
+
+            var url = $"https://api.cloudinary.com/v1_1/{_cloudinarySettings.CloudName}/image/upload";
+            var response = await _httpClient.PostAsync(url, content);
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                using var jsonDoc = global::System.Text.Json.JsonDocument.Parse(responseString);
+                var root = jsonDoc.RootElement;
+                var secureUrl = root.GetProperty("secure_url").GetString();
+                var publicId = root.GetProperty("public_id").GetString();
+
+                return Ok(ApiResponse<object>.SuccessResponse(new
+                {
+                    secure_url = secureUrl,
+                    url = secureUrl,
+                    public_id = publicId,
+                    message = "Tải ảnh lên Cloudinary qua Backend API thành công"
+                }));
+            }
+
+            _logger.LogError("Lỗi từ Cloudinary Server: {Error}", responseString);
+            return StatusCode((int)response.StatusCode, ApiResponse<object>.ErrorResponse((int)response.StatusCode, "Lỗi từ dịch vụ Cloudinary Server"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải ảnh lên Cloudinary qua Backend API");
+            return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Không thể tải ảnh lên Cloudinary"));
+        }
     }
 
     /// <summary>
