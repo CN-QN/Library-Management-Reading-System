@@ -10,6 +10,8 @@ import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,10 +21,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  AreaChart,
-  Area,
 } from "recharts";
-import { DollarSign, TrendingUp, BookOpen, Users, ShieldCheck } from "lucide-react";
+import { DollarSign, TrendingUp, ShieldCheck, FileSpreadsheet, Printer } from "lucide-react";
 
 function formatVnd(amount: number) {
   return amount.toLocaleString("vi-VN") + " đ";
@@ -104,6 +104,7 @@ function FineSummaryCard({ rows }: { rows: FineSummary[] }) {
 }
 
 export default function ReportsPage() {
+  const { showToast } = useToast();
   const fetchSummary = useCallback(() => statisticsApi.getSummary(), []);
   const { data, error, isLoading, retry } = useAsync(fetchSummary);
 
@@ -120,13 +121,55 @@ export default function ReportsPage() {
   const displayRevenue = realRevenue?.totalRevenue || 450000;
   const displayCount = realRevenue?.successOrdersCount || 45;
 
+  const handleExportExcel = () => {
+    const headers = ["Tháng / Kỳ", "Doanh Thu VietQR (VNĐ)", "Lượt Mượn Sách", "Số Độc Giả Mới"];
+    const rows = MONTHLY_REVENUE_DATA.map((d) => [
+      `"${d.month}"`,
+      d.revenue,
+      d.loans,
+      d.readers,
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Bao_Cao_Doanh_Thu_Tong_Quan_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("Đã xuất báo cáo tổng quan Excel (.xlsx / .csv) thành công!", "success");
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Báo Cáo Doanh Thu & Thống Kê Tổng Quan</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Báo cáo doanh thu thanh toán VietQR SePay, lượt mượn trả sách và thống kê trạng thái hệ thống.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Báo Cáo Doanh Thu & Thống Kê Tổng Quan</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Báo cáo doanh thu thanh toán VietQR SePay, lượt mượn trả sách và thống kê trạng thái hệ thống.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm cursor-pointer"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Xuất Báo Cáo Excel (.xlsx)
+          </Button>
+          <Button
+            onClick={() => window.print()}
+            variant="outline"
+            className="text-xs font-bold gap-2 cursor-pointer"
+          >
+            <Printer className="h-4 w-4 text-slate-600" />
+            In Báo Cáo / PDF
+          </Button>
+        </div>
       </div>
 
       {/* Overview Stat Widgets */}
