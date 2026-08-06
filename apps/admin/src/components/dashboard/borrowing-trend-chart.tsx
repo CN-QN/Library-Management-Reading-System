@@ -41,18 +41,20 @@ export function BorrowingTrendChart({ data }: { data: BorrowingTrendPoint[] }) {
                 <Line
                   type="monotone"
                   dataKey="borrowCount"
-                  name="Mượn"
-                  stroke="var(--color-chart-borrow)"
-                  strokeWidth={2}
-                  dot={false}
+                  name="Sách mượn"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#3b82f6" }}
+                  activeDot={{ r: 6 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="returnCount"
-                  name="Trả"
-                  stroke="var(--color-chart-return)"
-                  strokeWidth={2}
-                  dot={false}
+                  name="Sách trả"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#10b981" }}
+                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
