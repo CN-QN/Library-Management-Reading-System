@@ -41,6 +41,20 @@ public class FlashSaleController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách Flash Sale (Cho Admin & FE)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetList()
+    {
+        var items = await _context.FlashSales
+            .Find(Builders<FlashSale>.Filter.Empty)
+            .SortByDescending(s => s.CreatedAt)
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<FlashSale>>.SuccessResponse(items, "Lấy danh sách Flash Sale thành công."));
+    }
+
+    /// <summary>
     /// Lấy tất cả sự kiện Flash Sale (Admin)
     /// </summary>
     [HttpGet("all")]
