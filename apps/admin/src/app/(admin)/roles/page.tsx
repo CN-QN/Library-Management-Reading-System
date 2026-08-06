@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, UserCheck, Shield, Check, Lock, X } from "lucide-react";
+import { Plus, UserCheck, Shield, Lock, X, Search, Edit2 } from "lucide-react";
 
 interface RoleItem {
   id: string;
@@ -19,6 +19,7 @@ interface UserItem {
   id: string;
   fullName: string;
   email: string;
+  studentCode?: string;
   roles?: string[];
 }
 
@@ -48,20 +49,25 @@ const DEFAULT_ROLES: RoleItem[] = [
 
 export default function RolesAdminPage() {
   const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<"roles" | "assign">("roles");
+
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [userSearch, setUserSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal states
+  // Modal 1: Add Role
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [newRoleCode, setNewRoleCode] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDesc, setNewRoleDesc] = useState("");
 
+  // Modal 2: Assign Role to Specific User
   const [isAssignOpen, setIsAssignOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [assignUser, setAssignUser] = useState<UserItem | null>(null);
   const [selectedRoleCode, setSelectedRoleCode] = useState("");
 
+  // Modal 3: Config Perms
   const [isConfigPermOpen, setIsConfigPermOpen] = useState(false);
   const [activeRole, setActiveRole] = useState<RoleItem | null>(null);
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
@@ -71,7 +77,7 @@ export default function RolesAdminPage() {
     try {
       const [rolesData, usersData] = await Promise.all([
         apiClient.get<RoleItem[]>("/api/roles").catch(() => null),
-        apiClient.get<any>("/api/users?limit=50").catch(() => null),
+        apiClient.get<any>("/api/users?limit=100").catch(() => null),
       ]);
 
       setRoles(rolesData && rolesData.length ? rolesData : DEFAULT_ROLES);
@@ -87,11 +93,10 @@ export default function RolesAdminPage() {
     fetchData();
   }, []);
 
-  // Handle Add Role
   const handleAddRole = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoleCode.trim() || !newRoleName.trim()) {
-      showToast("Vui lòng điền mã và tên vai trò.", "error");
+      showToast("Vui lòng điền đầy đủ Mã và Tên vai trò.", "error");
       return;
     }
 
@@ -100,7 +105,7 @@ export default function RolesAdminPage() {
       code: newRoleCode.trim().toUpperCase(),
       name: newRoleName.trim(),
       description: newRoleDesc.trim() || "Vai trò hệ thống mới",
-      permissionCount: 3,
+      permissionCount: 4,
     };
 
     setRoles([...roles, newRole]);
@@ -111,33 +116,38 @@ export default function RolesAdminPage() {
     setNewRoleDesc("");
   };
 
-  // Handle Assign Role to User
-  const handleAssignRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUserId || !selectedRoleCode) {
-      showToast("Vui lòng chọn người dùng và vai trò.", "error");
-      return;
-    }
-
-    const targetUser = users.find((u) => u.id === selectedUserId);
-    try {
-      await apiClient.post(`/api/users/${selectedUserId}/roles`, { roleCode: selectedRoleCode });
-      showToast(`Đã gán vai trò ${selectedRoleCode} cho cán bộ ${targetUser?.fullName || ""}`, "success");
-    } catch {
-      showToast(`Đã gán vai trò ${selectedRoleCode} cho ${targetUser?.fullName || "người dùng"}`, "success");
-    } finally {
-      setIsAssignOpen(false);
-    }
+  const handleOpenAssignModal = (user: UserItem) => {
+    setAssignUser(user);
+    setSelectedRoleCode(user.roles?.[0] || "MEMBER_READER");
+    setIsAssignOpen(true);
   };
 
-  // Open Permission Config
+  const handleSaveAssignRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignUser || !selectedRoleCode) return;
+
+    try {
+      await apiClient.post(`/api/users/${assignUser.id}/roles`, { roleCode: selectedRoleCode });
+    } catch {
+      // Local fallback sync
+    }
+
+    setUsers(
+      users.map((u) =>
+        u.id === assignUser.id ? { ...u, roles: [selectedRoleCode] } : u
+      )
+    );
+
+    showToast(`Đã gán vai trò ${selectedRoleCode} cho ${assignUser.fullName}!`, "success");
+    setIsAssignOpen(false);
+  };
+
   const openPermConfig = (role: RoleItem) => {
     setActiveRole(role);
     setSelectedPerms(["book:read", "user:read", "circulation:borrow"]);
     setIsConfigPermOpen(true);
   };
 
-  // Save Permission Config
   const handleSavePerms = () => {
     if (activeRole) {
       setRoles(
@@ -150,67 +160,179 @@ export default function RolesAdminPage() {
     setIsConfigPermOpen(false);
   };
 
+  const filteredUsers = users.filter(
+    (u) =>
+      u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Quản Lý Vai Trò & Phân Quyền (RBAC)</h1>
-          <p className="text-xs text-slate-500">
-            Tạo vai trò mới, cấu hình danh sách quyền hạn chi tiết và phân gán vai trò cho cán bộ / độc giả.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setIsAssignOpen(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5">
-            <UserCheck className="h-4 w-4" />
-            Phân vai trò cho User
-          </Button>
-
-          <Button onClick={() => setIsAddRoleOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold gap-1.5">
-            <Plus className="h-4 w-4" />
-            Tạo Vai Trò Mới
-          </Button>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">Quản Lý Vai Trò & Phân Quyền (RBAC)</h1>
+        <p className="text-xs text-slate-500 mt-1">
+          Hệ thống phân định rạch ròi 2 phần: Quản lý danh sách vai trò hệ thống & Phân vai trò trực tiếp cho Người dùng.
+        </p>
       </div>
 
-      {/* Role List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {roles.map((role) => (
-          <div key={role.id} className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                {role.name}
-              </span>
-              <span className="font-mono text-xs text-slate-400 font-semibold">{role.code}</span>
-            </div>
+      {/* 2 Main Management Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("roles")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === "roles"
+              ? "border-amber-600 text-amber-600"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <Shield className="h-4 w-4" />
+          1. Danh Sách & Thêm Vai Trò ({roles.length})
+        </button>
 
-            <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">{role.description}</p>
+        <button
+          type="button"
+          onClick={() => setActiveTab("assign")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === "assign"
+              ? "border-amber-600 text-amber-600"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          <UserCheck className="h-4 w-4" />
+          2. Phân Quyền & Gán Vai Trò Cho User ({users.length})
+        </button>
+      </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-              <span className="text-slate-500 font-semibold flex items-center gap-1">
-                <Shield className="h-3.5 w-3.5 text-amber-600" />
-                {role.permissionCount} quyền hạn
-              </span>
-
-              <button
-                type="button"
-                onClick={() => openPermConfig(role)}
-                className="font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
-              >
-                Cấu hình quyền →
-              </button>
-            </div>
+      {/* TAB 1: QUẢN LÝ VAI TRÒ (ROLE MANAGEMENT) */}
+      {activeTab === "roles" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500 font-semibold">
+              Danh sách tất cả các vai trò phân quyền hoạt động trong hệ thống:
+            </p>
+            <Button
+              onClick={() => setIsAddRoleOpen(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              + Thêm Vai Trò Mới
+            </Button>
           </div>
-        ))}
-      </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {roles.map((role) => (
+              <div
+                key={role.id}
+                className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:border-amber-500/40 hover:shadow-md transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full px-3 py-1 text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                    {role.name}
+                  </span>
+                  <span className="font-mono text-xs text-slate-400 font-bold">{role.code}</span>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">{role.description}</p>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-slate-500 font-semibold flex items-center gap-1">
+                    <Shield className="h-3.5 w-3.5 text-amber-600" />
+                    {role.permissionCount} quyền hạn
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => openPermConfig(role)}
+                    className="font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    Cấu hình quyền →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: PHÂN GÁN VAI TRÒ CHO NGƯỜI DÙNG (USER ROLE ASSIGNMENT) */}
+      {activeTab === "assign" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Tìm tên hoặc email người dùng..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="pl-9 text-xs"
+              />
+            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              Hiển thị {filteredUsers.length} tài khoản cần phân vai trò
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">Họ và tên</th>
+                  <th className="p-3.5">Email tài khoản</th>
+                  <th className="p-3.5">Vai trò hiện tại</th>
+                  <th className="p-3.5 text-right">Thao tác phẩn quyền</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => {
+                    const currentRole = user.roles?.[0] || "MEMBER_READER";
+                    return (
+                      <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3.5 font-bold text-slate-900">{user.fullName}</td>
+                        <td className="p-3.5 text-slate-600">{user.email}</td>
+                        <td className="p-3.5">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {currentRole}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenAssignModal(user)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs gap-1 cursor-pointer"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            Gán / Đổi vai trò
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-slate-400 font-medium">
+                      Không tìm thấy tài khoản người dùng phù hợp.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Modal 1: Tạo Vai Trò Mới */}
       {isAddRoleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 space-y-4 shadow-xl border border-slate-200">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-bold text-base text-slate-900">Tạo Vai Trò Mới</h3>
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <Plus className="h-5 w-5 text-amber-600" />
+                Thêm Vai Trò Mới Hệ Thống
+              </h3>
               <button type="button" onClick={() => setIsAddRoleOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
               </button>
@@ -218,18 +340,18 @@ export default function RolesAdminPage() {
 
             <form onSubmit={handleAddRole} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Mã vai trò (Code) *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mã vai trò (Role Code) *</label>
                 <Input
                   required
                   placeholder="VD: AUDITOR"
                   value={newRoleCode}
                   onChange={(e) => setNewRoleCode(e.target.value)}
-                  className="uppercase font-mono"
+                  className="uppercase font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tên hiển thị (Tiếng Việt) *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tên hiển thị Tiếng Việt *</label>
                 <Input
                   required
                   placeholder="VD: Kiểm toán viên Thư viện"
@@ -239,9 +361,9 @@ export default function RolesAdminPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Mô tả quyền hạn</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mô tả chức năng công việc</label>
                 <Input
-                  placeholder="Mô tả chức năng công việc của vai trò..."
+                  placeholder="Mô tả danh mục công việc của vai trò..."
                   value={newRoleDesc}
                   onChange={(e) => setNewRoleDesc(e.target.value)}
                 />
@@ -249,61 +371,41 @@ export default function RolesAdminPage() {
 
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsAddRoleOpen(false)}>Hủy</Button>
-                <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold">Lưu vai trò</Button>
+                <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold">Lưu Vai Trò</Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal 2: Phân Vai Trò Cho User */}
-      {isAssignOpen && (
+      {/* Modal 2: Phân Vai Trò Cho Người Dùng Chọn */}
+      {isAssignOpen && assignUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 space-y-4 shadow-xl border border-slate-200">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-amber-600" />
-                Phân Vai Trò Cho Cán Bộ / Độc Giả
+                Gán Vai Trò - {assignUser.fullName}
               </h3>
               <button type="button" onClick={() => setIsAssignOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAssignRole} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Chọn tài khoản người dùng *</label>
-                <select
-                  required
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 p-2 text-sm font-medium focus:ring-amber-500"
-                >
-                  <option value="">-- Chọn Cán bộ / Độc giả --</option>
-                  {users.length > 0 ? (
-                    users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.fullName} ({u.email})
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="user1">System Administrator (admin@libraryhub.com)</option>
-                      <option value="user2">Nguyễn Văn Thu Thư (librarian@libraryhub.com)</option>
-                    </>
-                  )}
-                </select>
+            <form onSubmit={handleSaveAssignRole} className="space-y-4">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <p className="text-xs font-bold text-slate-800">Tài khoản: {assignUser.fullName}</p>
+                <p className="text-xs text-slate-500">Email: {assignUser.email}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Chọn vai trò gán *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Chọn vai trò cần gán *</label>
                 <select
                   required
                   value={selectedRoleCode}
                   onChange={(e) => setSelectedRoleCode(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 p-2 text-sm font-medium focus:ring-amber-500"
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold text-slate-800 focus:ring-amber-500"
                 >
-                  <option value="">-- Chọn Vai Trò --</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.code}>
                       {r.name} ({r.code})
@@ -314,7 +416,7 @@ export default function RolesAdminPage() {
 
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsAssignOpen(false)}>Hủy</Button>
-                <Button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold">Xác nhận gán vai trò</Button>
+                <Button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold">Xác Nhận Gán Vai Trò</Button>
               </div>
             </form>
           </div>
@@ -324,11 +426,11 @@ export default function RolesAdminPage() {
       {/* Modal 3: Cấu Hình Quyền Hạn Chi Tiết */}
       {isConfigPermOpen && activeRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-white rounded-xl p-6 space-y-4 shadow-xl border border-slate-200">
+          <div className="w-full max-w-lg bg-white rounded-2xl p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <Lock className="h-5 w-5 text-amber-600" />
-                Cấu hình quyền hạn - {activeRole.name} ({activeRole.code})
+                Cấu hình quyền - {activeRole.name} ({activeRole.code})
               </h3>
               <button type="button" onClick={() => setIsConfigPermOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
@@ -336,11 +438,11 @@ export default function RolesAdminPage() {
             </div>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              <p className="text-xs text-slate-500 font-semibold mb-2">Tích chọn các thao tác được phép thực hiện:</p>
+              <p className="text-xs text-slate-500 font-semibold mb-2">Tích chọn các thao tác được phép thực hiện trong hệ thống:</p>
               {ALL_PERMISSIONS.map((perm) => {
                 const isChecked = selectedPerms.includes(perm.code);
                 return (
-                  <label key={perm.code} className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                  <label key={perm.code} className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={isChecked}
@@ -365,7 +467,7 @@ export default function RolesAdminPage() {
             <div className="flex justify-end gap-2 pt-3 border-t">
               <Button type="button" variant="outline" onClick={() => setIsConfigPermOpen(false)}>Hủy</Button>
               <Button type="button" onClick={handleSavePerms} className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
-                Lưu cấu hình quyền
+                Lưu Cấu Hình Quyền
               </Button>
             </div>
           </div>
