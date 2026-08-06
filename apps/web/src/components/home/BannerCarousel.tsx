@@ -33,9 +33,7 @@ export default function BannerCarousel() {
         const res = await apiClient.get('/banners');
         const data = res.data?.data || [];
         const activeBanners = data.filter((b: any) => b.isActive);
-        if (activeBanners.length > 0) {
-          setSlides(activeBanners);
-        }
+        setSlides(activeBanners);
       } catch (err) {
         console.error('Lỗi khi tải Banner từ API:', err);
       }
@@ -51,7 +49,11 @@ export default function BannerCarousel() {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  const slide = slides[currentIdx] || FALLBACK_SLIDES[0];
+  if (slides.length === 0) {
+    return null; // Don't render hidden/inactive banners
+  }
+
+  const slide = slides[currentIdx];
 
   return (
     <div className="relative w-full h-[320px] sm:h-[400px] rounded-2xl overflow-hidden shadow-xl border border-border group">
