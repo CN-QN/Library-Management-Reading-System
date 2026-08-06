@@ -78,16 +78,27 @@ export function ContinueReadingCard({ item, className, onDeleteProgress }: Conti
 
       <CardContent className="p-4 flex flex-col justify-between h-full space-y-4">
         <div className="flex gap-3.5">
-          {/* Bìa sách có ảnh hoặc fallback giao diện Warm Sepia */}
-          <div className="relative h-28 w-20 shrink-0 rounded-md overflow-hidden bg-muted/60 border border-border/50 shadow-inner flex items-center justify-center">
+          {/* Bìa sách cao cấp với hiệu ứng Ambient Glow & Drop Shadow */}
+          <div className="relative h-28 w-20 shrink-0 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-900/60 border border-border/50 shadow-sm flex items-center justify-center group/cover">
             {item.bookCoverImage ? (
-              <Image
-                src={item.bookCoverImage}
-                alt={item.bookTitle}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                sizes="80px"
-              />
+              <>
+                <Image
+                  src={item.bookCoverImage}
+                  alt=""
+                  fill
+                  aria-hidden="true"
+                  className="object-cover scale-125 blur-lg opacity-40 dark:opacity-30 pointer-events-none"
+                />
+                <div className="relative w-full h-full p-1 flex items-center justify-center z-10">
+                  <Image
+                    src={item.bookCoverImage}
+                    alt={item.bookTitle}
+                    fill
+                    className="object-contain p-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)] group-hover/cover:scale-105 transition-transform duration-300"
+                    sizes="80px"
+                  />
+                </div>
+              </>
             ) : (
               <div className="h-full w-full bg-gradient-to-br from-amber-500/20 to-primary/20 flex flex-col items-center justify-center p-1 text-center">
                 <BookOpen className="h-6 w-6 text-primary/60 mb-1" />
