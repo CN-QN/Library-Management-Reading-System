@@ -117,6 +117,7 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 
     // ===== PAYMENT MODULE (SEPAY & REDIS PUB/SUB) =====
+    builder.Services.Configure<SePaySettings>(builder.Configuration.GetSection("SePay"));
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();

@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
+using api.Configuration;
 using api.Database;
 using api.Database.Entities;
 using api.Modules.Payment.DTOs;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
 namespace api.Modules.Payment.Services;
@@ -12,13 +14,17 @@ public class PaymentService : IPaymentService
     private readonly IRedisPaymentService _redisPaymentService;
     private readonly ILogger<PaymentService> _logger;
 
+    private readonly SePaySettings _sePaySettings;
+
     public PaymentService(
         MongoDbContext context,
         IRedisPaymentService redisPaymentService,
+        IOptions<SePaySettings> sePayOptions,
         ILogger<PaymentService> logger)
     {
         _context = context;
         _redisPaymentService = redisPaymentService;
+        _sePaySettings = sePayOptions.Value;
         _logger = logger;
     }
 
@@ -40,10 +46,9 @@ public class PaymentService : IPaymentService
         // Nội dung chuyển khoản chuẩn theo SePay
         var paymentContent = orderCode;
 
-        // Sinh link mã VietQR động SePay chuẩn ngân hàng MBBank
-        // Cú pháp SePay VietQR: https://qr.sepay.vn/img?acc=ACCOUNT&bank=BANK&amount=AMOUNT&des=CONTENT
-        var bankAccount = "0987654321";
-        var bankName = "MBBank";
+        // Sinh link mã VietQR động SePay chuẩn từ cấu hình appsettings.json
+        var bankAccount = _sePaySettings.BankAccount;
+        var bankName = _sePaySettings.BankName;
         var qrCodeUrl = $"https://qr.sepay.vn/img?acc={bankAccount}&bank={bankName}&amount={(int)amount}&des={paymentContent}";
 
         var paymentOrder = new PaymentOrder
