@@ -44,7 +44,7 @@ export function ProfileContainer({
   initialPage = 1,
 }: ProfileContainerProps) {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading, checkAuth } = useAuthStore();
+  const { user, isAuthenticated, isLoading: isAuthLoading, updateUser } = useAuthStore();
 
   const activeTab = initialTab;
   const currentPage = initialPage;
@@ -119,10 +119,13 @@ export function ProfileContainer({
     router.replace(`/profile?tab=${activeTab}&page=${page}`, { scroll: false });
   };
 
-  // Callback sau khi lưu thông tin cá nhân
+  // Callback sau khi lưu thông tin cá nhân (Cập nhật 0ms Optimistic UI và revalidate client-side router cache)
   const handleProfileUpdated = (updated: { fullName?: string; email?: string; phoneNumber?: string; avatar?: string | null }) => {
     setProfileOverride(prev => ({ ...prev, ...updated }));
-    checkAuth();
+    // Cập nhật thông tin user tức thì trong Zustand store để toàn bộ giao diện đồng bộ ngay lập tức (0ms)
+    updateUser(updated);
+    // Làm mới client-side router cache của Next.js
+    router.refresh();
   };
 
   // Trạng thái đang kiểm tra auth ban đầu
