@@ -306,11 +306,25 @@ export function LoginForm() {
                     className="rounded-xl text-sm"
                   />
                 </div>
-                <div className="flex justify-end gap-2 pt-2 border-t border-border">
-                  <Button type="button" variant="outline" onClick={() => setIsForgotOpen(false)} className="rounded-xl">Hủy</Button>
-                  <Button type="submit" disabled={isForgotSubmitting} className="rounded-xl font-bold">
-                    {isForgotSubmitting ? 'Đang xác thực...' : 'Đổi mật khẩu mới'}
-                  </Button>
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotError('');
+                      setForgotMessage('');
+                      setTokenStep(false);
+                    }}
+                    disabled={isForgotSubmitting}
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
+                  >
+                    Gửi lại mã xác nhận?
+                  </button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsForgotOpen(false)} className="rounded-xl">Hủy</Button>
+                    <Button type="submit" disabled={isForgotSubmitting} className="rounded-xl font-bold">
+                      {isForgotSubmitting ? 'Đang xác thực...' : 'Đổi mật khẩu mới'}
+                    </Button>
+                  </div>
                 </div>
               </form>
             )}
