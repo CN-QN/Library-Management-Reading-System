@@ -11,10 +11,6 @@ namespace api.Repositories.Implementations
     public class SearchRecommendationRepository : ISearchRecommendationRepository
     {
         private readonly IMongoCollection<Book> _booksCollection;
-        private readonly IMongoCollection<Author> _authorsCollection;
-        private readonly IMongoCollection<Category> _categoriesCollection;
-        private readonly IMongoCollection<BookAuthor> _bookAuthorsCollection;
-        private readonly IMongoCollection<BookCategory> _bookCategoriesCollection;
         private readonly IMongoCollection<ReadingProgress> _readingProgressCollection;
         private readonly IMongoCollection<ReadingSession> _readingSessionCollection;
         private readonly IMongoCollection<ViewEvent> _viewEventsCollection;
@@ -25,10 +21,6 @@ namespace api.Repositories.Implementations
         public SearchRecommendationRepository(MongoDbContext dbContext)
         {
             _booksCollection = dbContext.Books;
-            _authorsCollection = dbContext.Authors;
-            _categoriesCollection = dbContext.Categories;
-            _bookAuthorsCollection = dbContext.BookAuthors;
-            _bookCategoriesCollection = dbContext.BookCategories;
             _readingProgressCollection = dbContext.ReadingProgresses;
             _readingSessionCollection = dbContext.ReadingSessions;
             _viewEventsCollection = dbContext.ViewEvents;
@@ -39,46 +31,6 @@ namespace api.Repositories.Implementations
 
         public async Task<PagedResult<BookSearchDto>> SearchBooksAsync(BookSearchFilterDto filter)
         {
-            var bookIdsFilter = new List<string>();
-
-            // Lọc theo CategoryId
-            if (!string.IsNullOrEmpty(filter.CategoryId))
-            {
-                var categoryMatches = await _bookCategoriesCollection
-                    .Find(bc => bc.CategoryId == filter.CategoryId)
-                    .Project(bc => bc.BookId)
-                    .ToListAsync();
-                
-                bookIdsFilter.AddRange(categoryMatches);
-                if (!bookIdsFilter.Any())
-                {
-                    return new PagedResult<BookSearchDto>(Enumerable.Empty<BookSearchDto>(), filter.Page, filter.Limit, 0);
-                }
-            }
-
-            // Lọc theo AuthorId
-            if (!string.IsNullOrEmpty(filter.AuthorId))
-            {
-                var authorMatches = await _bookAuthorsCollection
-                    .Find(ba => ba.AuthorId == filter.AuthorId)
-                    .Project(ba => ba.BookId)
-                    .ToListAsync();
-
-                if (bookIdsFilter.Any())
-                {
-                    bookIdsFilter = bookIdsFilter.Intersect(authorMatches).ToList();
-                }
-                else
-                {
-                    bookIdsFilter.AddRange(authorMatches);
-                }
-
-                if (!bookIdsFilter.Any())
-                {
-                    return new PagedResult<BookSearchDto>(Enumerable.Empty<BookSearchDto>(), filter.Page, filter.Limit, 0);
-                }
-            }
-
             var pipeline = new List<BsonDocument>();
 
             // Match basic book filters
@@ -99,52 +51,17 @@ namespace api.Repositories.Implementations
                 matchDoc.Add("publicationYear", yearFilter);
             }
 
-            if (bookIdsFilter.Any())
+            if (!string.IsNullOrEmpty(filter.CategoryId))
             {
-                matchDoc.Add("_id", new BsonDocument("$in", new BsonArray(bookIdsFilter.Select(id => ObjectId.Parse(id)))));
+                matchDoc.Add("categories.categoryId", filter.CategoryId);
             }
 
-            pipeline.Add(new BsonDocument("$match", matchDoc));
+            if (!string.IsNullOrEmpty(filter.AuthorId))
+            {
+                matchDoc.Add("authors.authorId", filter.AuthorId);
+            }
 
-            // Lookup authors
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'book_authors',
-                    localField: '_id',
-                    foreignField: 'bookId',
-                    as: 'book_authors'
-                }
-            }"));
-
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'authors',
-                    localField: 'book_authors.authorId',
-                    foreignField: '_id',
-                    as: 'authors'
-                }
-            }"));
-
-            // Lookup categories
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'book_categories',
-                    localField: '_id',
-                    foreignField: 'bookId',
-                    as: 'book_categories'
-                }
-            }"));
-
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'categories',
-                    localField: 'book_categories.categoryId',
-                    foreignField: '_id',
-                    as: 'categories'
-                }
-            }"));
-
-            // Keyword match (Search in title, summary, author name, category name)
+            // Keyword match
             if (!string.IsNullOrEmpty(filter.Keyword))
             {
                 var regexPattern = new BsonRegularExpression(filter.Keyword, "i");
@@ -155,8 +72,10 @@ namespace api.Repositories.Implementations
                     new BsonDocument("authors.name", new BsonDocument("$regex", regexPattern)),
                     new BsonDocument("categories.name", new BsonDocument("$regex", regexPattern))
                 };
-                pipeline.Add(new BsonDocument("$match", new BsonDocument("$or", orFilters)));
+                matchDoc.Add("$or", orFilters);
             }
+
+            pipeline.Add(new BsonDocument("$match", matchDoc));
 
             // Sorting
             var sortDoc = new BsonDocument();
@@ -204,7 +123,7 @@ namespace api.Repositories.Implementations
                         Slug = bookDoc.Contains("slug") ? bookDoc["slug"].AsString : "",
                         ISBN = bookDoc.Contains("isbn") && !bookDoc["isbn"].BsonType.Equals(BsonType.Null) ? bookDoc["isbn"].AsString : null,
                         Summary = bookDoc.Contains("summary") && !bookDoc["summary"].BsonType.Equals(BsonType.Null) ? bookDoc["summary"].AsString : null,
-                        PublisherId = bookDoc.Contains("publisherId") && !bookDoc["publisherId"].BsonType.Equals(BsonType.Null) ? bookDoc["publisherId"].ToString() : null,
+                        PublisherId = bookDoc.Contains("publisher") && !bookDoc["publisher"].BsonType.Equals(BsonType.Null) && bookDoc["publisher"].AsBsonDocument.Contains("publisherId") ? bookDoc["publisher"]["publisherId"].AsString : null,
                         CoverAssetId = bookDoc.Contains("coverAssetId") && !bookDoc["coverAssetId"].BsonType.Equals(BsonType.Null) ? bookDoc["coverAssetId"].ToString() : null,
                         AccessType = bookDoc.Contains("accessType") ? bookDoc["accessType"].AsString : "FREE",
                         Status = bookDoc.Contains("status") ? bookDoc["status"].AsString : "PUBLISHED",
@@ -222,27 +141,27 @@ namespace api.Repositories.Implementations
                         searchDto.RatingCount = statsDoc.Contains("ratingCount") ? statsDoc["ratingCount"].AsInt32 : 0;
                     }
 
-                    if (bookDoc.Contains("authors"))
+                    if (bookDoc.Contains("authors") && bookDoc["authors"].IsBsonArray)
                     {
                         foreach (var authVal in bookDoc["authors"].AsBsonArray)
                         {
                             var authDoc = authVal.AsBsonDocument;
                             searchDto.Authors.Add(new AuthorSearchDto
                             {
-                                Id = authDoc["_id"].ToString(),
+                                Id = authDoc.Contains("authorId") ? authDoc["authorId"].AsString : "",
                                 Name = authDoc.Contains("name") ? authDoc["name"].AsString : ""
                             });
                         }
                     }
 
-                    if (bookDoc.Contains("categories"))
+                    if (bookDoc.Contains("categories") && bookDoc["categories"].IsBsonArray)
                     {
                         foreach (var catVal in bookDoc["categories"].AsBsonArray)
                         {
                             var catDoc = catVal.AsBsonDocument;
                             searchDto.Categories.Add(new CategorySearchDto
                             {
-                                Id = catDoc["_id"].ToString(),
+                                Id = catDoc.Contains("categoryId") ? catDoc["categoryId"].AsString : "",
                                 Name = catDoc.Contains("name") ? catDoc["name"].AsString : ""
                             });
                         }
@@ -262,7 +181,6 @@ namespace api.Repositories.Implementations
 
             var regex = new BsonRegularExpression(query, "i");
 
-            // Lọc bằng C# regex để tránh lỗi Regex filter builder
             var books = await _booksCollection.Find(b => b.Status == "PUBLISHED").ToListAsync();
             var bookMatches = books
                 .Where(b => b.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
@@ -279,8 +197,7 @@ namespace api.Repositories.Implementations
                 });
             }
 
-            // 2. Tìm tác giả trùng khớp
-            var authors = await _authorsCollection.Find(_ => true).ToListAsync();
+            var authors = books.SelectMany(b => b.Authors).DistinctBy(a => a.AuthorId).ToList();
             var authorMatches = authors
                 .Where(a => a.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .Take(5);
@@ -290,7 +207,7 @@ namespace api.Repositories.Implementations
                 suggestions.Add(new SearchSuggestionDto
                 {
                     Type = "AUTHOR",
-                    Id = author.Id,
+                    Id = author.AuthorId,
                     Text = author.Name,
                     Subtext = "Tác giả"
                 });
@@ -349,59 +266,43 @@ namespace api.Repositories.Implementations
         public async Task<List<string>> GetBookAuthorIdsAsync(List<string> bookIds)
         {
             if (bookIds == null || !bookIds.Any()) return new List<string>();
-            var authorIds = await _bookAuthorsCollection
-                .Find(ba => bookIds.Contains(ba.BookId))
-                .Project(ba => ba.AuthorId)
-                .ToListAsync();
-            return authorIds.Distinct().ToList();
+            var books = await _booksCollection.Find(b => bookIds.Contains(b.Id)).ToListAsync();
+            return books.SelectMany(b => b.Authors).Select(a => a.AuthorId).Distinct().ToList();
         }
 
         public async Task<List<string>> GetBookCategoryIdsAsync(List<string> bookIds)
         {
             if (bookIds == null || !bookIds.Any()) return new List<string>();
-            var categoryIds = await _bookCategoriesCollection
-                .Find(bc => bookIds.Contains(bc.BookId))
-                .Project(bc => bc.CategoryId)
-                .ToListAsync();
-            return categoryIds.Distinct().ToList();
+            var books = await _booksCollection.Find(b => bookIds.Contains(b.Id)).ToListAsync();
+            return books.SelectMany(b => b.Categories).Select(c => c.CategoryId).Distinct().ToList();
         }
 
         public async Task<List<Book>> GetSimilarBooksAsync(List<string> authorIds, List<string> categoryIds, List<string> excludeBookIds, int limit)
         {
-            var matchedBookIds = new List<string>();
-
+            var filterBuilder = Builders<Book>.Filter;
+            var statusFilter = filterBuilder.Eq(b => b.Status, "PUBLISHED");
+            
+            var orFilters = new List<FilterDefinition<Book>>();
             if (authorIds != null && authorIds.Any())
             {
-                var authorBooks = await _bookAuthorsCollection
-                    .Find(ba => authorIds.Contains(ba.AuthorId))
-                    .Project(ba => ba.BookId)
-                    .ToListAsync();
-                matchedBookIds.AddRange(authorBooks);
+                orFilters.Add(filterBuilder.ElemMatch(b => b.Authors, a => authorIds.Contains(a.AuthorId)));
             }
-
             if (categoryIds != null && categoryIds.Any())
             {
-                var categoryBooks = await _bookCategoriesCollection
-                    .Find(bc => categoryIds.Contains(bc.CategoryId))
-                    .Project(bc => bc.BookId)
-                    .ToListAsync();
-                matchedBookIds.AddRange(categoryBooks);
+                orFilters.Add(filterBuilder.ElemMatch(b => b.Categories, c => categoryIds.Contains(c.CategoryId)));
             }
+            
+            if (!orFilters.Any()) return new List<Book>();
 
-            matchedBookIds = matchedBookIds.Distinct().ToList();
+            var matchFilter = filterBuilder.And(statusFilter, filterBuilder.Or(orFilters));
 
             if (excludeBookIds != null && excludeBookIds.Any())
             {
-                matchedBookIds = matchedBookIds.Except(excludeBookIds).ToList();
-            }
-
-            if (!matchedBookIds.Any())
-            {
-                return new List<Book>();
+                matchFilter = filterBuilder.And(matchFilter, filterBuilder.Nin(b => b.Id, excludeBookIds));
             }
 
             return await _booksCollection
-                .Find(b => matchedBookIds.Contains(b.Id) && b.Status == "PUBLISHED")
+                .Find(matchFilter)
                 .SortByDescending(b => b.Stats.Rating)
                 .ThenByDescending(b => b.Stats.ViewCount)
                 .Limit(limit)
@@ -452,104 +353,39 @@ namespace api.Repositories.Implementations
         {
             if (bookIds == null || !bookIds.Any()) return new List<BookSearchDto>();
 
-            var pipeline = new List<BsonDocument>();
-
-            var matchDoc = new BsonDocument();
-            matchDoc.Add("_id", new BsonDocument("$in", new BsonArray(bookIds.Select(id => ObjectId.Parse(id)))));
-            pipeline.Add(new BsonDocument("$match", matchDoc));
-
-            // Lookup authors
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'book_authors',
-                    localField: '_id',
-                    foreignField: 'bookId',
-                    as: 'book_authors'
-                }
-            }"));
-
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'authors',
-                    localField: 'book_authors.authorId',
-                    foreignField: '_id',
-                    as: 'authors'
-                }
-            }"));
-
-            // Lookup categories
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'book_categories',
-                    localField: '_id',
-                    foreignField: 'bookId',
-                    as: 'book_categories'
-                }
-            }"));
-
-            pipeline.Add(BsonDocument.Parse(@"{
-                $lookup: {
-                    from: 'categories',
-                    localField: 'book_categories.categoryId',
-                    foreignField: '_id',
-                    as: 'categories'
-                }
-            }"));
-
-            var aggregationResult = await _booksCollection.Aggregate<BsonDocument>(pipeline).ToListAsync();
+            var books = await _booksCollection.Find(b => bookIds.Contains(b.Id)).ToListAsync();
             var itemsList = new List<BookSearchDto>();
 
-            foreach (var bookDoc in aggregationResult)
+            foreach (var book in books)
             {
                 var searchDto = new BookSearchDto
                 {
-                    BookId = bookDoc["_id"].ToString(),
-                    Title = bookDoc.Contains("title") ? bookDoc["title"].AsString : "",
-                    Slug = bookDoc.Contains("slug") ? bookDoc["slug"].AsString : "",
-                    ISBN = bookDoc.Contains("isbn") && !bookDoc["isbn"].BsonType.Equals(BsonType.Null) ? bookDoc["isbn"].AsString : null,
-                    Summary = bookDoc.Contains("summary") && !bookDoc["summary"].BsonType.Equals(BsonType.Null) ? bookDoc["summary"].AsString : null,
-                    PublisherId = bookDoc.Contains("publisherId") && !bookDoc["publisherId"].BsonType.Equals(BsonType.Null) ? bookDoc["publisherId"].ToString() : null,
-                    CoverAssetId = bookDoc.Contains("coverAssetId") && !bookDoc["coverAssetId"].BsonType.Equals(BsonType.Null) ? bookDoc["coverAssetId"].ToString() : null,
-                    AccessType = bookDoc.Contains("accessType") ? bookDoc["accessType"].AsString : "FREE",
-                    Status = bookDoc.Contains("status") ? bookDoc["status"].AsString : "PUBLISHED",
-                    PublicationYear = bookDoc.Contains("publicationYear") && !bookDoc["publicationYear"].BsonType.Equals(BsonType.Null) ? bookDoc["publicationYear"].AsInt32 : null,
-                    Language = bookDoc.Contains("language") ? bookDoc["language"].AsString : "vi",
-                    TotalChapters = bookDoc.Contains("totalChapters") ? bookDoc["totalChapters"].AsInt32 : 0
+                    BookId = book.Id,
+                    Title = book.Title,
+                    Slug = book.Slug,
+                    ISBN = book.ISBN,
+                    Summary = book.Summary,
+                    PublisherId = book.Publisher?.PublisherId,
+                    CoverAssetId = book.CoverAssetId,
+                    AccessType = book.AccessType,
+                    Status = book.Status,
+                    PublicationYear = book.PublicationYear,
+                    Language = book.Language,
+                    TotalChapters = book.TotalChapters,
+                    ViewCount = book.Stats.ViewCount,
+                    ReadingCount = book.Stats.ReadingCount,
+                    Rating = book.Stats.Rating,
+                    RatingCount = book.Stats.RatingCount
                 };
 
-                if (bookDoc.Contains("stats") && !bookDoc["stats"].BsonType.Equals(BsonType.Null))
+                if (book.Authors != null)
                 {
-                    var statsDoc = bookDoc["stats"].AsBsonDocument;
-                    searchDto.ViewCount = statsDoc.Contains("viewCount") ? statsDoc["viewCount"].AsInt32 : 0;
-                    searchDto.ReadingCount = statsDoc.Contains("readingCount") ? statsDoc["readingCount"].AsInt32 : 0;
-                    searchDto.Rating = statsDoc.Contains("rating") ? statsDoc["rating"].AsDouble : 0.0;
-                    searchDto.RatingCount = statsDoc.Contains("ratingCount") ? statsDoc["ratingCount"].AsInt32 : 0;
+                    searchDto.Authors = book.Authors.Select(a => new AuthorSearchDto { Id = a.AuthorId, Name = a.Name }).ToList();
                 }
 
-                if (bookDoc.Contains("authors"))
+                if (book.Categories != null)
                 {
-                    foreach (var authVal in bookDoc["authors"].AsBsonArray)
-                    {
-                        var authDoc = authVal.AsBsonDocument;
-                        searchDto.Authors.Add(new AuthorSearchDto
-                        {
-                            Id = authDoc["_id"].ToString(),
-                            Name = authDoc.Contains("name") ? authDoc["name"].AsString : ""
-                        });
-                    }
-                }
-
-                if (bookDoc.Contains("categories"))
-                {
-                    foreach (var catVal in bookDoc["categories"].AsBsonArray)
-                    {
-                        var catDoc = catVal.AsBsonDocument;
-                        searchDto.Categories.Add(new CategorySearchDto
-                        {
-                            Id = catDoc["_id"].ToString(),
-                            Name = catDoc.Contains("name") ? catDoc["name"].AsString : ""
-                        });
-                    }
+                    searchDto.Categories = book.Categories.Select(c => new CategorySearchDto { Id = c.CategoryId, Name = c.Name }).ToList();
                 }
 
                 itemsList.Add(searchDto);

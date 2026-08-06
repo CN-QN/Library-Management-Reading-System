@@ -1,6 +1,7 @@
 using api.Database.Entities;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Text.Json;
 
 namespace api.Database.Seed;
 
@@ -36,22 +37,13 @@ public class SeedRunner
             // ===== 5. SEED USERS & USER ROLES =====
             await SeedUsersAsync(defaultBranch);
 
-            // ===== 6. SEED AUTHORS =====
-            await SeedAuthorsAsync();
+            // ===== 6. DEVELOPMENT CLEANUP =====
+            await CleanupDevelopmentCollectionsAsync();
 
-            // ===== 7. SEED PUBLISHERS =====
-            await SeedPublishersAsync();
-
-            // ===== 8. SEED CATEGORIES =====
-            await SeedCategoriesAsync();
-
-            // ===== 9. SEED BOOKS (50+) =====
+            // ===== 7. SEED BOOKS (embeds Authors, Categories, Publishers, Chapters) =====
             var books = await SeedBooksAsync();
 
-            // ===== 10. SEED CHAPTERS (100+) =====
-            await SeedChaptersAsync(books);
-
-            // ===== 11. SEED BOOK COPIES (100+) =====
+            // ===== 8. SEED BOOK COPIES (100+) =====
             await SeedBookCopiesAsync(books, defaultBranch);
 
             _logger.LogInformation("Database seeding process completed successfully.");
@@ -60,6 +52,31 @@ public class SeedRunner
         {
             _logger.LogError(ex, "Error occurred during database seeding.");
             throw;
+        }
+    }
+
+    private async Task CleanupDevelopmentCollectionsAsync()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Development environment detected. Dropping obsolete collections...");
+            var obsoleteCollections = new[] { "authors", "categories", "publishers", "chapters", "book_authors", "book_categories" };
+            foreach (var col in obsoleteCollections)
+            {
+                await _context.Database.DropCollectionAsync(col);
+                _logger.LogInformation("Dropped collection: {CollectionName}", col);
+            }
+
+            // Self-healing: if 'books' contains old schema documents (e.g. has 'publisherId'), drop it and 'book_copies' to force a clean seed
+            var booksCollection = _context.Database.GetCollection<BsonDocument>("books");
+            var hasOldSchema = await booksCollection.Find(Builders<BsonDocument>.Filter.Exists("publisherId")).AnyAsync();
+            if (hasOldSchema)
+            {
+                _logger.LogWarning("Old catalog schema detected in 'books' collection. Dropping 'books' and 'book_copies' to trigger a clean embedded seed...");
+                await _context.Database.DropCollectionAsync("books");
+                await _context.Database.DropCollectionAsync("book_copies");
+            }
         }
     }
 
@@ -180,66 +197,7 @@ public class SeedRunner
 
     #endregion
 
-    #region Catalog Seed Methods (M03)
-
-    private async Task SeedAuthorsAsync()
-    {
-        var count = await _context.Authors.CountDocumentsAsync(Builders<Author>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding authors...");
-        var authors = new List<Author>
-        {
-            new() { Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh", Biography = "Nhà văn nổi tiếng với những tác phẩm về tuổi thơ" },
-            new() { Name = "Tô Hoài", Slug = "to-hoai", Biography = "Tác giả của 'Dế Mèn phiêu lưu ký'" },
-            new() { Name = "Nam Cao", Slug = "nam-cao", Biography = "Nhà văn hiện thực phê phán xuất sắc" },
-            new() { Name = "Vũ Trọng Phụng", Slug = "vu-trong-phung", Biography = "Nhà văn trào phúng xuất sắc" },
-            new() { Name = "Nguyễn Du", Slug = "nguyen-du", Biography = "Đại thi hào dân tộc" },
-            new() { Name = "Hồ Chí Minh", Slug = "ho-chi-minh", Biography = "Lãnh tụ vĩ đại, nhà thơ lớn" },
-            new() { Name = "Xuân Quỳnh", Slug = "xuan-quynh", Biography = "Nhà thơ nữ với nhiều tác phẩm về tình yêu" },
-            new() { Name = "Nguyễn Minh Châu", Slug = "nguyen-minh-chau", Biography = "Nhà văn hiện đại xuất sắc" },
-            new() { Name = "Nguyễn Huy Thiệp", Slug = "nguyen-huy-thiep", Biography = "Nhà văn đương đại nổi tiếng" },
-            new() { Name = "Đỗ Chu", Slug = "do-chu", Biography = "Nhà văn với nhiều tác phẩm về miền Tây" }
-        };
-        await _context.Authors.InsertManyAsync(authors);
-    }
-
-    private async Task SeedPublishersAsync()
-    {
-        var count = await _context.Publishers.CountDocumentsAsync(Builders<Publisher>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding publishers...");
-        var publishers = new List<Publisher>
-        {
-            new() { Name = "NXB Trẻ", Slug = "nxb-tre", Address = "TP. Hồ Chí Minh", Contact = "028 1234 5678" },
-            new() { Name = "NXB Kim Đồng", Slug = "nxb-kim-dong", Address = "Hà Nội", Contact = "024 1234 5678" },
-            new() { Name = "NXB Văn Học", Slug = "nxb-van-hoc", Address = "Hà Nội", Contact = "024 8765 4321" },
-            new() { Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van", Address = "Hà Nội", Contact = "024 1234 8765" },
-            new() { Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia", Address = "Hà Nội", Contact = "024 5678 1234" }
-        };
-        await _context.Publishers.InsertManyAsync(publishers);
-    }
-
-    private async Task SeedCategoriesAsync()
-    {
-        var count = await _context.Categories.CountDocumentsAsync(Builders<Category>.Filter.Empty);
-        if (count > 0) return;
-
-        _logger.LogInformation("Seeding categories...");
-        var categories = new List<Category>
-        {
-            new() { Name = "Văn học", Slug = "van-hoc", Status = "ACTIVE" },
-            new() { Name = "Khoa học", Slug = "khoa-hoc", Status = "ACTIVE" },
-            new() { Name = "Kỹ năng sống", Slug = "ky-nang-song", Status = "ACTIVE" },
-            new() { Name = "Lịch sử", Slug = "lich-su", Status = "ACTIVE" },
-            new() { Name = "Thiếu nhi", Slug = "thieu-nhi", Status = "ACTIVE" },
-            new() { Name = "Tiểu thuyết", Slug = "tieu-thuyet", ParentId = null, Path = "/van-hoc/tieu-thuyet", Status = "ACTIVE" },
-            new() { Name = "Truyện ngắn", Slug = "truyen-ngan", ParentId = null, Path = "/van-hoc/truyen-ngan", Status = "ACTIVE" },
-            new() { Name = "Thơ", Slug = "tho", ParentId = null, Path = "/van-hoc/tho", Status = "ACTIVE" }
-        };
-        await _context.Categories.InsertManyAsync(categories);
-    }
+    #region Catalog Seed Methods (M03) & DigitalContent Seed Methods (M04)
 
     private async Task<List<Book>> SeedBooksAsync()
     {
@@ -249,10 +207,42 @@ public class SeedRunner
             return await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
         }
 
-        _logger.LogInformation("Seeding 50+ books...");
-        var authors = await _context.Authors.Find(Builders<Author>.Filter.Empty).ToListAsync();
-        var publishers = await _context.Publishers.Find(Builders<Publisher>.Filter.Empty).ToListAsync();
-        var categories = await _context.Categories.Find(Builders<Category>.Filter.Empty).ToListAsync();
+        _logger.LogInformation("Seeding 50+ books with embedded metadata and chapters...");
+        
+        var authors = new List<BookAuthorSnapshot>
+        {
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Tô Hoài", Slug = "to-hoai" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nam Cao", Slug = "nam-cao" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Vũ Trọng Phụng", Slug = "vu-trong-phung" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Du", Slug = "nguyen-du" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Hồ Chí Minh", Slug = "ho-chi-minh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Xuân Quỳnh", Slug = "xuan-quynh" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Minh Châu", Slug = "nguyen-minh-chau" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Huy Thiệp", Slug = "nguyen-huy-thiep" },
+            new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Đỗ Chu", Slug = "do-chu" }
+        };
+
+        var publishers = new List<BookPublisherSnapshot>
+        {
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Trẻ", Slug = "nxb-tre" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Kim Đồng", Slug = "nxb-kim-dong" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Văn Học", Slug = "nxb-van-hoc" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van" },
+            new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia" }
+        };
+
+        var categories = new List<BookCategorySnapshot>
+        {
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Văn học", Slug = "van-hoc" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Khoa học", Slug = "khoa-hoc" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Kỹ năng sống", Slug = "ky-nang-song" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Lịch sử", Slug = "lich-su" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Thiếu nhi", Slug = "thieu-nhi" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Tiểu thuyết", Slug = "tieu-thuyet" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Truyện ngắn", Slug = "truyen-ngan" },
+            new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Thơ", Slug = "tho" }
+        };
 
         var books = new List<Book>();
         var random = new Random();
@@ -289,7 +279,6 @@ public class SeedRunner
             ("Tắt đèn", "tat-den", "9786041000028", "Tiểu thuyết Ngô Tất Tố", 1939),
             ("Bước đường cùng", "buoc-duong-cung", "9786041000029", "Tiểu thuyết Nguyễn Công Hoan", 1938),
             ("Những ngày thơ ấu", "nhung-ngay-tho-au", "9786041000030", "Hồi ký Nguyên Hồng", 1938),
-            // Thêm 20 sách nữa để đạt 50+
             ("Đất nước đứng lên", "dat-nung-dung-len", "9786041000031", "Tiểu thuyết", 1954),
             ("Rừng xà nu", "rung-xa-nu", "9786041000032", "Truyện ngắn Nguyễn Trung Thành", 1965),
             ("Mùa lá rụng trong vườn", "mua-la-rung-trong-vuon", "9786041000033", "Truyện dài Ma Văn Kháng", 1985),
@@ -322,9 +311,44 @@ public class SeedRunner
             "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=400",
             "https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=400"
         };
+        
+        int totalEmbeddedChapters = 0;
 
         foreach (var (title, slug, isbn, summary, year) in bookData)
         {
+            var bookChapters = new List<BookChapter>();
+            var chapterCount = random.Next(5, 15);
+            for (int i = 1; i <= chapterCount; i++)
+            {
+                var isPublished = random.Next(0, 5) < 4;
+                var chapter = new BookChapter
+                {
+                    ChapterId = ObjectId.GenerateNewId().ToString(),
+                    Number = i,
+                    Title = $"Chương {i}: {GenerateChapterTitle(random)}",
+                    Content = new ChapterContent
+                    {
+                        Introduction = $"Giới thiệu chương {i}",
+                        Paragraphs = new List<Paragraph>
+                        {
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 1 },
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 2 },
+                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 3 }
+                        },
+                        Conclusion = $"Kết luận chương {i}"
+                    },
+                    WordCount = random.Next(500, 3000),
+                    Status = isPublished ? "PUBLISHED" : "DRAFT",
+                    PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
+                    CreatedBy = "system",
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
+                    UpdatedAt = DateTime.UtcNow
+                };
+                bookChapters.Add(chapter);
+            }
+            
+            totalEmbeddedChapters += bookChapters.Count;
+
             var book = new Book
             {
                 Title = title,
@@ -336,8 +360,11 @@ public class SeedRunner
                 CoverAssetId = coverUrls[random.Next(coverUrls.Length)],
                 AccessType = random.Next(0, 3) == 0 ? "PREMIUM" : "FREE",
                 Status = "PUBLISHED",
-                TotalChapters = 0,
-                PublisherId = publishers[random.Next(publishers.Count)].Id,
+                TotalChapters = bookChapters.Count,
+                Publisher = publishers[random.Next(publishers.Count)],
+                Authors = new List<BookAuthorSnapshot> { authors[random.Next(authors.Count)] },
+                Categories = new List<BookCategorySnapshot> { categories[random.Next(categories.Count)] },
+                Chapters = bookChapters,
                 CreatedBy = "system",
                 CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                 UpdatedAt = DateTime.UtcNow,
@@ -355,80 +382,12 @@ public class SeedRunner
         if (books.Any())
         {
             await _context.Books.InsertManyAsync(books);
-            _logger.LogInformation($"Seeded {books.Count} books");
+            _logger.LogInformation($"Seeded {books.Count} books with {totalEmbeddedChapters} embedded chapters");
         }
 
         return books;
     }
 
-    #endregion
-
-    #region DigitalContent Seed Methods (M04)
-
-    private async Task SeedChaptersAsync(List<Book> books)
-    {
-        var count = await _context.Chapters.CountDocumentsAsync(Builders<Chapter>.Filter.Empty);
-        if (count > 0) return;
-
-        if (!books.Any()) return;
-
-        _logger.LogInformation("Seeding 100+ chapters...");
-        var chapters = new List<Chapter>();
-        var random = new Random();
-
-        foreach (var book in books)
-        {
-            var chapterCount = random.Next(5, 15);
-            for (int i = 1; i <= chapterCount; i++)
-            {
-                var isPublished = random.Next(0, 5) < 4;
-
-                var chapter = new Chapter
-                {
-                    BookId = book.Id,
-                    Number = i,
-                    Title = $"Chương {i}: {GenerateChapterTitle(random)}",
-                    // [SỬA] Dùng Content thay vì ContentJson
-                    Content = new ChapterContent
-                    {
-                        Introduction = $"Giới thiệu chương {i}",
-                        Paragraphs = new List<Paragraph>
-                        {
-                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 1 },
-                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 2 },
-                            new Paragraph { Id = Guid.NewGuid().ToString(), Text = GenerateParagraphText(random), Order = 3 }
-                        },
-                        Conclusion = $"Kết luận chương {i}"
-                    },
-                    WordCount = random.Next(500, 3000),
-                    Status = isPublished ? "PUBLISHED" : "DRAFT",
-                    // [SỬA] Xóa Version và UpdatedBy
-                    PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
-                    CreatedBy = "system",
-                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
-                    UpdatedAt = DateTime.UtcNow
-                };
-                chapters.Add(chapter);
-            }
-        }
-
-        if (chapters.Any())
-        {
-            await _context.Chapters.InsertManyAsync(chapters);
-            _logger.LogInformation($"Seeded {chapters.Count} chapters");
-
-            // Update total chapters for books
-            foreach (var book in books)
-            {
-                var publishedCount = chapters.Count(c => c.BookId == book.Id && c.Status == "PUBLISHED");
-                if (publishedCount > 0)
-                {
-                    var update = Builders<Book>.Update.Set(b => b.TotalChapters, publishedCount);
-                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
-                }
-            }
-        }
-    }
     #endregion
 
     #region Inventory Seed Methods (M05)
@@ -511,49 +470,11 @@ public class SeedRunner
             "Ánh đèn vàng hắt ra từ căn phòng nhỏ, ấm áp và bình yên.",
             "Những giọt mưa lăn dài trên cửa kính, như những giọt lệ của bầu trời.",
             "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
-            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
+            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt muốn.",
             "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
             "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
         };
         return texts[random.Next(texts.Length)];
-    }
-    private string GenerateChapterContent(Random random)
-    {
-        var paragraphs = new[]
-        {
-            "Trời hôm nay thật đẹp, nắng vàng rải nhẹ trên những tán cây xanh mướt.",
-            "Cơn gió nhẹ nhàng thổi qua, mang theo hương thơm của những bông hoa dại.",
-            "Tiếng chim hót líu lo như bản nhạc du dương của buổi sớm mai.",
-            "Trong không gian yên tĩnh, chỉ còn tiếng lá rơi xào xạc.",
-            "Ánh đèn vàng hắt ra từ căn phòng nhỏ, ấm áp và bình yên.",
-            "Những giọt mưa lăn dài trên cửa kính, như những giọt lệ của bầu trời.",
-            "Mùi hương của đất ẩm sau cơn mưa thật dễ chịu.",
-            "Tiếng cười vang vọng trong không gian, xua tan mọi mệt mỏi.",
-            "Bầu trời đêm đầy sao, lung linh như những viên kim cương.",
-            "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
-        };
-
-        var nodes = new List<object>();
-        var paragraphCount = random.Next(3, 8);
-
-        for (int i = 0; i < paragraphCount; i++)
-        {
-            var selectedText = string.Join(" ", paragraphs
-                .OrderBy(_ => random.Next())
-                .Take(random.Next(2, 4)));
-
-            nodes.Add(new
-            {
-                type = "paragraph",
-                content = new[] { new { type = "text", text = selectedText } }
-            });
-        }
-
-        return System.Text.Json.JsonSerializer.Serialize(new
-        {
-            type = "doc",
-            content = nodes
-        });
     }
 
     #endregion

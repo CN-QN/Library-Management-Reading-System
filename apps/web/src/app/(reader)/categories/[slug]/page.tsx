@@ -3,8 +3,8 @@
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { ChevronRight, BookOpen, ArrowUpDown } from 'lucide-react';
-import { getCategoryBySlug, getCategories, getBooksByCategory } from '@/lib/api/categories';
-import { Category } from '@/types/Category';
+import { getBooksByCategory } from '@/lib/api/categories';
+import { BookCategorySnapshot } from '@/types/Book';
 import { Book } from '@/types/Book';
 import { BookCard } from '@/components/home/BookCard';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,8 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
   const resolvedParams = use(params);
   const slug = resolvedParams.slug;
 
-  const [category, setCategory] = useState<Category | null>(null);
-  const [subcategories, setSubcategories] = useState<Category[]>([]);
+  // Derive category display info from the first book's embedded categories array
+  const [categoryInfo, setCategoryInfo] = useState<BookCategorySnapshot | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,19 +40,21 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
     async function loadCategoryData() {
       try {
         setIsLoading(true);
-        const cat = await getCategoryBySlug(slug);
-        setCategory(cat);
-
-        if (cat) {
-          const allCats = await getCategories();
-          const children = allCats.filter((c) => c.parentId === cat.id);
-          setSubcategories(children);
-        }
-
-        const booksData = await getBooksByCategory(cat?.id || slug, currentPage, 12, sortBy);
+        const booksData = await getBooksByCategory(slug, currentPage, 12, sortBy);
         setBooks(booksData.items);
         setTotalPages(booksData.totalPages);
         setTotalItems(booksData.totalItems);
+
+        // Extract category display info from embedded book.categories[]
+        for (const book of booksData.items) {
+          const matched = (book.categories ?? []).find(
+            (c) => c.slug === slug || c.categoryId === slug
+          );
+          if (matched) {
+            setCategoryInfo(matched);
+            break;
+          }
+        }
       } catch (error) {
         console.error('Failed to load category page data:', error);
       } finally {
@@ -62,6 +64,8 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
 
     loadCategoryData();
   }, [slug, currentPage, sortBy]);
+
+  const displayName = categoryInfo?.name ?? slug;
 
   return (
     <div className="space-y-8 pb-12">
@@ -76,7 +80,7 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
         </Link>
         <ChevronRight className="w-4 h-4" />
         <span className="text-foreground font-medium truncate">
-          {category ? category.name : slug}
+          {displayName}
         </span>
       </nav>
 
@@ -85,39 +89,13 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">
-              {category ? category.name : 'Danh mục sách'}
+              {displayName}
             </h1>
-            {category?.description && (
-              <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
-                {category.description}
-              </p>
-            )}
           </div>
           <Badge variant="secondary" className="w-fit text-sm px-3 py-1">
             {totalItems} cuốn sách
           </Badge>
         </div>
-
-        {/* Subcategories Chips Navigation */}
-        {subcategories.length > 0 && (
-          <div className="pt-4 border-t border-border/50 space-y-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Danh mục con:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {subcategories.map((sub) => (
-                <Link key={sub.id} href={`/categories/${sub.slug}`}>
-                  <Badge
-                    variant="outline"
-                    className="hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer text-xs py-1 px-3"
-                  >
-                    {sub.name}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Sorting Controls */}

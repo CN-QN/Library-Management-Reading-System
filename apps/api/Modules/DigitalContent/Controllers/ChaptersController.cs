@@ -32,14 +32,14 @@ namespace api.Modules.DigitalContent.Controllers
             try
             {
                 var chapters = await _chapterService.GetByBookIdAsync(bookId);
-                return Ok(ApiResponse<List<ChapterResponseDto>>.SuccessResponse(
+                return Ok(ApiResponse<object>.SuccessResponse(
                     chapters,
                     "Chapters retrieved successfully"
                 ));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting chapters for book {bookId}");
+                _logger.LogError(ex, "Error getting chapters for book {BookId}", bookId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving chapters"));
             }
         }
@@ -47,24 +47,24 @@ namespace api.Modules.DigitalContent.Controllers
         /// <summary>
         /// Lấy thông tin chapter theo ID
         /// </summary>
-        [HttpGet("{id}")]
+        [HttpGet("{chapterId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetById(string id)
+        public async Task<IActionResult> GetById(string bookId, string chapterId)
         {
             try
             {
-                var chapter = await _chapterService.GetByIdAsync(id);
+                var chapter = await _chapterService.GetByIdAsync(bookId, chapterId);
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                return Ok(ApiResponse<object>.SuccessResponse(
                     chapter,
                     "Chapter retrieved successfully"
                 ));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting chapter {id}");
+                _logger.LogError(ex, "Error getting chapter {ChapterId}", chapterId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving the chapter"));
             }
         }
@@ -72,13 +72,13 @@ namespace api.Modules.DigitalContent.Controllers
         /// <summary>
         /// Lấy nội dung chapter
         /// </summary>
-        [HttpGet("{id}/content")]
+        [HttpGet("{chapterId}/content")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetContent(string id)
+        public async Task<IActionResult> GetContent(string bookId, string chapterId)
         {
             try
             {
-                var content = await _chapterService.GetContentAsync(id);
+                var content = await _chapterService.GetContentAsync(bookId, chapterId);
                 if (content == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter content not found"));
 
@@ -89,27 +89,8 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting chapter content {id}");
+                _logger.LogError(ex, "Error getting chapter content {ChapterId}", chapterId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving chapter content"));
-            }
-        }
-
-        /// <summary>
-        /// Lấy số chapter tiếp theo
-        /// </summary>
-        [HttpGet("next-number")]
-        [RequirePermission("chapter.create")]
-        public async Task<IActionResult> GetNextNumber(string bookId)
-        {
-            try
-            {
-                var nextNumber = await _chapterService.GetNextChapterNumberAsync(bookId);
-                return Ok(new { nextNumber });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error getting next chapter number for book {bookId}");
-                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while getting next chapter number"));
             }
         }
 
@@ -123,14 +104,13 @@ namespace api.Modules.DigitalContent.Controllers
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
-                dto.BookId = bookId;
 
-                var chapter = await _chapterService.CreateAsync(dto, userId);
-                
+                var chapter = await _chapterService.CreateAsync(bookId, dto, userId);
+
                 return CreatedAtAction(
                     nameof(GetById),
-                    new { bookId, id = chapter.Id },
-                    ApiResponse<ChapterResponseDto>.SuccessResponse(
+                    new { bookId, chapterId = chapter.ChapterId },
+                    ApiResponse<object>.SuccessResponse(
                         chapter,
                         "Chapter created successfully",
                         null,
@@ -144,7 +124,7 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating chapter for book {bookId}");
+                _logger.LogError(ex, "Error creating chapter for book {BookId}", bookId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while creating the chapter"));
             }
         }
@@ -152,19 +132,19 @@ namespace api.Modules.DigitalContent.Controllers
         /// <summary>
         /// Cập nhật chapter
         /// </summary>
-        [HttpPut("{id}")]
+        [HttpPut("{chapterId}")]
         [RequirePermission("chapter.update")]
-        public async Task<IActionResult> Update(string id, [FromBody] UpdateChapterDto dto)
+        public async Task<IActionResult> Update(string bookId, string chapterId, [FromBody] UpdateChapterDto dto)
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
-                var chapter = await _chapterService.UpdateAsync(id, dto, userId);
+                var chapter = await _chapterService.UpdateAsync(bookId, chapterId, dto, userId);
 
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                return Ok(ApiResponse<object>.SuccessResponse(
                     chapter,
                     "Chapter updated successfully"
                 ));
@@ -175,7 +155,7 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating chapter {id}");
+                _logger.LogError(ex, "Error updating chapter {ChapterId}", chapterId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while updating the chapter"));
             }
         }
@@ -183,19 +163,19 @@ namespace api.Modules.DigitalContent.Controllers
         /// <summary>
         /// Xuất bản chapter
         /// </summary>
-        [HttpPatch("{id}/publish")]
+        [HttpPatch("{chapterId}/publish")]
         [RequirePermission("chapter.publish")]
-        public async Task<IActionResult> Publish(string id)
+        public async Task<IActionResult> Publish(string bookId, string chapterId)
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
-                var chapter = await _chapterService.PublishAsync(id, userId);
+                var chapter = await _chapterService.PublishAsync(bookId, chapterId, userId);
 
                 if (chapter == null)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
-                return Ok(ApiResponse<ChapterResponseDto>.SuccessResponse(
+                return Ok(ApiResponse<object>.SuccessResponse(
                     chapter,
                     "Chapter published successfully"
                 ));
@@ -206,7 +186,7 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error publishing chapter {id}");
+                _logger.LogError(ex, "Error publishing chapter {ChapterId}", chapterId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while publishing the chapter"));
             }
         }
@@ -214,13 +194,13 @@ namespace api.Modules.DigitalContent.Controllers
         /// <summary>
         /// Xóa chapter (archive)
         /// </summary>
-        [HttpDelete("{id}")]
+        [HttpDelete("{chapterId}")]
         [RequirePermission("chapter.delete")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string bookId, string chapterId)
         {
             try
             {
-                var result = await _chapterService.DeleteAsync(id);
+                var result = await _chapterService.DeleteAsync(bookId, chapterId);
                 if (!result)
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
@@ -228,7 +208,7 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error deleting chapter {id}");
+                _logger.LogError(ex, "Error deleting chapter {ChapterId}", chapterId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while deleting the chapter"));
             }
         }
@@ -259,7 +239,7 @@ namespace api.Modules.DigitalContent.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error reordering chapters for book {bookId}");
+                _logger.LogError(ex, "Error reordering chapters for book {BookId}", bookId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while reordering chapters"));
             }
         }

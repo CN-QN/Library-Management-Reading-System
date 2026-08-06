@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { API_URL } from '../api-client';
+import type { BookAuthorSnapshot, BookCategorySnapshot, BookPublisherSnapshot } from '@/types/Book';
 import type {
   BookDetail,
   ChapterSummary,
@@ -74,12 +75,29 @@ function normalizeBookDetail(raw: Record<string, unknown> | null): BookDetail {
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
   };
 
+  // Extract embedded snapshot arrays; fall back to empty arrays.
+  const rawAuthors = raw ? (raw['authors'] ?? raw['Authors']) : undefined;
+  const authors: BookAuthorSnapshot[] = Array.isArray(rawAuthors)
+    ? (rawAuthors as BookAuthorSnapshot[])
+    : [];
+
+  const rawCategories = raw ? (raw['categories'] ?? raw['Categories']) : undefined;
+  const categories: BookCategorySnapshot[] = Array.isArray(rawCategories)
+    ? (rawCategories as BookCategorySnapshot[])
+    : [];
+
+  const rawPublisher = raw ? (raw['publisher'] ?? raw['Publisher']) : undefined;
+  const publisher: BookPublisherSnapshot | null =
+    rawPublisher && typeof rawPublisher === 'object'
+      ? (rawPublisher as BookPublisherSnapshot)
+      : null;
+
   return {
     id: pickRaw<string>(raw, 'id', 'bookId') || '',
     slug: pickRaw<string>(raw, 'slug', 'Slug') || '',
     title: pickRaw<string>(raw, 'title', 'Title') || 'Chưa có tiêu đề',
     summary: pickRaw<string | null>(raw, 'summary', 'Summary', 'description', 'Description'),
-    publisherName: pickRaw<string | null>(raw, 'publisherName', 'PublisherName'),
+    publisherName: publisher?.name ?? pickRaw<string | null>(raw, 'publisherName', 'PublisherName'),
     publicationYear: pickRaw<number | null>(raw, 'publicationYear', 'PublicationYear'),
     isbn: pickRaw<string | null>(raw, 'isbn', 'Isbn'),
     language: pickRaw<string | null>(raw, 'language', 'Language'),
@@ -88,10 +106,12 @@ function normalizeBookDetail(raw: Record<string, unknown> | null): BookDetail {
     totalChapters: pickRaw<number>(raw, 'totalChapters', 'TotalChapters') ?? 0,
     viewCount: pickRaw<number>(raw, 'viewCount', 'ViewCount') ?? 0,
     rating: pickRaw<number>(raw, 'rating', 'Rating') ?? 0,
-    authorNames: list('authorNames', 'AuthorNames'),
-    categoryNames: list('categoryNames', 'CategoryNames'),
-    categoryIds: list('categoryIds', 'CategoryIds'),
-    authorIds: list('authorIds', 'AuthorIds'),
+    authors,
+    categories,
+    publisher,
+    // Convenience flat arrays: prefer embedded names, fall back to legacy flat lists.
+    authorNames: authors.length > 0 ? authors.map((a) => a.name) : list('authorNames', 'AuthorNames'),
+    categoryNames: categories.length > 0 ? categories.map((c) => c.name) : list('categoryNames', 'CategoryNames'),
   };
 }
 
