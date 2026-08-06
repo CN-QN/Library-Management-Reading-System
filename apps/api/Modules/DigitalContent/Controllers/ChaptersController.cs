@@ -73,7 +73,6 @@ namespace api.Modules.DigitalContent.Controllers
         /// Lấy nội dung chapter
         /// </summary>
         [HttpGet("{chapterId}/content")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetContent(string bookId, string chapterId)
         {
             try

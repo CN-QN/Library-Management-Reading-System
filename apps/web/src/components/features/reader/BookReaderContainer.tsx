@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { BookDetail } from '@/types/BookDetail';
 import type { FullChapterDetail, Chapter, ReadingProgress, ReaderTheme } from '@/types/Reading';
+import { useAuthStore } from '@/store/auth-store';
 import { useReaderSettings } from '@/hooks/useReaderSettings';
 import { useReadingProgress } from '@/hooks/useReadingProgress';
 import { useReadingSession } from '@/hooks/useReadingSession';
@@ -77,6 +78,14 @@ export function BookReaderContainer({
   className,
 }: BookReaderContainerProps) {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      router.push(`/login?returnUrl=${returnUrl}`);
+    }
+  }, [isAuthenticated, router]);
 
   // State điều khiển mở/đóng Drawer Mục lục và Modal Cài đặt
   const [isTOCOpen, setIsTOCOpen] = useState<boolean>(false);

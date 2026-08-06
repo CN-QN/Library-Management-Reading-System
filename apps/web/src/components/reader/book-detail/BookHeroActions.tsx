@@ -33,7 +33,7 @@ export interface BookHeroActionsProps {
  * @param progress - Tiến độ đọc sách của người dùng
  */
 export function BookHeroActions({ book, firstChapter, progress }: BookHeroActionsProps) {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const userId = user?.id || null;
 
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
@@ -56,19 +56,26 @@ export function BookHeroActions({ book, firstChapter, progress }: BookHeroAction
     setIsBookmarked(newState);
   };
 
-  // Xác định href cho nút Đọc sách / Tiếp tục đọc theo chuẩn Issue #44
-  let readHref: string | null = null;
+  // Xác định href cho nút Đọc sách / Tiếp tục đọc
+  let rawReadTarget: string | null = null;
   let isContinue = false;
 
   if (progress && Number.isFinite(progress.chapterNumber) && progress.chapterNumber > 0) {
     // Nếu đã có tiến độ hợp lệ -> Tiếp tục đọc tại vị trí đang đọc dở
     const scrollPos = Number.isFinite(progress.scrollPosition) ? progress.scrollPosition : 0;
-    readHref = `/books/${encodeURIComponent(book.slug)}/read?chapter=${progress.chapterNumber}&position=${scrollPos}`;
+    rawReadTarget = `/books/${encodeURIComponent(book.slug)}/read?chapter=${progress.chapterNumber}&position=${scrollPos}`;
     isContinue = true;
   } else if (firstChapter) {
     // Nếu chưa có tiến độ nhưng có chương đầu tiên -> Bắt đầu đọc từ chương 1
-    readHref = `/books/${encodeURIComponent(book.slug)}/read?chapter=${firstChapter.number}&position=0`;
+    rawReadTarget = `/books/${encodeURIComponent(book.slug)}/read?chapter=${firstChapter.number}&position=0`;
   }
+
+  // Yêu cầu đăng nhập trước khi đọc sách
+  const readHref = rawReadTarget
+    ? isAuthenticated
+      ? rawReadTarget
+      : `/login?returnUrl=${encodeURIComponent(rawReadTarget)}`
+    : null;
 
   // Chuẩn hóa progress percentage từ 0 đến 100
   const progressPercent = progress ? Math.min(100, Math.max(0, progress.percentage)) : 0;

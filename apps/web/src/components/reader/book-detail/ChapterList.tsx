@@ -8,6 +8,8 @@ import type { ChapterSummary, BookFile } from '@/types/BookDetail';
 import { BOOK_DETAIL_COPY } from './BookDetailCopy';
 import { cn } from '@/lib/utils';
 
+import { useAuthStore } from '@/store/auth-store';
+
 export interface ChapterListProps {
   /** Slug của cuốn sách hiện tại */
   bookSlug: string;
@@ -27,6 +29,7 @@ export interface ChapterListProps {
  */
 export function ChapterList({ bookSlug, chapters, error, contentFile }: ChapterListProps) {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
 
   return (
     <section className="space-y-6 pt-8 border-t" aria-labelledby="chapters-heading">
@@ -94,9 +97,10 @@ export function ChapterList({ bookSlug, chapters, error, contentFile }: ChapterL
         <div className="grid gap-3">
           {chapters.map((chapter) => {
             // Xây dựng URL đọc chương theo đúng hợp đồng Issue #44
-            const readChapterHref = `/books/${encodeURIComponent(
-              bookSlug
-            )}/read?chapter=${chapter.number}&position=0`;
+            const targetUrl = `/books/${encodeURIComponent(bookSlug)}/read?chapter=${chapter.number}&position=0`;
+            const readChapterHref = isAuthenticated
+              ? targetUrl
+              : `/login?returnUrl=${encodeURIComponent(targetUrl)}`;
 
             return (
               <div
