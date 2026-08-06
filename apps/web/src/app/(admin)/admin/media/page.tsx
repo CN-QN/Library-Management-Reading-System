@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import apiClient from '@/lib/api-client';
 import { Image as ImageIcon, Upload, Copy, Check, Trash2, ExternalLink, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,9 +112,14 @@ export default function AdminMediaPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa ảnh này khỏi bộ nhớ?')) {
-      setAssets((prev) => prev.filter((a) => a.id !== id));
+  const handleDelete = async (asset: MediaAsset) => {
+    if (confirm(`Bạn có chắc muốn xóa ảnh "${asset.name}" khỏi Cloudinary?`)) {
+      try {
+        await apiClient.post('/media/delete-cloudinary', { publicId: asset.url });
+        setAssets((prev) => prev.filter((a) => a.id !== asset.id));
+      } catch {
+        setAssets((prev) => prev.filter((a) => a.id !== asset.id));
+      }
     }
   };
 
@@ -160,7 +166,7 @@ export default function AdminMediaPage() {
                 <Button size="icon" variant="secondary" onClick={() => copyToClipboard(asset)} title="Sao chép URL">
                   {copiedId === asset.id ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 </Button>
-                <Button size="icon" variant="destructive" onClick={() => handleDelete(asset.id)} title="Xóa">
+                <Button size="icon" variant="destructive" onClick={() => handleDelete(asset)} title="Xóa">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

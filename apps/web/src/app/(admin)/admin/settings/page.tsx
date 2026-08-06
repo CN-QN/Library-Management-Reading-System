@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, CreditCard, Save, CheckCircle2, Shield, Globe, Bell } from 'lucide-react';
+import { Settings, CreditCard, Save, CheckCircle2, Shield, Globe, Bell, Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -84,6 +84,64 @@ export default function AdminSettingsPage() {
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cloudinary Config Card */}
+        <Card className="border-sky-500/20">
+          <CardHeader className="pb-3 border-b border-border">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-sky-500" />
+              Cấu Hình Thư Viện Ảnh Cloudinary (Tải & Xóa Ảnh Server)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Điền thông tin tài khoản Cloudinary của bạn tại đây để tải ảnh bìa và hỗ trợ xóa ảnh trực tiếp trên Cloudinary.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="cloudName" className="text-xs font-semibold">Cloud Name *</Label>
+                <Input
+                  id="cloudName"
+                  value="demo"
+                  placeholder="tên_cloud_name_của_bạn"
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="uploadPreset" className="text-xs font-semibold">Upload Preset *</Label>
+                <Input
+                  id="uploadPreset"
+                  value="ml_default"
+                  placeholder="ml_default"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="cApiKey" className="text-xs font-semibold">Cloudinary API Key *</Label>
+                <Input
+                  id="cApiKey"
+                  placeholder="Dán API Key từ Cloudinary Dashboard..."
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cApiSecret" className="text-xs font-semibold">Cloudinary API Secret (Dùng để Xóa ảnh) *</Label>
+                <Input
+                  id="cApiSecret"
+                  type="password"
+                  placeholder="Dán API Secret từ Cloudinary Dashboard..."
                   className="font-mono text-xs"
                 />
               </div>

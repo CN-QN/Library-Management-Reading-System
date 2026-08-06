@@ -116,8 +116,9 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 
-    // ===== PAYMENT MODULE (SEPAY & REDIS PUB/SUB) =====
+    // ===== PAYMENT & CLOUDINARY MODULES =====
     builder.Services.Configure<SePaySettings>(builder.Configuration.GetSection("SePay"));
+    builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();
