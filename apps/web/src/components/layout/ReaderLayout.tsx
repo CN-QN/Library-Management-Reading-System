@@ -31,6 +31,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+    router.refresh();
   };
 
   return (

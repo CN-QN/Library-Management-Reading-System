@@ -154,20 +154,19 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<ActionResult<ApiResponse>> Logout([FromBody] RefreshRequest request)
+    public async Task<ActionResult<ApiResponse>> Logout([FromBody] RefreshRequest? request = null)
     {
-        var token = request.RefreshToken;
+        var token = request?.RefreshToken;
         if (string.IsNullOrEmpty(token))
         {
             token = Request.Cookies["refreshToken"];
         }
 
-        if (string.IsNullOrEmpty(token))
+        if (!string.IsNullOrEmpty(token))
         {
-            return UnprocessableEntity(ApiResponse.ErrorResponse(422, "Refresh token là bắt buộc."));
+            await _authService.LogoutAsync(token);
         }
 
-        await _authService.LogoutAsync(token);
         ClearAccessTokenCookie();
         ClearRefreshTokenCookie();
         return Ok(ApiResponse.SuccessResponse("Logged out successfully."));
