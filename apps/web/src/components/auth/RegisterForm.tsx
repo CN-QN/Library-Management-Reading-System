@@ -18,7 +18,7 @@ const registerSchema = z.object({
   email: z.string().email('Email không đúng định dạng'),
   password: z
     .string()
-    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
+    .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
     .regex(/[A-Z]/, 'Phải chứa chữ hoa')
     .regex(/[a-z]/, 'Phải chứa chữ thường')
     .regex(/[0-9]/, 'Phải chứa chữ số')
@@ -75,7 +75,9 @@ export function RegisterForm() {
       setIsSuccess(true);
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
-        ? err.response?.data?.message || err.response?.data?.title
+        ? err.response?.data?.details?.[0]?.message
+          || err.response?.data?.message
+          || err.response?.data?.title
         : undefined;
       setSubmitError(message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
     }
@@ -173,7 +175,7 @@ export function RegisterForm() {
                 autoComplete="new-password"
                 {...register('password')}
                 className={`w-full pr-10 ${(touchedFields.password && errors.password) ? 'border-destructive' : ''}`}
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự"
               />
             </div>
             <PasswordRequirements password={currentPassword} />

@@ -40,6 +40,14 @@ public class UsersController : ControllerBase
         return Ok(ApiResponse<UserDto>.SuccessResponse(result, "Lấy thông tin người dùng thành công."));
     }
 
+    [HttpGet("branches")]
+    [RequirePermission(Permissions.UserRead)]
+    public async Task<ActionResult<ApiResponse<List<BranchOptionDto>>>> GetBranches()
+    {
+        var result = await _usersService.GetActiveBranchesAsync();
+        return Ok(ApiResponse<List<BranchOptionDto>>.SuccessResponse(result, "Lấy danh sách chi nhánh thành công."));
+    }
+
     [HttpPost]
     [RequirePermission(Permissions.UserCreate)]
     public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser([FromBody] CreateUserRequest request)

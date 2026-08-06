@@ -31,8 +31,13 @@ export interface CreateUserInput {
   email: string;
   password: string;
   fullName: string;
-  studentCode: string;
   branchId?: string;
+}
+
+export interface BranchOption {
+  id: string;
+  code?: string | null;
+  name: string;
 }
 
 /** Mirrors `UpdateUserRequest`. */
@@ -67,6 +72,8 @@ export const usersApi = {
   getById: (id: string) => apiClient.get<AppUser>(`/api/users/${id}`),
 
   create: (input: CreateUserInput) => apiClient.post<AppUser>("/api/users", input),
+
+  branches: () => apiClient.get<BranchOption[]>("/api/users/branches"),
 
   update: (id: string, input: UpdateUserInput) =>
     apiClient.put<AppUser>(`/api/users/${id}`, input),

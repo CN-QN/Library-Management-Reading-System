@@ -4,6 +4,7 @@ using api.Common.Models;
 using api.Common.Constants;
 using api.Database;
 using api.Database.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace api.Audit;
@@ -36,9 +37,31 @@ public class AuditController : ControllerBase
         var builder = Builders<AuditLog>.Filter;
         var filter = builder.Empty;
 
-        if (!string.IsNullOrEmpty(actorId))
+        if (!string.IsNullOrWhiteSpace(actorId))
         {
-            filter &= builder.Eq(al => al.ActorId, actorId);
+            var actorLookup = actorId.Trim();
+            string? resolvedActorId = null;
+
+            if (ObjectId.TryParse(actorLookup, out _))
+            {
+                resolvedActorId = actorLookup;
+            }
+            else
+            {
+                var actor = await _context.Users
+                    .Find(user => user.Email == actorLookup || user.StudentCode == actorLookup)
+                    .FirstOrDefaultAsync();
+                resolvedActorId = actor?.Id;
+            }
+
+            if (resolvedActorId == null)
+            {
+                return Ok(ApiResponse<PagedResult<AuditLog>>.SuccessResponse(
+                    new PagedResult<AuditLog>([], page, limit, 0),
+                    "Không tìm thấy người thực hiện phù hợp."));
+            }
+
+            filter &= builder.Eq(al => al.ActorId, resolvedActorId);
         }
 
         if (!string.IsNullOrEmpty(action))
