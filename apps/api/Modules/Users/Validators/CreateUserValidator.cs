@@ -45,15 +45,6 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
             .MaximumLength(50).WithMessage("Họ tên tối đa 50 ký tự.")
             .Must(name => !string.IsNullOrWhiteSpace(name)).WithMessage("Họ tên không được chứa toàn khoảng trắng.");
 
-        RuleFor(x => x.StudentCode)
-            .NotEmpty().WithMessage("Mã sinh viên là bắt buộc.")
-            .Matches(@"^[0-9]{8,12}$").WithMessage("Mã sinh viên phải là dãy số từ 8 đến 12 chữ số.")
-            .MustAsync(async (code, cancellation) => 
-            {
-                var exists = await _context.Users.Find(u => u.StudentCode == code).AnyAsync(cancellation);
-                return !exists;
-            }).WithMessage("Mã sinh viên này đã được đăng ký trong hệ thống.");
-
         RuleFor(x => x.BranchId)
             .Matches(@"^[0-9a-fA-F]{24}$").WithMessage("BranchId phải là MongoDB ObjectId hợp lệ (24 ký tự hex).")
             .MustAsync(async (branchId, cancellation) =>

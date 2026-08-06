@@ -116,10 +116,10 @@ export default function FlashSalesPage() {
       </div>
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Chỉnh sửa flash sale" : "Thêm flash sale"} footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="flash-sale-form" type="submit" isLoading={isSaving}>Lưu</Button></>}>
         <form id="flash-sale-form" onSubmit={save} className="space-y-4">
-          <Input label="Tên sự kiện *" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          <div className="grid grid-cols-2 gap-3"><Input label="Giá gốc *" type="number" min={1} required value={form.originalPrice} onChange={(event) => setForm({ ...form, originalPrice: event.target.value })} /><Input label="Giá sale *" type="number" min={0} required value={form.salePrice} onChange={(event) => setForm({ ...form, salePrice: event.target.value })} /></div>
-          <Input label="Bắt đầu *" type="datetime-local" required value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
-          <Input label="Kết thúc *" type="datetime-local" required value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
+          <Input label="Tên sự kiện *" required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+          <div className="grid grid-cols-2 gap-3"><Input label="Giá gốc *" type="number" min={1} required value={form.originalPrice} onChange={(event) => setForm((current) => ({ ...current, originalPrice: event.target.value }))} /><Input label="Giá sale *" type="number" min={0} required value={form.salePrice} onChange={(event) => setForm((current) => ({ ...current, salePrice: event.target.value }))} /></div>
+          <Input label="Bắt đầu *" type="datetime-local" required value={form.startTime} onChange={(event) => setForm((current) => ({ ...current, startTime: event.target.value }))} />
+          <Input label="Kết thúc *" type="datetime-local" required value={form.endTime} onChange={(event) => setForm((current) => ({ ...current, endTime: event.target.value }))} />
         </form>
       </Modal>
     </div>

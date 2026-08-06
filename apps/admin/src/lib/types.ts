@@ -19,6 +19,7 @@ export interface ApiErrorResponse {
   message: string;
   errorCode?: string;
   traceId?: string;
+  details?: Array<{ field: string; code?: string; message: string }>;
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
@@ -26,7 +27,6 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 export interface UserProfile {
   id: string;
   email: string;
-  studentCode: string;
   fullName: string;
   branchId?: string | null;
   avatar?: string | null;

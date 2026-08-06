@@ -145,17 +145,13 @@ public class UsersService
         if (emailExists)
             throw new ConflictException(ErrorCodes.USER_001, "Email đã tồn tại.");
 
-        var codeExists = await _context.Users.Find(u => u.StudentCode == request.StudentCode).AnyAsync();
-        if (codeExists)
-            throw new ConflictException(ErrorCodes.USER_002, "Mã số sinh viên đã tồn tại.");
-
         // Check branch scope
         var branchId = currentUserBranchId ?? request.BranchId;
 
         var user = new User
         {
             Email = request.Email,
-            StudentCode = request.StudentCode,
+            StudentCode = $"ADMIN-{Guid.NewGuid():N}",
             FullName = request.FullName,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Status = StatusValues.User.ACTIVE,
@@ -178,6 +174,21 @@ public class UsersService
         }
 
         return await GetUserByIdAsync(user.Id);
+    }
+
+    public async Task<List<BranchOptionDto>> GetActiveBranchesAsync()
+    {
+        var branches = await _context.LibraryBranches
+            .Find(branch => branch.IsActive && branch.Status == "ACTIVE")
+            .SortBy(branch => branch.Name)
+            .ToListAsync();
+
+        return branches.Select(branch => new BranchOptionDto
+        {
+            Id = branch.Id,
+            Code = branch.Code,
+            Name = branch.Name
+        }).ToList();
     }
 
     public async Task<UserDto> UpdateUserAsync(string id, UpdateUserRequest request, string? currentUserBranchId = null)

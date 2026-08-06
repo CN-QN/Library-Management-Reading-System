@@ -156,11 +156,11 @@ export default function VouchersPage() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Chỉnh sửa voucher" : "Thêm voucher"} footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="voucher-form" type="submit" isLoading={isSaving}>Lưu</Button></>}>
         <form id="voucher-form" onSubmit={save} className="space-y-4">
-          <Input label="Mã voucher *" required value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} />
-          <div className="grid grid-cols-2 gap-3"><Select label="Loại giảm" value={form.discountType} onChange={(event) => setForm({ ...form, discountType: event.target.value })}><option value="PERCENT">Phần trăm</option><option value="FIXED">Số tiền</option></Select><Input label="Giá trị *" type="number" min={1} required value={form.discountValue} onChange={(event) => setForm({ ...form, discountValue: event.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-3"><Input label="Đơn tối thiểu" type="number" min={0} required value={form.minOrderValue} onChange={(event) => setForm({ ...form, minOrderValue: event.target.value })} /><Input label="Lượt tối đa *" type="number" min={1} required value={form.maxUsage} onChange={(event) => setForm({ ...form, maxUsage: event.target.value })} /></div>
-          <Input label="Hết hạn *" type="datetime-local" required value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
-          {editing && <Select label="Trạng thái" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="ACTIVE">Đang hoạt động</option><option value="DISABLED">Tạm tắt</option></Select>}
+          <Input label="Mã voucher *" required value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))} />
+          <div className="grid grid-cols-2 gap-3"><Select label="Loại giảm" value={form.discountType} onChange={(event) => setForm((current) => ({ ...current, discountType: event.target.value }))}><option value="PERCENT">Phần trăm</option><option value="FIXED">Số tiền</option></Select><Input label="Giá trị *" type="number" min={1} required value={form.discountValue} onChange={(event) => setForm((current) => ({ ...current, discountValue: event.target.value }))} /></div>
+          <div className="grid grid-cols-2 gap-3"><Input label="Đơn tối thiểu" type="number" min={0} required value={form.minOrderValue} onChange={(event) => setForm((current) => ({ ...current, minOrderValue: event.target.value }))} /><Input label="Lượt tối đa *" type="number" min={1} required value={form.maxUsage} onChange={(event) => setForm((current) => ({ ...current, maxUsage: event.target.value }))} /></div>
+          <Input label="Hết hạn *" type="datetime-local" required value={form.expiresAt} onChange={(event) => setForm((current) => ({ ...current, expiresAt: event.target.value }))} />
+          {editing && <Select label="Trạng thái" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="ACTIVE">Đang hoạt động</option><option value="DISABLED">Tạm tắt</option></Select>}
         </form>
       </Modal>
     </div>

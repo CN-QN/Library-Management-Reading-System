@@ -38,6 +38,7 @@ export default function BannersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -104,6 +105,24 @@ export default function BannersPage() {
       showToast(cause instanceof Error ? cause.message : "Không thể lưu banner.", "error");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function uploadBanner(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const asset = await mediaApi.upload(file, "banner", "promotions");
+      setMedia((current) => current.some((item) => item.id === asset.id) ? current : [...current, asset]);
+      setForm((current) => ({ ...current, mediaId: asset.id }));
+      showToast("Đã tải ảnh banner.", "success");
+    } catch (cause) {
+      showToast(cause instanceof Error ? cause.message : "Không thể tải ảnh banner.", "error");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
     }
   }
 
@@ -189,21 +208,25 @@ export default function BannersPage() {
         footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="banner-form" type="submit" isLoading={isSaving}>Lưu banner</Button></>}
       >
         <form id="banner-form" onSubmit={save} className="space-y-4">
-          <Input label="Tiêu đề *" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          <Input label="Mô tả" value={form.subtitle} onChange={(event) => setForm({ ...form, subtitle: event.target.value })} />
-          <Select label="Ảnh banner trong Media *" required value={form.mediaId} onChange={(event) => setForm({ ...form, mediaId: event.target.value })}>
+          <Input label="Tiêu đề *" required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
+          <Input label="Mô tả" value={form.subtitle} onChange={(event) => setForm((current) => ({ ...current, subtitle: event.target.value }))} />
+          <Select label="Ảnh banner trong Media *" required value={form.mediaId} onChange={(event) => setForm((current) => ({ ...current, mediaId: event.target.value }))}>
             <option value="">Chọn ảnh banner…</option>
             {media.map((asset) => <option key={asset.id} value={asset.id}>{asset.originalFileName}</option>)}
           </Select>
+          <label className="block rounded-lg border border-dashed border-slate-300 p-3 text-center text-sm text-slate-600 hover:border-slate-500">
+            {isUploading ? "Đang tải ảnh…" : "Hoặc chọn ảnh mới từ máy"}
+            <input className="hidden" type="file" accept="image/*" disabled={isUploading || isSaving} onChange={uploadBanner} />
+          </label>
           {selectedMedia && (
             <div className="overflow-hidden rounded-lg border bg-slate-50 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selectedMedia.fileUrl} alt="Xem trước banner" className="h-32 w-full rounded object-cover" />
             </div>
           )}
-          <Input label="Đường dẫn" required value={form.linkUrl} onChange={(event) => setForm({ ...form, linkUrl: event.target.value })} />
-          <Input label="Thứ tự" type="number" min={0} value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
-          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} />Hiển thị banner ngay</label>
+          <Input label="Đường dẫn" required value={form.linkUrl} onChange={(event) => setForm((current) => ({ ...current, linkUrl: event.target.value }))} />
+          <Input label="Thứ tự" type="number" min={0} value={form.sortOrder} onChange={(event) => setForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} />
+          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} />Hiển thị banner ngay</label>
         </form>
       </Modal>
     </div>

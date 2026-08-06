@@ -104,7 +104,7 @@ namespace api.Modules.Catalog.Services
                 {
                     AuthorId = a.AuthorId,
                     Name = a.Name,
-                    Slug = a.Slug,
+                    Slug = GenerateSlug(a.Name),
                     Role = a.Role ?? "AUTHOR",
                     Order = a.Order > 0 ? a.Order : i + 1
                 }).ToList();
@@ -117,7 +117,7 @@ namespace api.Modules.Catalog.Services
                 {
                     CategoryId = c.CategoryId,
                     Name = c.Name,
-                    Slug = c.Slug
+                    Slug = GenerateSlug(c.Name)
                 }).ToList();
             }
 
@@ -128,7 +128,7 @@ namespace api.Modules.Catalog.Services
                 {
                     PublisherId = dto.Publisher.PublisherId,
                     Name = dto.Publisher.Name,
-                    Slug = dto.Publisher.Slug
+                    Slug = GenerateSlug(dto.Publisher.Name)
                 };
             }
 
@@ -162,7 +162,7 @@ namespace api.Modules.Catalog.Services
                 {
                     AuthorId = a.AuthorId,
                     Name = a.Name,
-                    Slug = a.Slug,
+                    Slug = GenerateSlug(a.Name),
                     Role = a.Role ?? "AUTHOR",
                     Order = a.Order > 0 ? a.Order : i + 1
                 }).ToList();
@@ -175,7 +175,7 @@ namespace api.Modules.Catalog.Services
                 {
                     CategoryId = c.CategoryId,
                     Name = c.Name,
-                    Slug = c.Slug
+                    Slug = GenerateSlug(c.Name)
                 }).ToList();
             }
 
@@ -186,7 +186,7 @@ namespace api.Modules.Catalog.Services
                 {
                     PublisherId = dto.Publisher.PublisherId,
                     Name = dto.Publisher.Name,
-                    Slug = dto.Publisher.Slug
+                    Slug = GenerateSlug(dto.Publisher.Name)
                 };
             }
 
@@ -285,7 +285,18 @@ namespace api.Modules.Catalog.Services
 
         private async Task<string> GenerateUniqueSlugAsync(string title)
         {
-            var normalized = (title ?? string.Empty)
+            var baseSlug = GenerateSlug(title);
+
+            var slug = baseSlug;
+            var suffix = 2;
+            while (await _bookRepository.ExistsBySlugAsync(slug))
+                slug = $"{baseSlug}-{suffix++}";
+            return slug;
+        }
+
+        private static string GenerateSlug(string value)
+        {
+            var normalized = (value ?? string.Empty)
                 .Replace('đ', 'd')
                 .Replace('Đ', 'D')
                 .Normalize(NormalizationForm.FormD);
@@ -296,15 +307,10 @@ namespace api.Modules.Catalog.Services
                     builder.Append(character);
             }
 
-            var baseSlug = Regex.Replace(builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant(), "[^a-z0-9]+", "-")
+            var slug = Regex.Replace(builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant(), "[^a-z0-9]+", "-")
                 .Trim('-');
-            if (string.IsNullOrWhiteSpace(baseSlug)) baseSlug = "sach";
-            if (baseSlug.Length > 90) baseSlug = baseSlug[..90].TrimEnd('-');
-
-            var slug = baseSlug;
-            var suffix = 2;
-            while (await _bookRepository.ExistsBySlugAsync(slug))
-                slug = $"{baseSlug}-{suffix++}";
+            if (string.IsNullOrWhiteSpace(slug)) slug = "khong-ten";
+            if (slug.Length > 90) slug = slug[..90].TrimEnd('-');
             return slug;
         }
     }

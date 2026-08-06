@@ -8,7 +8,6 @@ import { Select } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { BookCover } from "@/components/ui/book-cover";
 import { useToast } from "@/components/ui/toast";
-import { slugify } from "@/lib/slugify";
 import {
   booksApi,
   type Book,
@@ -32,7 +31,6 @@ interface CreateFormValues {
   // Publisher inline
   publisherId: string;
   publisherName: string;
-  publisherSlug: string;
 }
 
 interface EditFormValues {
@@ -45,7 +43,6 @@ interface EditFormValues {
   // Publisher inline
   publisherId: string;
   publisherName: string;
-  publisherSlug: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +62,7 @@ function AuthorRow({
 }) {
   return (
     <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
-      <div className="col-span-3">
+      <div className="col-span-5">
         <label className="mb-1 block text-xs text-slate-500">ID tác giả</label>
         <input
           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
@@ -81,15 +78,6 @@ function AuthorRow({
           value={author.name}
           onChange={(e) => onChange({ ...author, name: e.target.value })}
           placeholder="Tên tác giả"
-        />
-      </div>
-      <div className="col-span-2">
-        <label className="mb-1 block text-xs text-slate-500">Slug</label>
-        <input
-          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-          value={author.slug}
-          onChange={(e) => onChange({ ...author, slug: e.target.value })}
-          placeholder="slug"
         />
       </div>
       <div className="col-span-2">
@@ -146,7 +134,7 @@ function CategoryRow({
 }) {
   return (
     <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
-      <div className="col-span-4">
+      <div className="col-span-7">
         <label className="mb-1 block text-xs text-slate-500">ID thể loại</label>
         <input
           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
@@ -162,15 +150,6 @@ function CategoryRow({
           value={category.name}
           onChange={(e) => onChange({ ...category, name: e.target.value })}
           placeholder="Tên thể loại"
-        />
-      </div>
-      <div className="col-span-3">
-        <label className="mb-1 block text-xs text-slate-500">Slug</label>
-        <input
-          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-          value={category.slug}
-          onChange={(e) => onChange({ ...category, slug: e.target.value })}
-          placeholder="slug"
         />
       </div>
       <div className="col-span-1 flex justify-end items-end">
@@ -274,9 +253,9 @@ function CoverPicker({
 // Publisher inline fields helper
 // ---------------------------------------------------------------------------
 
-function buildPublisher(id: string, name: string, slug: string): BookPublisherSnapshot | undefined {
+function buildPublisher(id: string, name: string): BookPublisherSnapshot | undefined {
   if (!id && !name) return undefined;
-  return { publisherId: id, name, slug: slug || slugify(name) };
+  return { publisherId: id, name, slug: "" };
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +271,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
     register,
     handleSubmit,
     watch,
-    setValue,
     setError,
     control,
     formState: { errors, isSubmitting },
@@ -303,7 +281,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       summary: "",
       publisherId: "",
       publisherName: "",
-      publisherSlug: "",
       publicationYear: "",
       language: "vi",
       accessType: "FREE",
@@ -334,10 +311,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
     setCategories((prev) => [...prev, emptyCategory()]);
   }
 
-  function autoSlugPublisher(name: string) {
-    setValue("publisherSlug", slugify(name));
-  }
-
   async function onSubmit(values: CreateFormValues) {
     try {
       if (values.isbn) {
@@ -361,7 +334,7 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
-        publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
+        publisher: buildPublisher(values.publisherId, values.publisherName),
       };
 
       const book = await booksApi.create(payload);
@@ -417,16 +390,9 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       {/* Publisher */}
       <div>
         <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
-          <Input
-            label="Tên NXB"
-            {...register("publisherName", {
-              onChange: (e) => autoSlugPublisher(e.target.value as string),
-            })}
-            placeholder="Tên nhà xuất bản"
-          />
-          <Input label="Slug NXB" {...register("publisherSlug")} placeholder="slug-nxb" />
+          <Input label="Tên NXB" {...register("publisherName")} placeholder="Tên nhà xuất bản" />
         </div>
       </div>
 
@@ -516,7 +482,6 @@ export function EditBookForm({
       summary: book.summary ?? "",
       publisherId: book.publisher?.publisherId ?? "",
       publisherName: book.publisher?.name ?? "",
-      publisherSlug: book.publisher?.slug ?? "",
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
       language: book.language,
       accessType: book.accessType,
@@ -561,7 +526,7 @@ export function EditBookForm({
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
-        publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
+        publisher: buildPublisher(values.publisherId, values.publisherName),
       };
       const updated = await booksApi.update(book.id, payload);
       await tryUploadCover(book.id, coverFile, showToast);
@@ -616,10 +581,9 @@ export function EditBookForm({
       {/* Publisher */}
       <div>
         <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
           <Input label="Tên NXB" {...register("publisherName")} placeholder="Tên nhà xuất bản" />
-          <Input label="Slug NXB" {...register("publisherSlug")} placeholder="slug-nxb" />
         </div>
       </div>
 

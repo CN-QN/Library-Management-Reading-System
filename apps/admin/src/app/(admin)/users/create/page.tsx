@@ -1,33 +1,43 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { usersApi, type CreateUserInput } from "@/lib/api/users";
+import { ApiError } from "@/lib/api-client";
+import { usersApi, type BranchOption, type CreateUserInput } from "@/lib/api/users";
 
 interface FormValues {
   email: string;
   password: string;
   fullName: string;
-  studentCode: string;
   branchId: string;
 }
 
 export default function CreateUserPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [branchError, setBranchError] = useState("");
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    defaultValues: { email: "", password: "", fullName: "", studentCode: "", branchId: "" },
+    defaultValues: { email: "", password: "", fullName: "", branchId: "" },
   });
+
+  useEffect(() => {
+    usersApi.branches()
+      .then(setBranches)
+      .catch((error) => setBranchError(error instanceof Error ? error.message : "Không thể tải chi nhánh."));
+  }, []);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -35,20 +45,21 @@ export default function CreateUserPage() {
         email: values.email,
         password: values.password,
         fullName: values.fullName,
-        studentCode: values.studentCode,
         branchId: values.branchId || undefined,
       };
       const user = await usersApi.create(payload);
       showToast("Tạo người dùng thành công.", "success");
       router.push(`/users/${user.id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Không thể tạo người dùng.";
-      if (message.toLowerCase().includes("email")) {
-        setError("email", { message });
-      } else if (message.toLowerCase().includes("student")) {
-        setError("studentCode", { message });
+      if (err instanceof ApiError && err.details?.length) {
+        for (const detail of err.details) {
+          const field = detail.field.charAt(0).toLowerCase() + detail.field.slice(1);
+          if (field === "email" || field === "password" || field === "fullName" || field === "branchId") {
+            setError(field, { message: detail.message });
+          }
+        }
       } else {
-        showToast(message, "error");
+        showToast(err instanceof Error ? err.message : "Không thể tạo người dùng.", "error");
       }
     }
   }
@@ -78,19 +89,8 @@ export default function CreateUserPage() {
               {...register("email", {
                 required: "Vui lòng nhập email.",
                 pattern: {
-                  value: /^\S+@(gmail\.com|[a-zA-Z0-9-]+\.edu\.vn)$/,
-                  message: "Email phải thuộc @gmail.com hoặc tên miền .edu.vn.",
-                },
-              })}
-            />
-            <Input
-              label="Mã sinh viên"
-              error={errors.studentCode?.message}
-              {...register("studentCode", {
-                required: "Vui lòng nhập mã sinh viên.",
-                pattern: {
-                  value: /^\d{8,12}$/,
-                  message: "Mã sinh viên phải gồm 8–12 chữ số.",
+                  value: /^\S+@gmail\.com$/i,
+                  message: "Email phải thuộc tên miền @gmail.com.",
                 },
               })}
             />
@@ -107,15 +107,15 @@ export default function CreateUserPage() {
                 },
               })}
             />
-            <Input
-              label="Chi nhánh (ID)"
-              placeholder="Tùy chọn"
-              {...register("branchId")}
-            />
-            <p className="-mt-2 text-xs text-slate-400">
-              Backend chưa có API danh sách chi nhánh — nhập tạm ID, sẽ chuyển sang dropdown
-              khi API đó sẵn sàng.
-            </p>
+            <Select label="Chi nhánh" error={errors.branchId?.message} {...register("branchId")}>
+              <option value="">Không chọn chi nhánh</option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name}{branch.code ? ` (${branch.code})` : ""}
+                </option>
+              ))}
+            </Select>
+            {branchError && <p className="-mt-2 text-xs text-red-600">{branchError}</p>}
 
             <Button type="submit" isLoading={isSubmitting}>
               Tạo người dùng
