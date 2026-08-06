@@ -24,6 +24,8 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearAuth: () => void;
+  /** Cập nhật thông tin user trong store tức thì (Optimistic UI update) */
+  updateUser: (updates: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -33,6 +35,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   clearAuth: () => {
     set({ user: null, isAuthenticated: false });
+  },
+
+  /**
+   * Cập nhật thông tin user trong store tức thì cho Optimistic UI.
+   * Giúp giao diện hiển thị ngay dữ liệu mới (ví dụ: avatar, tên) mà không cần f5 hay reload trang.
+   */
+  updateUser: (updates) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({ user: { ...currentUser, ...updates } });
+    }
   },
 
   login: async (email, password) => {
