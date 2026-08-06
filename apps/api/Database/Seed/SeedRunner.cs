@@ -667,34 +667,70 @@ public class SeedRunner
         }
 
         var borrowingCount = await _context.Borrowings.CountDocumentsAsync(FilterDefinition<Borrowing>.Empty);
-        if (borrowingCount == 0 && users.Any())
+        if (borrowingCount < 20 && users.Any() && books.Any())
         {
-            _logger.LogInformation("Seeding sample Physical Borrowings...");
+            _logger.LogInformation("Seeding rich sample Physical Borrowings and Items across past 14 days...");
+            
+            // Clear sparse old seed data if under 20 records
+            await _context.Borrowings.DeleteManyAsync(FilterDefinition<Borrowing>.Empty);
+            await _context.BorrowingItems.DeleteManyAsync(FilterDefinition<BorrowingItem>.Empty);
+
             var borrowings = new List<Borrowing>();
-            var statuses = new[] { "OPEN", "OPEN", "RETURNED", "OVERDUE", "OPEN" };
+            var borrowingItems = new List<BorrowingItem>();
             var adminUser = users.FirstOrDefault(u => u.Email == "admin@libraryhub.com") ?? users.First();
 
-            for (int i = 1; i <= 10; i++)
-            {
-                var user = users[i % users.Count];
-                var status = statuses[i % statuses.Length];
-                var created = DateTime.UtcNow.AddDays(-i * 2);
+            var today = DateTime.UtcNow;
+            int counter = 1;
 
-                borrowings.Add(new Borrowing
+            // Seed borrowings for each day in past 14 days
+            for (int dayOffset = 14; dayOffset >= 0; dayOffset--)
+            {
+                var borrowDate = today.AddDays(-dayOffset);
+                int itemsCountForDay = (dayOffset % 3) + 1; // 1 to 3 borrowings per day
+
+                for (int j = 0; j < itemsCountForDay; j++)
                 {
-                    Code = $"LOAN-2026-000{i}",
-                    UserId = user.Id,
-                    BranchId = branch.Id,
-                    Status = status,
-                    BorrowedAt = created,
-                    ExpectedReturnAt = status == "OVERDUE" ? created.AddDays(7) : DateTime.UtcNow.AddDays(14),
-                    ClosedAt = status == "RETURNED" ? created.AddDays(5) : null,
-                    CreatedBy = adminUser.Id,
-                    Note = "Mượn sách giấy tại quầy thư viện"
-                });
+                    var user = users[(counter + j) % users.Count];
+                    var isReturned = (counter % 2 == 0);
+                    var isOverdue = (!isReturned && dayOffset > 7);
+                    var status = isReturned ? "RETURNED" : (isOverdue ? "OVERDUE" : "OPEN");
+
+                    var borrowingId = ObjectId.GenerateNewId().ToString();
+                    var expectedReturn = borrowDate.AddDays(14);
+                    var closedAt = isReturned ? borrowDate.AddDays((j % 5) + 1) : (DateTime?)null;
+
+                    var borrowing = new Borrowing
+                    {
+                        Id = borrowingId,
+                        Code = $"LOAN-2026-{counter:D4}",
+                        UserId = user.Id,
+                        BranchId = branch.Id,
+                        Status = status,
+                        BorrowedAt = borrowDate,
+                        ExpectedReturnAt = expectedReturn,
+                        ClosedAt = closedAt,
+                        CreatedBy = adminUser.Id,
+                        Note = "Mượn sách giấy tại quầy thư viện"
+                    };
+                    borrowings.Add(borrowing);
+
+                    // Add BorrowingItem
+                    borrowingItems.Add(new BorrowingItem
+                    {
+                        Id = ObjectId.GenerateNewId().ToString(),
+                        BorrowingId = borrowingId,
+                        CopyId = ObjectId.GenerateNewId().ToString(),
+                        DueAt = expectedReturn,
+                        ReturnedAt = closedAt,
+                        Status = isReturned ? "RETURNED" : (isOverdue ? "OVERDUE" : "BORROWED")
+                    });
+
+                    counter++;
+                }
             }
 
             await _context.Borrowings.InsertManyAsync(borrowings);
+            await _context.BorrowingItems.InsertManyAsync(borrowingItems);
         }
     }
 

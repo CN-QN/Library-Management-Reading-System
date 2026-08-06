@@ -31,6 +31,7 @@ function computeBorrowingTrend(borrowings: Borrowing[]): BorrowingTrendPoint[] {
   const byDate = new Map<string, { borrowCount: number; returnCount: number }>();
 
   function bump(dateIso: string, key: "borrowCount" | "returnCount") {
+    if (!dateIso) return;
     const day = dateIso.slice(0, 10);
     const entry = byDate.get(day) ?? { borrowCount: 0, returnCount: 0 };
     entry[key] += 1;
@@ -38,9 +39,12 @@ function computeBorrowingTrend(borrowings: Borrowing[]): BorrowingTrendPoint[] {
   }
 
   for (const b of borrowings) {
-    bump(b.borrowedAt, "borrowCount");
-    for (const item of b.items) {
-      if (item.returnedAt) bump(item.returnedAt, "returnCount");
+    if (b.borrowedAt) bump(b.borrowedAt, "borrowCount");
+    if (b.closedAt) bump(b.closedAt, "returnCount");
+    if (Array.isArray(b.items)) {
+      for (const item of b.items) {
+        if (item.returnedAt) bump(item.returnedAt, "returnCount");
+      }
     }
   }
 
