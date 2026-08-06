@@ -38,13 +38,15 @@ namespace api.Modules.Catalog.Controllers
                 var books = await _bookRepository.GetAllAsync();
                 
                 var categories = books.SelectMany(b => b.Categories)
-                    .GroupBy(c => c.CategoryId)
+                    .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+                    .GroupBy(c => string.IsNullOrWhiteSpace(c.Slug) ? c.Name.ToLowerInvariant().Trim() : c.Slug.ToLowerInvariant().Trim())
                     .Select(g => g.First())
                     .OrderBy(c => c.Name)
                     .ToList();
                 
                 var authors = books.SelectMany(b => b.Authors)
-                    .GroupBy(a => a.AuthorId)
+                    .Where(a => !string.IsNullOrWhiteSpace(a.Name))
+                    .GroupBy(a => string.IsNullOrWhiteSpace(a.Slug) ? a.Name.ToLowerInvariant().Trim() : a.Slug.ToLowerInvariant().Trim())
                     .Select(g => g.First())
                     .OrderBy(a => a.Name)
                     .ToList();

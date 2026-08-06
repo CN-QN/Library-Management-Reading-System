@@ -4,9 +4,10 @@ import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { ChevronRight, BookOpen, ArrowUpDown } from 'lucide-react';
 import { getBooksByCategory } from '@/lib/api/categories';
+import { getSearchFilters } from '@/lib/api/search';
 import { BookCategorySnapshot } from '@/types/Book';
 import { Book } from '@/types/Book';
-import { BookCard } from '@/components/home/BookCard';
+import { BookCard } from '@/components/shared/BookCard';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants, Button } from '@/components/ui/button';
 import {
@@ -23,11 +24,28 @@ interface CategoryDetailPageProps {
   }>;
 }
 
+/**
+ * Hàm hỗ trợ định dạng slug (VD: "khoa-hoc" -> "Khoa học" / "ky-nang-song" -> "Kỹ Năng Sống")
+ * làm phương án dự phòng khi chưa nạp xong dữ liệu tên thể loại chuẩn.
+ */
+function formatSlugToTitle(inputSlug: string): string {
+  if (!inputSlug) return 'Thể loại';
+  try {
+    const decoded = decodeURIComponent(inputSlug);
+    return decoded
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  } catch {
+    return inputSlug;
+  }
+}
+
 export default function CategoryDetailPage({ params }: CategoryDetailPageProps) {
   const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
+  const rawSlug = resolvedParams.slug || '';
+  const slug = decodeURIComponent(rawSlug).trim();
 
-  // Derive category display info from the first book's embedded categories array
+  // Lưu trữ thông tin thể loại chính thức (bao gồm tên hiển thị chuẩn tiếng Việt)
   const [categoryInfo, setCategoryInfo] = useState<BookCategorySnapshot | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,19 +58,37 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
     async function loadCategoryData() {
       try {
         setIsLoading(true);
-        const booksData = await getBooksByCategory(slug, currentPage, 12, sortBy);
+        // Tải song song danh sách sách theo thể loại và metadata siêu dữ liệu từ backend
+        const [booksData, filtersData] = await Promise.all([
+          getBooksByCategory(slug, currentPage, 12, sortBy),
+          getSearchFilters().catch(() => null),
+        ]);
+
         setBooks(booksData.items);
         setTotalPages(booksData.totalPages);
         setTotalItems(booksData.totalItems);
 
-        // Extract category display info from embedded book.categories[]
-        for (const book of booksData.items) {
-          const matched = (book.categories ?? []).find(
-            (c) => c.slug === slug || c.categoryId === slug
-          );
-          if (matched) {
-            setCategoryInfo(matched);
-            break;
+        // 1. Ưu tiên tìm tên thể loại chuẩn từ siêu dữ liệu backend metadata (getSearchFilters)
+        const matchedFromFilters = filtersData?.categories?.find(
+          (c) => c.slug === slug || c.id === slug || c.slug === rawSlug || c.id === rawSlug
+        );
+
+        if (matchedFromFilters) {
+          setCategoryInfo({
+            categoryId: matchedFromFilters.id,
+            name: matchedFromFilters.name,
+            slug: matchedFromFilters.slug,
+          });
+        } else {
+          // 2. Dự phòng: Tìm từ danh sách sách bóc tách được từ kết quả API trả về
+          for (const book of booksData.items) {
+            const matched = (book.categories ?? []).find(
+              (c) => c.slug === slug || c.categoryId === slug || c.slug === rawSlug || c.categoryId === rawSlug
+            );
+            if (matched) {
+              setCategoryInfo(matched);
+              break;
+            }
           }
         }
       } catch (error) {
@@ -63,9 +99,9 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
     }
 
     loadCategoryData();
-  }, [slug, currentPage, sortBy]);
+  }, [slug, rawSlug, currentPage, sortBy]);
 
-  const displayName = categoryInfo?.name ?? slug;
+  const displayName = categoryInfo?.name || formatSlugToTitle(slug);
 
   return (
     <div className="space-y-8 pb-12">
