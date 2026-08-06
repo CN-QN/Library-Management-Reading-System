@@ -136,7 +136,7 @@ namespace api.Modules.Reading.Controllers
                         BookTitle = book?.Title,
                         BookSlug = book?.Slug,
                         ChapterId = bufferedProgress.ChapterId,
-                        ChapterNumber = 1,
+                        ChapterNumber = bufferedProgress.ChapterNumber,
                         ScrollPosition = bufferedProgress.ScrollPosition,
                         Percentage = bufferedProgress.Percentage,
                         Status = "READING",

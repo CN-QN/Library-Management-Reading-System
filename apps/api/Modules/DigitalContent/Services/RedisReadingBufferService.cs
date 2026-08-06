@@ -10,6 +10,7 @@ public class ReadingProgressBufferDto
 {
     public string BookId { get; set; } = string.Empty;
     public string ChapterId { get; set; } = string.Empty;
+    public int ChapterNumber { get; set; }
     public double ScrollPosition { get; set; }
     public double Percentage { get; set; }
     public DateTime LastReadAt { get; set; } = DateTime.UtcNow;
@@ -77,23 +78,8 @@ public class RedisReadingBufferService : IRedisReadingBufferService
             _logger.LogWarning(ex, "Lỗi khi đọc Redis Buffer cho user {UserId}, book {BookId}", userId, bookId);
         }
 
-        // 2. CACHE MISS: Đọc từ CSDL MongoDB
-        var mongoRecord = await _mongoContext.ReadingProgresses
-            .Find(p => p.UserId == userId && p.BookId == bookId)
-            .FirstOrDefaultAsync();
-
-        if (mongoRecord == null) return null;
-
-        return new ReadingProgressBufferDto
-        {
-            BookId = mongoRecord.BookId,
-            ChapterId = mongoRecord.ChapterId,
-            ScrollPosition = mongoRecord.ScrollPosition,
-            Percentage = mongoRecord.Percentage,
-            LastReadAt = mongoRecord.LastReadAt
-        };
+        return null;
     }
-
     public async Task<bool> FlushBufferToMongoAsync(string userId, string bookId)
     {
         var key = $"reading_buffer:{userId}:{bookId}";
@@ -115,6 +101,7 @@ public class RedisReadingBufferService : IRedisReadingBufferService
             var filter = Builders<ReadingProgress>.Filter.Where(p => p.UserId == userId && p.BookId == bookId);
             var update = Builders<ReadingProgress>.Update
                 .Set(p => p.ChapterId, progress.ChapterId)
+                .Set(p => p.ChapterNumber, progress.ChapterNumber)
                 .Set(p => p.ScrollPosition, progress.ScrollPosition)
                 .Set(p => p.Percentage, progress.Percentage)
                 .Set(p => p.LastReadAt, DateTime.UtcNow)

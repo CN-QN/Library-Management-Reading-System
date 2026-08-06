@@ -212,6 +212,7 @@ export async function saveReadingProgressBuffer(payload: SaveReadingProgressPayl
     const res = await apiClient.post('/Reading/progress/buffer', {
       bookId: payload.bookId,
       chapterId: payload.chapterId,
+      chapterNumber: payload.chapterNumber,
       scrollPosition: Math.max(0, Math.round(payload.scrollPosition || 0)),
       percentage: Math.min(100, Math.max(0, Math.round(payload.percentage || 0))),
     });
