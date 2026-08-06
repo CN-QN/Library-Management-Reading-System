@@ -55,6 +55,10 @@ public class SeedRunner
             // ===== 11. SEED PROMOTIONS (VOUCHERS, BANNERS, FLASH SALE) =====
             await SeedPromotionsAsync();
 
+            // ===== 12. SEED SAMPLE BORROWINGS & SEPAY REVENUE =====
+            var allUsers = await _context.Users.Find(Builders<User>.Filter.Empty).ToListAsync();
+            await SeedBorrowingsAndPaymentOrdersAsync(books, allUsers, defaultBranch);
+
             _logger.LogInformation("Database seeding process completed successfully.");
         }
         catch (Exception ex)
@@ -623,6 +627,74 @@ public class SeedRunner
                 EndTime = DateTime.UtcNow.AddDays(7),
                 Status = "RUNNING"
             });
+        }
+    }
+
+    private async Task SeedBorrowingsAndPaymentOrdersAsync(List<Book> books, List<User> users, LibraryBranch branch)
+    {
+        var paymentCount = await _context.PaymentOrders.CountDocumentsAsync(FilterDefinition<PaymentOrder>.Empty);
+        if (paymentCount == 0 && books.Any() && users.Any())
+        {
+            _logger.LogInformation("Seeding sample SePay Payment Orders and Revenue...");
+            var payments = new List<PaymentOrder>();
+            var paidBooks = books.Where(b => b.AccessType == "PAID").ToList();
+            if (!paidBooks.Any()) paidBooks = books;
+
+            for (int i = 1; i <= 15; i++)
+            {
+                var book = paidBooks[i % paidBooks.Count];
+                var user = users[i % users.Count];
+                var code = (102930 + i).ToString();
+                var dt = DateTime.UtcNow.AddHours(-i * 3);
+
+                payments.Add(new PaymentOrder
+                {
+                    OrderCode = code,
+                    UserId = user.Id,
+                    BookId = book.Id,
+                    BookTitle = book.Title,
+                    Amount = 10000,
+                    Status = "SUCCESS",
+                    QrCodeUrl = $"https://qr.sepay.vn/img?bank=VietinBank&acc=105886719416&template=compact&amount=10000&des=LH{code}",
+                    PaymentContent = $"LH{code}",
+                    SePayTransactionId = $"SEPAY_TRX_{code}",
+                    CreatedAt = dt,
+                    PaidAt = dt.AddMinutes(2)
+                });
+            }
+
+            await _context.PaymentOrders.InsertManyAsync(payments);
+        }
+
+        var borrowingCount = await _context.Borrowings.CountDocumentsAsync(FilterDefinition<Borrowing>.Empty);
+        if (borrowingCount == 0 && users.Any())
+        {
+            _logger.LogInformation("Seeding sample Physical Borrowings...");
+            var borrowings = new List<Borrowing>();
+            var statuses = new[] { "OPEN", "OPEN", "RETURNED", "OVERDUE", "OPEN" };
+            var adminUser = users.FirstOrDefault(u => u.Email == "admin@libraryhub.com") ?? users.First();
+
+            for (int i = 1; i <= 10; i++)
+            {
+                var user = users[i % users.Count];
+                var status = statuses[i % statuses.Length];
+                var created = DateTime.UtcNow.AddDays(-i * 2);
+
+                borrowings.Add(new Borrowing
+                {
+                    Code = $"LOAN-2026-000{i}",
+                    UserId = user.Id,
+                    BranchId = branch.Id,
+                    Status = status,
+                    BorrowedAt = created,
+                    ExpectedReturnAt = status == "OVERDUE" ? created.AddDays(7) : DateTime.UtcNow.AddDays(14),
+                    ClosedAt = status == "RETURNED" ? created.AddDays(5) : null,
+                    CreatedBy = adminUser.Id,
+                    Note = "Mượn sách giấy tại quầy thư viện"
+                });
+            }
+
+            await _context.Borrowings.InsertManyAsync(borrowings);
         }
     }
 
