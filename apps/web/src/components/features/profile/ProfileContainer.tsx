@@ -10,6 +10,7 @@ import {
   getMyReadingHistory,
   getMyBorrowedBooks,
   getReadingStats,
+  deleteReadingProgress,
 } from '@/lib/api/profile';
 import {
   ProfileHeroHeader,
@@ -204,7 +205,20 @@ export function ProfileContainer({
       {/* Nội dung theo Tab đang chọn */}
       <div>
         {activeTab === 'reading' && (
-          <InProgressBooksTab books={inProgressBooks} isLoading={isLoadingData} />
+          <InProgressBooksTab
+            books={inProgressBooks}
+            isLoading={isLoadingData}
+            onDeleteProgress={async (bookId) => {
+              // Optimistic UI: remove from state immediately
+              const previousBooks = [...inProgressBooks];
+              setInProgressBooks(prev => prev.filter(b => b.bookId !== bookId));
+              const success = await deleteReadingProgress(bookId);
+              if (!success) {
+                // Revert if API fails
+                setInProgressBooks(previousBooks);
+              }
+            }}
+          />
         )}
         {activeTab === 'history' && (
           <ReadingHistoryTab

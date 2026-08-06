@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen, Clock, ArrowRight, BookMarked } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, BookMarked, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +19,8 @@ export interface InProgressBooksTabProps {
   books: InProgressBook[];
   /** Cờ hiệu thể hiện trạng thái đang truy vấn dữ liệu từ API */
   isLoading?: boolean;
+  /** Callback được gọi khi người dùng muốn xóa tiến trình đọc */
+  onDeleteProgress?: (bookId: string) => void;
 }
 
 /**
@@ -30,7 +32,7 @@ export interface InProgressBooksTabProps {
  *
  * @param props - InProgressBooksTabProps
  */
-export function InProgressBooksTab({ books, isLoading }: InProgressBooksTabProps) {
+export function InProgressBooksTab({ books, isLoading, onDeleteProgress }: InProgressBooksTabProps) {
   // Hiển thị trạng thái trống khi không ở trạng thái loading và không có sách nào đang đọc
   if (!isLoading && books.length === 0) {
     return (
@@ -58,8 +60,21 @@ export function InProgressBooksTab({ books, isLoading }: InProgressBooksTabProps
         return (
           <Card
             key={book.bookId}
-            className="group border-border/60 bg-card/80 hover:bg-card/100 transition-all shadow-sm hover:shadow-md overflow-hidden flex flex-col justify-between"
+            className="group relative border-border/60 bg-card/80 hover:bg-card/100 transition-all shadow-sm hover:shadow-md overflow-hidden flex flex-col justify-between"
           >
+            {onDeleteProgress && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDeleteProgress(book.bookId);
+                }}
+                className="absolute top-2 right-2 p-1.5 z-10 rounded-full bg-background/80 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                title="Xóa tiến trình đọc"
+                aria-label="Xóa tiến trình đọc"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             <CardContent className="p-4 flex flex-col justify-between h-full space-y-4">
               <div className="flex gap-3.5">
                 {/* Bìa sách có ảnh hoặc fallback giao diện Warm Sepia */}

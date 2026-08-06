@@ -170,5 +170,28 @@ namespace api.Modules.Reading.Controllers
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy tiến trình đọc."));
             }
         }
+
+        /// <summary>
+        /// DELETE /api/Reading/progress/{bookId}
+        /// Xóa tiến trình đọc của user hiện tại cho một cuốn sách cụ thể
+        /// </summary>
+        [HttpDelete("progress/{bookId}")]
+        public async Task<IActionResult> DeleteProgress(string bookId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized(ApiResponse<object>.ErrorResponse(401, "Không xác định được người dùng."));
+
+                await _progressService.DeleteProgressAsync(userId, bookId);
+                return Ok(ApiResponse<object>.SuccessResponse(null, "Xóa tiến trình đọc thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa tiến trình đọc sách {BookId}.", bookId);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi xóa tiến trình đọc."));
+            }
+        }
     }
 }

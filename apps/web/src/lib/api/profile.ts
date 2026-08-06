@@ -249,6 +249,20 @@ export async function updateProfile(data: { firstName: string; lastName: string;
 }
 
 /**
+ * Xóa tiến trình đọc của một cuốn sách
+ * Kết nối endpoint backend: DELETE /api/Reading/progress/{bookId}
+ */
+export async function deleteReadingProgress(bookId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/Reading/progress/${bookId}`);
+    return true;
+  } catch (error) {
+    console.error('Không thể xóa tiến trình đọc sách:', error);
+    return false;
+  }
+}
+
+/**
  * Lấy danh sách sách đang đọc dở từ bộ nhớ LocalStorage dự phòng khi ứng dụng ở chế độ ngoại tuyến.
  */
 function getStoredInProgressFallback(): InProgressBook[] {
