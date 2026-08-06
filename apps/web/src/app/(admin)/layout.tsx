@@ -67,6 +67,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: ImageIcon,
     },
     {
+      href: '/admin/borrowings',
+      label: 'Mượn / Trả Sách Giấy',
+      icon: Library,
+    },
+    {
       href: '/admin/reviews',
       label: 'Kiểm Duyệt Đánh Giá',
       icon: Star,
