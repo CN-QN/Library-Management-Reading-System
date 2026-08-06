@@ -125,7 +125,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   const firstChapter = chapters.length > 0 ? chapters[0] : null;
 
   // Xác định URL ảnh bìa (ưu tiên từ API cover -> tiếp theo từ thuộc tính book)
-  const displayCoverUrl = coverFile?.fileUrl || null;
+  const displayCoverUrl = coverFile?.fileUrl || book.coverImage || null;
 
   const metaItems: { label: string; icon: React.ReactNode; value: React.ReactNode }[] = [
     { label: 'Đánh giá', icon: <Star className="w-3.5 h-3.5 text-amber-500" />, value: <StarRating rating={book.rating || 0} /> },
@@ -158,18 +158,30 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
         {/* Khối Ảnh bìa */}
         <div className="md:col-span-4 lg:col-span-3 flex justify-center">
-          <div className="relative w-full max-w-[280px] aspect-[2/3] rounded-lg overflow-hidden border bg-muted shadow-md">
+          <div className="relative w-full max-w-[280px] aspect-[2/3] rounded-xl overflow-hidden border bg-card shadow-lg group">
             {displayCoverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={displayCoverUrl}
                 alt={`Bìa sách ${book.title}`}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full text-muted-foreground bg-secondary/40 p-4 text-center">
-                <BookOpen className="w-16 h-16 text-muted-foreground/30 mb-2" />
-                <span className="text-sm font-medium text-muted-foreground/70">No Cover</span>
+              <div className="flex flex-col items-center justify-between w-full h-full bg-gradient-to-br from-amber-600/90 via-orange-700 to-amber-900 p-6 text-center text-white">
+                <div className="pt-4 opacity-80">
+                  <BookOpen className="w-12 h-12 mx-auto" />
+                </div>
+                <div className="space-y-2">
+                  <p className="font-bold text-lg leading-tight line-clamp-3 uppercase tracking-wide">
+                    {book.title}
+                  </p>
+                  <p className="text-xs opacity-75 line-clamp-1">
+                    {book.authorNames.join(', ') || 'Thư viện LibraryHub'}
+                  </p>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest opacity-60 font-mono">
+                  LibraryHub Collection
+                </div>
               </div>
             )}
 
@@ -281,6 +293,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       {/* Khu vực Đánh giá & Bình luận */}
       <ReviewsSection
         bookId={book.id}
+        hasReadBook={Boolean(progress)}
       />
     </main>
   );

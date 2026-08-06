@@ -46,6 +46,9 @@ public class SeedRunner
             // ===== 8. SEED BOOK COPIES (100+) =====
             await SeedBookCopiesAsync(books, defaultBranch);
 
+            // ===== 9. SEED SAMPLE REVIEWS =====
+            await SeedReviewsAsync(books);
+
             _logger.LogInformation("Database seeding process completed successfully.");
         }
         catch (Exception ex)
@@ -475,6 +478,69 @@ public class SeedRunner
             "Gió thổi vi vu, mang theo hương vị của biển cả bao la."
         };
         return texts[random.Next(texts.Length)];
+    }
+
+    private async Task SeedReviewsAsync(List<Book> books)
+    {
+        var count = await _context.Reviews.CountDocumentsAsync(Builders<Review>.Filter.Empty);
+        if (count > 0) return;
+
+        _logger.LogInformation("Seeding sample book reviews...");
+        var users = await _context.Users.Find(Builders<User>.Filter.Empty).ToListAsync();
+        if (!users.Any() || !books.Any()) return;
+
+        var sampleComments = new[]
+        {
+            "Sách rất hay và súc tích, các chương ngắn gọn dễ tiếp thu!",
+            "Tác phẩm tuyệt vời, xứng đáng nằm trong tủ sách cá nhân.",
+            "Nội dung lôi cuốn từ chương đầu tiên, rất đáng đọc.",
+            "Giá trị giáo dục cao, phù hợp cho mọi lứa tuổi độc giả.",
+            "Giọng văn mượt mà, sâu sắc và để lại nhiều suy ngẫm."
+        };
+
+        var reviews = new List<Review>();
+        var random = new Random();
+
+        foreach (var book in books.Take(15))
+        {
+            var reviewerCount = random.Next(2, 5);
+            var selectedUsers = users.OrderBy(_ => random.Next()).Take(reviewerCount).ToList();
+
+            foreach (var u in selectedUsers)
+            {
+                var rating = random.Next(4, 6);
+                reviews.Add(new Review
+                {
+                    BookId = book.Id,
+                    UserId = u.Id,
+                    UserFullName = !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : "Độc giả",
+                    UserEmail = u.Email,
+                    UserAvatarUrl = u.Avatar,
+                    Rating = rating,
+                    Comment = sampleComments[random.Next(sampleComments.Length)],
+                    Status = "APPROVED",
+                    IsEdited = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 60)),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 60))
+                });
+            }
+        }
+
+        if (reviews.Any())
+        {
+            await _context.Reviews.InsertManyAsync(reviews);
+
+            var bookIds = reviews.Select(r => r.BookId).Distinct().ToList();
+            foreach (var bId in bookIds)
+            {
+                var bReviews = reviews.Where(r => r.BookId == bId).ToList();
+                var avgRating = Math.Round(bReviews.Average(r => r.Rating), 1);
+                var update = Builders<Book>.Update
+                    .Set(b => b.Stats.Rating, avgRating)
+                    .Set(b => b.Stats.RatingCount, bReviews.Count);
+                await _context.Books.UpdateOneAsync(b => b.Id == bId, update);
+            }
+        }
     }
 
     #endregion

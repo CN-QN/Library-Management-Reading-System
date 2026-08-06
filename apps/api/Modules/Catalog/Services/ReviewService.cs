@@ -102,6 +102,13 @@ namespace api.Modules.Catalog.Services
 
         public async Task<ReviewResponseDto> CreateReviewAsync(string userId, CreateReviewDto dto)
         {
+            // Check if user has read this book
+            var hasRead = await _context.ReadingProgresses.Find(p => p.UserId == userId && p.BookId == dto.BookId).AnyAsync();
+            if (!hasRead)
+            {
+                throw new InvalidOperationException("Bạn cần bắt đầu đọc cuốn sách này trước khi gửi nhận xét & đánh giá.");
+            }
+
             // Check if user already reviewed this book
             var existing = await _context.Reviews
                 .Find(r => r.BookId == dto.BookId && r.UserId == userId)
@@ -135,6 +142,9 @@ namespace api.Modules.Catalog.Services
             await _context.Reviews.InsertOneAsync(review);
             _logger.LogInformation("User {UserId} created review for book {BookId}", userId, dto.BookId);
 
+            // Sync rating stats back to Book document
+            await UpdateBookRatingStatsAsync(dto.BookId);
+
             return MapToDto(review);
         }
 
@@ -156,6 +166,8 @@ namespace api.Modules.Catalog.Services
             await _context.Reviews.ReplaceOneAsync(r => r.Id == reviewId, review);
             _logger.LogInformation("User {UserId} updated review {ReviewId}", userId, reviewId);
 
+            await UpdateBookRatingStatsAsync(review.BookId);
+
             return MapToDto(review);
         }
 
@@ -170,17 +182,43 @@ namespace api.Modules.Catalog.Services
             }
 
             var result = await _context.Reviews.DeleteOneAsync(r => r.Id == reviewId);
-            return result.DeletedCount > 0;
+            if (result.DeletedCount > 0)
+            {
+                await UpdateBookRatingStatsAsync(review.BookId);
+                return true;
+            }
+            return false;
         }
 
         public async Task<bool> ModerateReviewAsync(string reviewId, string status)
         {
+            var review = await _context.Reviews.Find(r => r.Id == reviewId).FirstOrDefaultAsync();
+            if (review == null) return false;
+
             var update = Builders<Review>.Update
                 .Set(r => r.Status, status)
                 .Set(r => r.UpdatedAt, DateTime.UtcNow);
 
             var result = await _context.Reviews.UpdateOneAsync(r => r.Id == reviewId, update);
-            return result.ModifiedCount > 0;
+            if (result.ModifiedCount > 0)
+            {
+                await UpdateBookRatingStatsAsync(review.BookId);
+                return true;
+            }
+            return false;
+        }
+
+        private async Task UpdateBookRatingStatsAsync(string bookId)
+        {
+            var reviews = await _context.Reviews.Find(r => r.BookId == bookId && r.Status == "APPROVED").ToListAsync();
+            var ratingCount = reviews.Count;
+            var rating = ratingCount > 0 ? Math.Round(reviews.Average(r => r.Rating), 1) : 0.0;
+
+            var update = Builders<Book>.Update
+                .Set(b => b.Stats.Rating, rating)
+                .Set(b => b.Stats.RatingCount, ratingCount);
+
+            await _context.Books.UpdateOneAsync(b => b.Id == bookId, update);
         }
 
         private static ReviewResponseDto MapToDto(Review r)

@@ -112,6 +112,7 @@ function normalizeBookDetail(raw: Record<string, unknown> | null): BookDetail {
     // Convenience flat arrays: prefer embedded names, fall back to legacy flat lists.
     authorNames: authors.length > 0 ? authors.map((a) => a.name) : list('authorNames', 'AuthorNames'),
     categoryNames: categories.length > 0 ? categories.map((c) => c.name) : list('categoryNames', 'CategoryNames'),
+    coverImage: normalizeFileUrl(pickRaw<string | null>(raw, 'coverImage', 'coverImageUrl', 'coverAssetId', 'CoverAssetId')),
   };
 }
 

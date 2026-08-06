@@ -37,6 +37,8 @@ export interface BookDetail {
   /** Convenience flat arrays for display */
   authorNames: string[];
   categoryNames: string[];
+  /** URL ảnh bìa sách (nếu có) */
+  coverImage?: string | null;
   /** @deprecated Use publisher.name instead */
   publisherName?: string | null;
 }
