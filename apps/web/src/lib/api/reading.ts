@@ -526,7 +526,7 @@ export async function getChapterDetail(
  * Cần truyền token/cookie vì API yêu cầu authorize.
  * Không dùng cache (no-store) vì data này thay đổi liên tục theo user.
  */
-export async function getAllReadingProgress(): Promise<HomeReadingProgress[]> {
+export async function getAllReadingProgress(): Promise<HomeReadingProgress[] | null> {
   const isServer = typeof window === 'undefined';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -537,9 +537,10 @@ export async function getAllReadingProgress(): Promise<HomeReadingProgress[]> {
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       const token = cookieStore.get('accessToken')?.value;
-      if (token) {
-        headers['Cookie'] = `accessToken=${token}`;
+      if (!token) {
+        return null;
       }
+      headers['Cookie'] = `accessToken=${token}`;
     } catch {
       // Bỏ qua nếu không trong context Server
     }
@@ -551,6 +552,10 @@ export async function getAllReadingProgress(): Promise<HomeReadingProgress[]> {
       cache: 'no-store',
       ...(isServer ? {} : { credentials: 'include' as const }),
     });
+
+    if (res.status === 401) {
+      return null;
+    }
     
     if (!res.ok) return [];
     

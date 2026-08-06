@@ -8,8 +8,13 @@ import { ContinueReadingCard } from '@/components/shared/ContinueReadingCard';
 export async function ContinueReading() {
   const progressList = await getAllReadingProgress();
 
-  if (!progressList || progressList.length === 0) {
-    // Empty State
+  // Không hiển thị phần "Tiếp tục đọc" nếu người dùng chưa đăng nhập (progressList === null)
+  if (progressList === null) {
+    return null;
+  }
+
+  if (progressList.length === 0) {
+    // Empty State cho người dùng đã đăng nhập nhưng chưa đọc cuốn sách nào
     return (
       <section className="w-full py-8">
         <div className="flex items-center justify-between mb-6">
