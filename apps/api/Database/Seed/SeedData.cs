@@ -1,4 +1,5 @@
 using api.Database.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace api.Database.Seed
@@ -18,9 +19,7 @@ namespace api.Database.Seed
         {
             _logger.LogInformation("Starting database seeding process...");
 
-            await SeedAuthorsAsync();
-            await SeedPublishersAsync();
-            await SeedCategoriesAsync();
+
             await SeedBooksAsync();
             await SeedChaptersAsync();
             await SeedBookCopiesAsync();
@@ -29,69 +28,7 @@ namespace api.Database.Seed
             _logger.LogInformation("Database seeding process completed successfully.");
         }
 
-        private async Task SeedAuthorsAsync()
-        {
-            var collection = _database.GetCollection<Author>("authors");
-            if (await collection.Find(_ => true).AnyAsync()) return;
 
-            var authors = new List<Author>
-            {
-                new() { Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh", Biography = "Nhà văn nổi tiếng với những tác phẩm về tuổi thơ và tuổi mới lớn" },
-                new() { Name = "Tô Hoài", Slug = "to-hoai", Biography = "Tác giả của 'Dế Mèn phiêu lưu ký' - tác phẩm kinh điển của văn học thiếu nhi Việt Nam" },
-                new() { Name = "Nam Cao", Slug = "nam-cao", Biography = "Nhà văn hiện thực phê phán xuất sắc với 'Chí Phèo', 'Lão Hạc'" },
-                new() { Name = "Vũ Trọng Phụng", Slug = "vu-trong-phung", Biography = "Nhà văn trào phúng với 'Số đỏ', 'Giông tố'" },
-                new() { Name = "Nguyễn Du", Slug = "nguyen-du", Biography = "Đại thi hào dân tộc, tác giả 'Truyện Kiều'" },
-                new() { Name = "Hồ Chí Minh", Slug = "ho-chi-minh", Biography = "Lãnh tụ vĩ đại, nhà thơ lớn với 'Nhật ký trong tù'" },
-                new() { Name = "Xuân Quỳnh", Slug = "xuan-quynh", Biography = "Nhà thơ nữ với nhiều tác phẩm về tình yêu và gia đình" },
-                new() { Name = "Nguyễn Minh Châu", Slug = "nguyen-minh-chau", Biography = "Nhà văn hiện đại với 'Mảnh trăng cuối rừng', 'Chiếc thuyền ngoài xa'" },
-                new() { Name = "Nguyễn Huy Thiệp", Slug = "nguyen-huy-thiep", Biography = "Nhà văn đương đại nổi tiếng với truyện ngắn 'Tướng về hưu'" },
-                new() { Name = "Đỗ Chu", Slug = "do-chu", Biography = "Nhà văn với 'Hương rừng Cà Mau', 'Mảnh đất tình yêu'" }
-            };
-
-            await collection.InsertManyAsync(authors);
-            _logger.LogInformation($"Seeded {authors.Count} authors");
-        }
-
-        private async Task SeedPublishersAsync()
-        {
-            var collection = _database.GetCollection<Publisher>("publishers");
-            if (await collection.Find(_ => true).AnyAsync()) return;
-
-            var publishers = new List<Publisher>
-            {
-                new() { Name = "NXB Trẻ", Slug = "nxb-tre" },
-                new() { Name = "NXB Kim Đồng", Slug = "nxb-kim-dong" },
-                new() { Name = "NXB Văn Học", Slug = "nxb-van-hoc" },
-                new() { Name = "NXB Hội Nhà Văn", Slug = "nxb-hoi-nha-van" },
-                new() { Name = "NXB Đại Học Quốc Gia", Slug = "nxb-dai-hoc-quoc-gia" }
-            };
-
-            await collection.InsertManyAsync(publishers);
-            _logger.LogInformation($"Seeded {publishers.Count} publishers");
-        }
-
-        private async Task SeedCategoriesAsync()
-        {
-            var collection = _database.GetCollection<Category>("categories");
-            if (await collection.Find(_ => true).AnyAsync()) return;
-
-            var categories = new List<Category>
-            {
-                new() { Name = "Văn học", Slug = "van-hoc", Description = "Sách văn học Việt Nam và thế giới" },
-                new() { Name = "Khoa học", Slug = "khoa-hoc", Description = "Sách khoa học tự nhiên và xã hội" },
-                new() { Name = "Kỹ năng sống", Slug = "ky-nang-song", Description = "Sách phát triển bản thân và kỹ năng" },
-                new() { Name = "Lịch sử", Slug = "lich-su", Description = "Sách về lịch sử Việt Nam và thế giới" },
-                new() { Name = "Thiếu nhi", Slug = "thieu-nhi", Description = "Sách thiếu nhi và truyện cổ tích" },
-                new() { Name = "Tiểu thuyết", Slug = "tieu-thuyet", Description = "Tiểu thuyết văn học" },
-                new() { Name = "Truyện ngắn", Slug = "truyen-ngan", Description = "Tuyển tập truyện ngắn" },
-                new() { Name = "Thơ", Slug = "tho", Description = "Tuyển tập thơ ca" },
-                new() { Name = "Khoa học tự nhiên", Slug = "khoa-hoc-tu-nhien", Description = "Toán, Lý, Hóa, Sinh" },
-                new() { Name = "Khoa học xã hội", Slug = "khoa-hoc-xa-hoi", Description = "Sử, Địa, Văn hóa, Xã hội" }
-            };
-
-            await collection.InsertManyAsync(categories);
-            _logger.LogInformation($"Seeded {categories.Count} categories");
-        }
 
         private async Task SeedBooksAsync()
         {
@@ -99,9 +36,25 @@ namespace api.Database.Seed
             if (await collection.Find(_ => true).AnyAsync()) return;
 
             var books = new List<Book>();
-            var authorIds = await GetAuthorIdsAsync();
-            var publisherIds = await GetPublisherIdsAsync();
-            var categoryIds = await GetCategoryIdsAsync();
+            var authorSnapshots = new List<BookAuthorSnapshot>
+            {
+                new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nguyễn Nhật Ánh", Slug = "nguyen-nhat-anh" },
+                new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Tô Hoài", Slug = "to-hoai" },
+                new() { AuthorId = ObjectId.GenerateNewId().ToString(), Name = "Nam Cao", Slug = "nam-cao" }
+            };
+
+            var categorySnapshots = new List<BookCategorySnapshot>
+            {
+                new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Văn học", Slug = "van-hoc" },
+                new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Thiếu nhi", Slug = "thieu-nhi" },
+                new() { CategoryId = ObjectId.GenerateNewId().ToString(), Name = "Tiểu thuyết", Slug = "tieu-thuyet" }
+            };
+
+            var publisherSnapshots = new List<BookPublisherSnapshot>
+            {
+                new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Trẻ", Slug = "nxb-tre" },
+                new() { PublisherId = ObjectId.GenerateNewId().ToString(), Name = "NXB Kim Đồng", Slug = "nxb-kim-dong" }
+            };
 
             var bookTitles = new[]
             {
@@ -130,10 +83,9 @@ namespace api.Database.Seed
             var random = new Random();
             foreach (var (title, slug, isbn, summary, year) in bookTitles)
             {
-                // Chọn ngẫu nhiên 1-2 thể loại
-                var selectedCategories = categoryIds.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
-                // Chọn ngẫu nhiên 1-2 tác giả
-                var selectedAuthors = authorIds.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
+                var selectedCategories = categorySnapshots.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
+                var selectedAuthors = authorSnapshots.OrderBy(_ => random.Next()).Take(random.Next(1, 3)).ToList();
+                var selectedPublisher = publisherSnapshots[random.Next(publisherSnapshots.Count)];
 
                 var book = new Book
                 {
@@ -146,9 +98,9 @@ namespace api.Database.Seed
                     AccessType = random.Next(0, 2) == 0 ? "FREE" : "PREMIUM",
                     Status = "PUBLISHED",
                     TotalChapters = 0,
-                    PublisherId = publisherIds[random.Next(publisherIds.Count)],
-                    CategoryIds = selectedCategories,
-                    AuthorIds = selectedAuthors,
+                    Publisher = selectedPublisher,
+                    Categories = selectedCategories,
+                    Authors = selectedAuthors,
                     CreatedBy = "admin",
                     CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                     UpdatedAt = DateTime.UtcNow,
@@ -169,25 +121,24 @@ namespace api.Database.Seed
 
         private async Task SeedChaptersAsync()
         {
-            var collection = _database.GetCollection<Chapter>("chapters");
-            if (await collection.Find(_ => true).AnyAsync()) return;
-
-            var books = await _database.GetCollection<Book>("books").Find(_ => true).ToListAsync();
-            var chapters = new List<Chapter>();
+            var bookCollection = _database.GetCollection<Book>("books");
+            var books = await bookCollection.Find(_ => true).ToListAsync();
 
             var random = new Random();
             foreach (var book in books)
             {
+                if (book.Chapters != null && book.Chapters.Any()) continue;
+
+                var chapters = new List<BookChapter>();
                 var chapterCount = random.Next(5, 15);
                 for (int i = 1; i <= chapterCount; i++)
                 {
                     var isPublished = random.Next(0, 5) < 4;
-                    var chapter = new Chapter
+                    var chapter = new BookChapter
                     {
-                        BookId = book.Id,
+                        ChapterId = ObjectId.GenerateNewId().ToString(),
                         Number = i,
                         Title = $"Chương {i}: {GenerateChapterTitle(i, random)}",
-                        // [SỬA] Dùng Content thay vì ContentJson
                         Content = new ChapterContent
                         {
                             Introduction = $"Giới thiệu chương {i}",
@@ -201,7 +152,6 @@ namespace api.Database.Seed
                         },
                         WordCount = random.Next(500, 3000),
                         Status = isPublished ? "PUBLISHED" : "DRAFT",
-                        // [SỬA] Xóa Version và UpdatedBy
                         PublishedAt = isPublished ? DateTime.UtcNow.AddDays(-random.Next(1, 365)) : null,
                         CreatedBy = "admin",
                         CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
@@ -209,19 +159,16 @@ namespace api.Database.Seed
                     };
                     chapters.Add(chapter);
                 }
-            }
 
-            await collection.InsertManyAsync(chapters);
-            _logger.LogInformation($"Seeded {chapters.Count} chapters");
-
-            // Update total chapters
-            var bookCollection = _database.GetCollection<Book>("books");
-            foreach (var book in books)
-            {
-                var count = chapters.Count(c => c.BookId == book.Id && c.Status == "PUBLISHED");
-                var update = Builders<Book>.Update.Set(b => b.TotalChapters, count);
+                var publishedCount = chapters.Count(c => c.Status == "PUBLISHED");
+                var update = Builders<Book>.Update
+                    .Set(b => b.Chapters, chapters)
+                    .Set(b => b.TotalChapters, publishedCount);
+                
                 await bookCollection.UpdateOneAsync(b => b.Id == book.Id, update);
             }
+            
+            _logger.LogInformation("Seeded chapters into books");
         }
 
         private async Task SeedBookCopiesAsync()
@@ -283,23 +230,7 @@ namespace api.Database.Seed
 
         #region Helper Methods
 
-        private async Task<List<string>> GetAuthorIdsAsync()
-        {
-            var collection = _database.GetCollection<Author>("authors");
-            return await collection.Find(_ => true).Project(a => a.Id).ToListAsync();
-        }
 
-        private async Task<List<string>> GetPublisherIdsAsync()
-        {
-            var collection = _database.GetCollection<Publisher>("publishers");
-            return await collection.Find(_ => true).Project(p => p.Id).ToListAsync();
-        }
-
-        private async Task<List<string>> GetCategoryIdsAsync()
-        {
-            var collection = _database.GetCollection<Category>("categories");
-            return await collection.Find(_ => true).Project(c => c.Id).ToListAsync();
-        }
 
         private string GenerateChapterTitle(int number, Random random)
         {

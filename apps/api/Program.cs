@@ -82,7 +82,6 @@ builder.Services.AddScoped<
     api.Modules.Circulation.Services.BorrowingService
 >();
     builder.Services.AddScoped<IBookService, BookService>();
-    builder.Services.AddScoped<IAuthorService, AuthorService>();
     builder.Services.AddScoped<IReviewService, ReviewService>();
     builder.Services.AddScoped<IChapterService, ChapterService>();
 
@@ -111,11 +110,7 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<ICopyService, CopyService>();
 
     builder.Services.AddScoped<IBookRepository, BookRepository>();
-    builder.Services.AddScoped<IChapterRepository, ChapterRepository>();
-    builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
-    builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
     builder.Services.AddScoped<ICopyRepository, CopyRepository>();
-    builder.Services.AddScoped<IPublisherRepository, PublisherRepository>();
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();

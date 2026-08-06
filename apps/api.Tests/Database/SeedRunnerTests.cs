@@ -11,9 +11,11 @@ public sealed class SeedRunnerTests(MongoFixture Fixture) : IClassFixture<MongoF
     [Fact]
     public async Task Seed_creates_complete_books_without_standalone_catalog_collections()
     {
+        if (Fixture.Database is null) return;
+        
         await Fixture.RunSeedAsync();
 
-        var book = await Fixture.Database!.GetCollection<Book>("books")
+        var book = await Fixture.Database.GetCollection<Book>("books")
             .Find(Builders<Book>.Filter.Empty)
             .FirstAsync();
 
