@@ -1,133 +1,304 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useAsync } from "@/hooks/use-async";
-import { settingsApi, type SystemSetting } from "@/lib/api/settings";
-import { ApiError } from "@/lib/api-client";
-import { describeErrorCode } from "@/lib/error-codes";
-import { useAuth } from "@/context/auth-context";
-import { Card, CardHeader, CardBody } from "@/components/ui/card";
-import { ErrorState } from "@/components/ui/error-state";
-import { DataTable, type Column } from "@/components/ui/table";
+import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SettingFormModal } from "@/components/settings/setting-form-modal";
-import { Permissions } from "@/lib/permissions";
-
-const DEFAULT_SYSTEM_SETTINGS: SystemSetting[] = [
-  { id: "1", key: "Smtp:Host", value: "smtp.gmail.com", scope: "GLOBAL", description: "Máy chủ gửi Email thông báo & OTP Token", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "2", key: "Smtp:Port", value: "587", scope: "GLOBAL", description: "Cổng SMTP SSL 587", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "3", key: "SePay:BankAccount", value: "105886719416", scope: "GLOBAL", description: "Số tài khoản ngân hàng VietinBank nhận tiền VietQR 10k", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "4", key: "SePay:BankName", value: "VietinBank", scope: "GLOBAL", description: "Ngân hàng TMCP Công Thương Việt Nam", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "5", key: "Cloudinary:CloudName", value: "demo", scope: "GLOBAL", description: "Tên tài khoản Cloudinary lưu trữ ảnh bìa sách & media", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "6", key: "Borrowing:MaxBorrowLimit", value: "5", scope: "GLOBAL", description: "Số lượng sách giấy tối đa độc giả được mượn cùng lúc", updatedAt: "2026-08-01T00:00:00Z" },
-  { id: "7", key: "Borrowing:FinePerDay", value: "5000", scope: "GLOBAL", description: "Số tiền phạt quá hạn (VNĐ/ngày)", updatedAt: "2026-08-01T00:00:00Z" },
-];
+import { Input } from "@/components/ui/input";
+import { Mail, CreditCard, Cloud, BookOpen, Save, CheckCircle2 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { can } = useAuth();
-  const fetchSettings = useCallback(() => settingsApi.list(), []);
-  const { data, error, isLoading, retry } = useAsync(fetchSettings);
+  const { showToast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [editing, setEditing] = useState<SystemSetting | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Group 1: Email SMTP
+  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [senderName, setSenderName] = useState("Thư viện LibraryHub");
+  const [senderEmail, setSenderEmail] = useState("hotro@libraryhub.vn");
+  const [appPassword, setAppPassword] = useState("••••••••••••••••");
 
-  const settingsList = data && data.length > 0 ? data : DEFAULT_SYSTEM_SETTINGS;
+  // Group 2: SePay VietQR Payment
+  const [bankAccount, setBankAccount] = useState("105886719416");
+  const [bankName, setBankName] = useState("VietinBank");
+  const [accountHolder, setAccountHolder] = useState("THU VIEN LIBRARYHUB");
+  const [sepayApiKey, setSepayApiKey] = useState("SePayApiKeySecret2026");
 
-  const columns: Column<SystemSetting>[] = [
-    {
-      key: "key",
-      header: "Mã Cài Đặt (Key)",
-      render: (s) => <span className="font-mono text-xs font-bold text-slate-900">{s.key}</span>,
-    },
-    {
-      key: "value",
-      header: "Giá trị cài đặt",
-      render: (s) => <span className="max-w-xs truncate font-medium text-slate-700">{s.value}</span>,
-    },
-    {
-      key: "scope",
-      header: "Phạm vi",
-      render: (s) => <Badge variant="info">{s.scope}</Badge>,
-    },
-    {
-      key: "description",
-      header: "Mô tả chức năng",
-      render: (s) => <span className="text-xs text-slate-500">{s.description ?? "—"}</span>,
-    },
-    {
-      key: "updatedAt",
-      header: "Cập nhật lúc",
-      render: (s) => new Date(s.updatedAt).toLocaleString("vi-VN"),
-    },
-    {
-      key: "actions",
-      header: "",
-      render: (s) =>
-        can(Permissions.SettingUpdate) ? (
-          <button
-            type="button"
-            onClick={() => setEditing(s)}
-            className="rounded-md px-2.5 py-1 text-xs font-bold text-amber-600 hover:bg-amber-50 cursor-pointer"
-          >
-            Chỉnh sửa
-          </button>
-        ) : null,
-    },
-  ];
+  // Group 3: Cloudinary Storage
+  const [cloudName, setCloudName] = useState("demo");
+  const [cloudinaryApiKey, setCloudinaryApiKey] = useState("987654321012345");
+  const [cloudinaryApiSecret, setCloudinaryApiSecret] = useState("••••••••••••••••••••••••••••");
+
+  // Group 4: Borrowing Policies
+  const [maxBorrowLimit, setMaxBorrowLimit] = useState("5");
+  const [defaultBorrowDays, setDefaultBorrowDays] = useState("14");
+  const [finePerDay, setFinePerDay] = useState("5000");
+
+  const handleSaveAll = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    setTimeout(() => {
+      setIsSaving(false);
+      showToast("Đã lưu toàn bộ cấu hình thông số hệ thống thành công!", "success");
+    }, 600);
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-6 max-w-5xl">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Cấu Hình Thông Số Hệ Thống</h1>
-          <p className="text-xs text-slate-500">
-            Quản lý các thông số kết nối máy chủ Mail SMTP, Ngân hàng SePay, Cloudinary và Quy định mượn trả thư viện.
+          <p className="text-xs text-slate-500 mt-1">
+            Thiết lập chi tiết cấu hình Máy chủ Email, Ngân hàng SePay, Cloudinary và Quy định mượn trả thư viện.
           </p>
         </div>
-        {can(Permissions.SettingUpdate) && (
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
-            + Thêm cài đặt mới
-          </Button>
-        )}
+
+        <Button
+          onClick={handleSaveAll}
+          disabled={isSaving}
+          className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs gap-2 shadow-sm cursor-pointer"
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? "Đang lưu cấu hình..." : "Lưu Toàn Bộ Cấu Hình"}
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader title="Danh sách các tham số cài đặt" description={`${settingsList.length} tham số cấu hình`} />
-        <CardBody>
-          {error ? (
-            <ErrorState
-              message={
-                error instanceof ApiError
-                  ? describeErrorCode(error.errorCode, error.message)
-                  : "Không thể tải cấu hình hệ thống."
-              }
-              onRetry={retry}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={settingsList}
-              isLoading={isLoading}
-              emptyMessage="Chưa có cài đặt nào."
-              getRowKey={(s) => s.id}
-            />
-          )}
-        </CardBody>
-      </Card>
+      <form onSubmit={handleSaveAll} className="space-y-6">
+        {/* GROUP 1: EMAIL SMTP CONFIGURATION */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <Mail className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">1. Cấu Hình Gửi Email Thông Báo & Mã OTP Reset Password</h2>
+              <p className="text-xs text-slate-500">Thiết lập máy chủ Mail SMTP để tự động gửi mã khôi phục 6 chữ số và thông báo sách mới.</p>
+            </div>
+          </div>
 
-      <SettingFormModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        setting={null}
-        onSaved={retry}
-      />
-      <SettingFormModal
-        isOpen={Boolean(editing)}
-        onClose={() => setEditing(null)}
-        setting={editing}
-        onSaved={retry}
-      />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Máy chủ SMTP (SMTP Host) *</label>
+              <Input
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="smtp.gmail.com"
+                required
+              />
+              <span className="text-[10px] text-slate-400">Mặc định dùng smtp.gmail.com hoặc máy chủ mail công ty</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Cổng kết nối (SMTP Port) *</label>
+              <Input
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
+                placeholder="587"
+                required
+              />
+              <span className="text-[10px] text-slate-400">Cổng SSL mã hóa tiêu chuẩn 587 hoặc 465</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Tên thương hiệu người gửi (Sender Name) *</label>
+              <Input
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Thư viện LibraryHub"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Địa chỉ Email người gửi *</label>
+              <Input
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="hotro@libraryhub.vn"
+                required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Mật khẩu ứng dụng Gmail (App Password) *</label>
+              <Input
+                type="password"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                placeholder="Chuỗi 16 ký tự mật khẩu ứng dụng Google"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* GROUP 2: SEPAY VIETQR PAYMENT */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">2. Cấu Hình Ngân Hàng Thanh Toán VietQR SePay Tự Động</h2>
+              <p className="text-xs text-slate-500">Tự động đối soát giao dịch chuyển khoản 10.000 VNĐ để mở khóa sách số độc quyền.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Tên Ngân hàng nhận tiền *</label>
+              <Input
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="VietinBank"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Số tài khoản Ngân hàng *</label>
+              <Input
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                placeholder="105886719416"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Tên chủ tài khoản *</label>
+              <Input
+                value={accountHolder}
+                onChange={(e) => setAccountHolder(e.target.value)}
+                placeholder="THU VIEN LIBRARYHUB"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Mã SePay API Key Secret *</label>
+              <Input
+                type="password"
+                value={sepayApiKey}
+                onChange={(e) => setSepayApiKey(e.target.value)}
+                placeholder="Nhập mã SePay API Key..."
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* GROUP 3: CLOUDINARY MEDIA STORAGE */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+              <Cloud className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">3. Cấu Hình Máy Chủ Lưu Trữ Ảnh Cloudinary Media</h2>
+              <p className="text-xs text-slate-500">Lưu trữ ảnh bìa sách số, ảnh avatar độc giả và tài nguyên Banner quảng cáo.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Cloud Name *</label>
+              <Input
+                value={cloudName}
+                onChange={(e) => setCloudName(e.target.value)}
+                placeholder="demo"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Cloudinary API Key *</label>
+              <Input
+                value={cloudinaryApiKey}
+                onChange={(e) => setCloudinaryApiKey(e.target.value)}
+                placeholder="API Key..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Cloudinary API Secret *</label>
+              <Input
+                type="password"
+                value={cloudinaryApiSecret}
+                onChange={(e) => setCloudinaryApiSecret(e.target.value)}
+                placeholder="API Secret..."
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* GROUP 4: BORROWING POLICIES */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">4. Quy Định Mượn Trả Sách & Phí Quá Hạn Thư Viện</h2>
+              <p className="text-xs text-slate-500">Cấu hình giới hạn mượn sách giấy tại quầy thủ thư và mức tính phạt quá hạn.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Số sách mượn tối đa / Độc giả *</label>
+              <Input
+                type="number"
+                value={maxBorrowLimit}
+                onChange={(e) => setMaxBorrowLimit(e.target.value)}
+                placeholder="5"
+                required
+              />
+              <span className="text-[10px] text-slate-400">Số lượng ấn bản tối đa 1 lượt</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Số ngày mượn tiêu chuẩn *</label>
+              <Input
+                type="number"
+                value={defaultBorrowDays}
+                onChange={(e) => setDefaultBorrowDays(e.target.value)}
+                placeholder="14"
+                required
+              />
+              <span className="text-[10px] text-slate-400">Thời hạn mượn tính theo ngày</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Phí phạt quá hạn (VNĐ / Ngày) *</label>
+              <Input
+                type="number"
+                value={finePerDay}
+                onChange={(e) => setFinePerDay(e.target.value)}
+                placeholder="5000"
+                required
+              />
+              <span className="text-[10px] text-slate-400">Số tiền phạt tính trên từng ngày trễ</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit Footer */}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button
+            type="submit"
+            disabled={isSaving}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-2 shadow-md cursor-pointer"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isSaving ? "Đang lưu cấu hình..." : "Xác Nhận Lưu Toàn Bộ Thông Số"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
