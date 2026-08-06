@@ -105,7 +105,7 @@ export default function AuditLogsPage() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Input
-          placeholder="Lọc theo Actor ID"
+          placeholder="Actor ID, email hoặc mã nội bộ"
           value={actorId}
           onChange={(e) => {
             setActorId(e.target.value);
