@@ -116,7 +116,7 @@ export function ProfileContainer({
   };
 
   // Callback sau khi lưu thông tin cá nhân
-  const handleProfileUpdated = (updated: { fullName: string; avatar?: string | null }) => {
+  const handleProfileUpdated = (updated: { fullName?: string; email?: string; phoneNumber?: string; avatar?: string | null }) => {
     setProfileOverride(updated);
     checkAuth();
   };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, User, Image as ImageIcon } from 'lucide-react';
+import { Loader2, User, Mail, Phone, Bell, Image as ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,87 +14,55 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { updateUserProfile } from '@/lib/api/profile';
+import axios from 'axios';
 
-/**
- * Interface định nghĩa dữ liệu độc giả truyền vào modal để khởi tạo giá trị ban đầu.
- */
 export interface CurrentUserProfile {
-  /** ID duy nhất của người dùng */
   id: string;
-  /** Họ và tên hiển thị đầy đủ */
   fullName?: string;
-  /** Tên (optional) */
-  firstName?: string;
-  /** Họ (optional) */
-  lastName?: string;
-  /** Địa chỉ Email độc giả */
   email: string;
-  /** Đường dẫn URL ảnh đại diện */
+  phoneNumber?: string;
   avatar?: string | null;
+  notifyBookAvailable?: boolean;
 }
 
-/**
- * Interface định nghĩa Props cho component EditProfileModal.
- */
 export interface EditProfileModalProps {
-  /** Trạng thái đóng/mở của modal dialog */
   isOpen: boolean;
-  /** Callback được gọi khi yêu cầu đóng modal */
   onClose: () => void;
-  /** Thông tin đối tượng độc giả hiện tại */
   currentUser: CurrentUserProfile | null;
-  /** Callback xử lý phản hồi khi thông tin hồ sơ được cập nhật thành công */
-  onSuccess: (updated: { fullName: string; avatar?: string | null }) => void;
+  onSuccess: (updated: Partial<CurrentUserProfile>) => void;
 }
 
-/**
- * Component EditProfileModal - Modal dialog cập nhật họ tên và ảnh đại diện độc giả.
- *
- * Dùng tại: Trang Hồ sơ cá nhân độc giả (/profile), kích hoạt khi nhấn nút "Chỉnh sửa hồ sơ".
- * Tác dụng: Cho phép độc giả nhanh chóng chỉnh sửa thông tin cá nhân và cập nhật avatar trực quan.
- *
- * @param props - EditProfileModalProps
- */
 export function EditProfileModal({
   isOpen,
   onClose,
   currentUser,
   onSuccess,
 }: EditProfileModalProps) {
-  const initialName =
-    currentUser?.fullName ||
-    [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') ||
-    '';
-
-  const [fullName, setFullName] = useState(initialName);
+  const [fullName, setFullName] = useState(currentUser?.fullName || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
+  const [phoneNumber, setPhoneNumber] = useState(currentUser?.phoneNumber || '');
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar || '');
+  const [notifyBookAvailable, setNotifyBookAvailable] = useState(currentUser?.notifyBookAvailable ?? true);
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Cập nhật lại form state khi modal được mở hoặc đối tượng currentUser thay đổi
   useEffect(() => {
     if (isOpen && currentUser) {
-      setFullName(
-        currentUser.fullName ||
-          [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ') ||
-          ''
-      );
+      setFullName(currentUser.fullName || '');
+      setEmail(currentUser.email || '');
+      setPhoneNumber(currentUser.phoneNumber || '');
       setAvatarUrl(currentUser.avatar || '');
+      setNotifyBookAvailable(currentUser.notifyBookAvailable ?? true);
       setErrorMessage(null);
     }
   }, [isOpen, currentUser]);
 
-  /**
-   * Xử lý submit form cập nhật thông tin cá nhân.
-   * Gửi dữ liệu tới API `updateUserProfile` và phản hồi lại component cha thông qua callback `onSuccess`.
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id) return;
-
     if (!fullName.trim() || fullName.trim().length < 2) {
-      setErrorMessage('Họ và tên phải có tối thiểu 2 ký tự.');
+      setErrorMessage('Họ và tên độc giả phải có tối thiểu 2 ký tự.');
       return;
     }
 
@@ -104,20 +72,23 @@ export function EditProfileModal({
     try {
       const payload = {
         fullName: fullName.trim(),
+        email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
         avatar: avatarUrl.trim() || null,
+        notifyBookAvailable,
       };
 
-      await updateUserProfile(currentUser.id, payload);
+      await axios.put('http://localhost:5210/api/auth/profile', payload, { withCredentials: true });
       onSuccess(payload);
       onClose();
-    } catch {
-      setErrorMessage('Không thể cập nhật hồ sơ. Vui lòng thử lại sau.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Không thể cập nhật hồ sơ độc giả vào database.';
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Tạo các ký tự viết tắt initials (từ 2 từ cuối của tên) làm fallback khi avatar chưa được tải
   const initials = fullName
     .split(' ')
     .filter(Boolean)
@@ -125,74 +96,37 @@ export function EditProfileModal({
     .map((p) => p[0]?.toUpperCase())
     .join('') || 'DG';
 
-  const [isUploading, setIsUploading] = useState(false);
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setErrorMessage('Vui lòng chọn tệp hình ảnh hợp lệ (.jpg, .png, .webp)');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('Dung lượng tệp ảnh không được vượt quá 5MB');
-      return;
-    }
 
     setIsUploading(true);
     setErrorMessage(null);
 
     const reader = new FileReader();
-    reader.onloadend = async () => {
+    reader.onloadend = () => {
       if (typeof reader.result === 'string') {
-        const base64Data = reader.result;
-        setAvatarUrl(base64Data);
-
-        // Thử tải lên Cloudinary API nếu có kết nối
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('upload_preset', 'libraryhub');
-
-          const cloudRes = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (cloudRes.ok) {
-            const cloudData = await cloudRes.json();
-            if (cloudData.secure_url) {
-              setAvatarUrl(cloudData.secure_url);
-            }
-          }
-        } catch {
-          // Bỏ qua lỗi Cloudinary ngoài mạng, vẫn dùng Base64 data URL
-        } finally {
-          setIsUploading(false);
-        }
-      } else {
-        setIsUploading(false);
+        setAvatarUrl(reader.result);
       }
+      setIsUploading(false);
     };
     reader.readAsDataURL(file);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[460px] p-6">
+      <DialogContent className="sm:max-w-[480px] p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-foreground">
-            Chỉnh sửa thông tin cá nhân
+            Chỉnh sửa thông tin hồ sơ độc giả
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Cập nhật tên hiển thị và ảnh đại diện Cloudinary để cá nhân hóa hồ sơ.
+            Cập nhật Họ tên, Email, Số điện thoại và cài đặt nhận thông báo sách mới về thư viện.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Khung xem trước & Tải ảnh đại diện Cloudinary */}
+          {/* Avatar Preview */}
           <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/40 border border-border/50">
             <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm shrink-0">
               <AvatarImage src={avatarUrl || undefined} alt={fullName} className="object-cover" />
@@ -202,27 +136,23 @@ export function EditProfileModal({
             </Avatar>
 
             <div className="flex-1 min-w-0 space-y-1.5">
-              <p className="text-xs font-semibold text-foreground">Ảnh đại diện độc giả</p>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  {isUploading ? 'Đang tải lên...' : 'Tải ảnh Cloudinary'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
-              <p className="text-[10px] text-muted-foreground truncate">
-                {avatarUrl ? '✔ Đã sẵn sàng cập nhật' : 'Hỗ trợ JPG, PNG, WebP (Tối đa 5MB)'}
-              </p>
+              <p className="text-xs font-semibold text-foreground">Ảnh đại diện Cloudinary</p>
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                <ImageIcon className="w-3.5 h-3.5" />
+                {isUploading ? 'Đang tải lên...' : 'Đổi ảnh đại diện'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+              </label>
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          {/* Full Name */}
+          <div className="space-y-1">
             <Label htmlFor="fullName" className="text-xs font-semibold">
               Họ và tên độc giả <span className="text-destructive">*</span>
             </Label>
@@ -232,30 +162,63 @@ export function EditProfileModal({
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nhập họ và tên đầy đủ..."
+                placeholder="VD: Nguyễn Văn An"
                 className="pl-9 text-sm"
                 required
-                minLength={2}
-                maxLength={100}
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="avatarUrl" className="text-xs font-semibold">
-              Hoặc nhập trực tiếp URL ảnh Cloudinary
+          {/* Email */}
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-xs font-semibold">
+              Địa chỉ Email (Nhận thông báo sách) <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
-              <ImageIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                id="avatarUrl"
-                type="url"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://res.cloudinary.com/..."
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="reader@gmail.com"
+                className="pl-9 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Phone Number */}
+          <div className="space-y-1">
+            <Label htmlFor="phoneNumber" className="text-xs font-semibold">
+              Số điện thoại (Nhận tin nhắn SMS khi sách về kho)
+            </Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phoneNumber"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="VD: 0987654321"
                 className="pl-9 text-sm"
               />
             </div>
+          </div>
+
+          {/* Notification Checkbox */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <input
+              type="checkbox"
+              id="notifyBook"
+              checked={notifyBookAvailable}
+              onChange={(e) => setNotifyBookAvailable(e.target.checked)}
+              className="h-4 w-4 rounded border-amber-500 text-amber-600 focus:ring-amber-500 cursor-pointer"
+            />
+            <label htmlFor="notifyBook" className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1.5">
+              <Bell className="h-4 w-4 text-amber-500 shrink-0" />
+              Tự động gửi thông báo Email / SMS khi có sách mới hoặc mượn trả về kho
+            </label>
           </div>
 
           {errorMessage && (
@@ -265,18 +228,12 @@ export function EditProfileModal({
           )}
 
           <DialogFooter className="pt-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-              className="cursor-pointer"
-            >
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading} className="gap-1.5 cursor-pointer">
+            <Button type="submit" disabled={isLoading} className="gap-1.5">
               {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              <span>Lưu thay đổi</span>
+              <span>Lưu thông tin</span>
             </Button>
           </DialogFooter>
         </form>

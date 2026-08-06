@@ -40,6 +40,12 @@ public class User
     [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [BsonElement("phoneNumber")]
+    public string? PhoneNumber { get; set; }
+
+    [BsonElement("notifyBookAvailable")]
+    public bool NotifyBookAvailable { get; set; } = true;
+
     [BsonElement("resetToken")]
     public string? ResetToken { get; set; }
 

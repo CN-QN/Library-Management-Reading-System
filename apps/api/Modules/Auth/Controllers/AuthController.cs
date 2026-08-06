@@ -173,6 +173,20 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
+    [HttpPut("profile")]
+    public async Task<ActionResult<ApiResponse<UserProfileDto>>> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(ApiResponse.ErrorResponse(401, "Invalid identity."));
+        }
+
+        var updatedProfile = await _authService.UpdateProfileAsync(userId, dto);
+        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(updatedProfile, "Cập nhật thông tin cá nhân thành công."));
+    }
+
+    [Authorize]
     [HttpGet("sessions")]
     public async Task<ActionResult<ApiResponse<List<AuthSession>>>> GetSessions()
     {

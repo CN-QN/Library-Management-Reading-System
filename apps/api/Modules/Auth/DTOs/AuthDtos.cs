@@ -36,8 +36,19 @@ public class UserProfileDto
     public string Email { get; set; } = string.Empty;
     public string StudentCode { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+    public bool NotifyBookAvailable { get; set; } = true;
     public string? BranchId { get; set; }
     public string? Avatar { get; set; }
     public List<string> Roles { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
+}
+
+public class UpdateProfileDto
+{
+    public string? FullName { get; set; }
+    public string? Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? Avatar { get; set; }
+    public bool? NotifyBookAvailable { get; set; }
 }
