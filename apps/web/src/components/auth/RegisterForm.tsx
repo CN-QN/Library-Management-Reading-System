@@ -4,7 +4,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, Loader2, CheckCircle2, Check, XCircle } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,7 +18,7 @@ const registerSchema = z.object({
   email: z.string().email('Email không đúng định dạng'),
   password: z
     .string()
-    .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
     .regex(/[A-Z]/, 'Phải chứa chữ hoa')
     .regex(/[a-z]/, 'Phải chứa chữ thường')
     .regex(/[0-9]/, 'Phải chứa chữ số')
@@ -37,6 +37,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export function RegisterForm() {
   const [submitError, setSubmitError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,10 +50,10 @@ export function RegisterForm() {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting, touchedFields },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    mode: 'onChange',
+    mode: 'onSubmit',
     defaultValues: {
       fullName: '',
       email: '',
@@ -61,7 +63,6 @@ export function RegisterForm() {
   });
 
   const currentPassword = watch('password');
-  const currentConfirm = watch('confirmPassword');
 
   const onSubmit = async (data: RegisterFormValues) => {
     setSubmitError('');
@@ -106,12 +107,6 @@ export function RegisterForm() {
     );
   }
 
-  const FeedbackIcon = ({ fieldName, hasError }: { fieldName: keyof RegisterFormValues, hasError: boolean }) => {
-    if (!touchedFields[fieldName]) return null;
-    if (hasError) return <XCircle className="w-4 h-4 text-destructive absolute right-3 top-3" />;
-    return <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-3" />;
-  };
-
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-col items-center text-center">
@@ -138,12 +133,11 @@ export function RegisterForm() {
                 type="text"
                 autoComplete="name"
                 {...register('fullName')}
-                className={`w-full pr-10 ${(touchedFields.fullName && errors.fullName) ? 'border-destructive' : ''}`}
+                className={`w-full ${errors.fullName ? 'border-destructive' : ''}`}
                 placeholder="Nhập họ và tên đầy đủ..."
               />
-              <FeedbackIcon fieldName="fullName" hasError={!!errors.fullName} />
             </div>
-            {touchedFields.fullName && errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
+            {errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName.message}</p>}
           </div>
 
           <div>
@@ -156,27 +150,34 @@ export function RegisterForm() {
                 type="email"
                 autoComplete="email"
                 {...register('email')}
-                className={`w-full pr-10 ${(touchedFields.email && errors.email) ? 'border-destructive' : ''}`}
+                className={`w-full ${errors.email ? 'border-destructive' : ''}`}
                 placeholder="email@example.com"
               />
-              <FeedbackIcon fieldName="email" hasError={!!errors.email} />
             </div>
-            {touchedFields.email && errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-foreground">
               Mật khẩu *
             </label>
-            <div className="mt-1 relative">
+            <div className="mt-1 relative flex items-center">
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 {...register('password')}
-                className={`w-full pr-10 ${(touchedFields.password && errors.password) ? 'border-destructive' : ''}`}
+                className={`w-full pr-10 ${errors.password ? 'border-destructive' : ''}`}
                 placeholder="Tối thiểu 6 ký tự"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Ẩn/Hiện mật khẩu"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
             <PasswordRequirements password={currentPassword} />
           </div>
@@ -185,25 +186,26 @@ export function RegisterForm() {
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
               Xác nhận mật khẩu *
             </label>
-            <div className="mt-1 relative">
+            <div className="mt-1 relative flex items-center">
               <Input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 {...register('confirmPassword')}
-                className={`w-full pr-10 ${(touchedFields.confirmPassword && errors.confirmPassword) ? 'border-destructive' : ''}`}
+                className={`w-full pr-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
                 placeholder="Nhập lại mật khẩu"
               />
-              {touchedFields.confirmPassword && currentConfirm && currentConfirm === currentPassword && (
-                <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-3" />
-              )}
-              {touchedFields.confirmPassword && currentConfirm !== currentPassword && (
-                <XCircle className="w-4 h-4 text-destructive absolute right-3 top-3" />
-              )}
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Ẩn/Hiện xác nhận mật khẩu"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-            {touchedFields.confirmPassword && errors.confirmPassword && <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>}
-            {touchedFields.confirmPassword && currentConfirm && currentConfirm === currentPassword && (
-              <p className="text-xs text-green-500 mt-1 flex items-center gap-1"><Check className="w-3 h-3"/> Mật khẩu đã khớp!</p>
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>
             )}
           </div>
 
