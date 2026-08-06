@@ -667,11 +667,11 @@ public class SeedRunner
         }
 
         var borrowingCount = await _context.Borrowings.CountDocumentsAsync(FilterDefinition<Borrowing>.Empty);
-        if (borrowingCount < 20 && users.Any() && books.Any())
+        if (borrowingCount < 50 && users.Any() && books.Any())
         {
             _logger.LogInformation("Seeding rich sample Physical Borrowings and Items across past 14 days...");
             
-            // Clear sparse old seed data if under 20 records
+            // Clear old seed data to refresh OPEN and OVERDUE records
             await _context.Borrowings.DeleteManyAsync(FilterDefinition<Borrowing>.Empty);
             await _context.BorrowingItems.DeleteManyAsync(FilterDefinition<BorrowingItem>.Empty);
 
@@ -691,12 +691,13 @@ public class SeedRunner
                 for (int j = 0; j < itemsCountForDay; j++)
                 {
                     var user = users[(counter + j) % users.Count];
-                    var isReturned = (counter % 2 == 0);
-                    var isOverdue = (!isReturned && dayOffset > 7);
-                    var status = isReturned ? "RETURNED" : (isOverdue ? "OVERDUE" : "OPEN");
+                    // Mix statuses: 60% RETURNED, 25% OPEN, 15% OVERDUE
+                    bool isReturned = (counter % 5 >= 2);
+                    bool isOverdue = (!isReturned && dayOffset >= 6);
+                    string status = isReturned ? "CLOSED" : "OPEN";
 
                     var borrowingId = ObjectId.GenerateNewId().ToString();
-                    var expectedReturn = borrowDate.AddDays(14);
+                    var expectedReturn = isOverdue ? borrowDate.AddDays(3) : borrowDate.AddDays(14);
                     var closedAt = isReturned ? borrowDate.AddDays((j % 5) + 1) : (DateTime?)null;
 
                     var borrowing = new Borrowing

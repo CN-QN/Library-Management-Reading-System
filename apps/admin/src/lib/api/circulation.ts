@@ -73,9 +73,15 @@ function buildQueryString(query: BorrowingQuery): string {
 /** True if the borrowing has at least one still-open item past its due date. */
 export function isBorrowingOverdue(borrowing: Borrowing): boolean {
   const now = Date.now();
-  return borrowing.items.some(
-    (item) => item.status === "BORROWED" && new Date(item.dueAt).getTime() < now
-  );
+  if (borrowing.status === "OPEN" && borrowing.expectedReturnAt && new Date(borrowing.expectedReturnAt).getTime() < now) {
+    return true;
+  }
+  if (Array.isArray(borrowing.items)) {
+    return borrowing.items.some(
+      (item) => (item.status === "BORROWED" || item.status === "OVERDUE") && new Date(item.dueAt).getTime() < now
+    );
+  }
+  return false;
 }
 
 export const circulationApi = {
