@@ -227,10 +227,16 @@ builder.Services.AddScoped<
         try
         {
             var indexCreator = services.GetRequiredService<IndexCreator>();
-            var seedRunner = services.GetRequiredService<SeedRunner>();
-
             await indexCreator.CreateIndexesAsync();
-            await seedRunner.RunSeedAsync();
+
+            var shouldSeed = args.Contains("--seed") || args.Contains("seed");
+            if (shouldSeed)
+            {
+                Log.Information("Running database seed on demand (--seed flag detected)...");
+                var seedRunner = services.GetRequiredService<SeedRunner>();
+                await seedRunner.RunSeedAsync();
+                Log.Information("Database seed completed successfully.");
+            }
         }
         catch (Exception ex)
         {
@@ -241,7 +247,6 @@ builder.Services.AddScoped<
     app.UseMiddleware<TraceIdMiddleware>();
     app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
-    app.UseMiddleware<RateLimitMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
 
     if (app.Environment.IsDevelopment())
