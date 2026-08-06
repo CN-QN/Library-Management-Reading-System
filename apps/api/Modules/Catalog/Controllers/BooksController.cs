@@ -248,7 +248,10 @@ namespace api.Modules.Catalog.Controllers
             try
             {
                 var isValid = await _bookService.ValidateSlugAsync(slug);
-                return Ok(new { isValid, message = isValid ? "Slug is available" : "Slug already exists" });
+                var result = new { isValid };
+                return Ok(ApiResponse<object>.SuccessResponse(
+                    result,
+                    isValid ? "Slug is available" : "Slug already exists"));
             }
             catch (Exception ex)
             {
@@ -267,7 +270,10 @@ namespace api.Modules.Catalog.Controllers
             try
             {
                 var isValid = await _bookService.ValidateISBNAsync(isbn);
-                return Ok(new { isValid, message = isValid ? "ISBN is available" : "ISBN already exists" });
+                var result = new { isValid };
+                return Ok(ApiResponse<object>.SuccessResponse(
+                    result,
+                    isValid ? "ISBN is available" : "ISBN already exists"));
             }
             catch (Exception ex)
             {
