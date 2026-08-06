@@ -1,5 +1,4 @@
 using api.Database.Entities;
-using MongoDB.Driver;
 
 namespace api.Repositories.Interfaces
 {
@@ -37,7 +36,6 @@ namespace api.Repositories.Interfaces
         Task<BookChapter?> GetChapterByNumberAsync(string bookId, int number);
         Task<bool> AddChapterAsync(string bookId, BookChapter chapter);
         Task<bool> ReplaceChapterAsync(string bookId, string chapterId, BookChapter chapter);
-        Task<bool> UpdateChapterAsync(string bookId, string chapterId, UpdateDefinition<Book> update);
         Task<bool> ReplaceChaptersAsync(string bookId, IReadOnlyList<BookChapter> chapters);
         Task<bool> ArchiveChapterAsync(string bookId, string chapterId);
     }

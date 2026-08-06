@@ -1,6 +1,5 @@
 using api.Database.Entities;
 using api.Repositories.Interfaces;
-using MongoDB.Driver;
 
 namespace api.Tests.TestSupport;
 
@@ -118,9 +117,6 @@ public sealed class FakeBookRepository : IBookRepository
         book.Chapters[idx] = chapter;
         return Task.FromResult(true);
     }
-
-    public Task<bool> UpdateChapterAsync(string bookId, string chapterId, UpdateDefinition<Book> update)
-        => Task.FromResult(true);
 
     public Task<bool> ReplaceChaptersAsync(string bookId, IReadOnlyList<BookChapter> chapters)
     {
