@@ -49,90 +49,79 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-[80vh] flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
-        <div className="w-full flex justify-start mb-2">
-          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Về trang chủ
-          </Link>
+    <div className="w-full space-y-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+          <BookOpen size={28} />
         </div>
-        <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
-          <BookOpen size={32} />
-        </div>
-        <h2 className="text-center text-3xl font-bold tracking-tight text-foreground">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
           Đăng nhập LibraryHub
         </h2>
+        <p className="text-xs md:text-sm text-muted-foreground mt-1">
+          Nhập thông tin tài khoản để truy cập hệ thống thư viện
+        </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-card py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-border">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                Email / Tài khoản
-              </label>
-              <div className="mt-1">
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full"
-                  placeholder="Vui lòng nhập tài khoản"
-                />
-              </div>
-            </div>
+      <div className="bg-card py-8 px-6 shadow-xl rounded-2xl border border-border">
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
+              Email / Tài khoản
+            </label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full"
+              placeholder="vividu@example.com"
+            />
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                Mật khẩu
-              </label>
-              <div className="mt-1">
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
+              Mật khẩu
+            </label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full"
+              placeholder="••••••••"
+            />
+          </div>
 
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
-                {error}
-              </div>
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20 font-medium">
+              {error}
+            </div>
+          )}
+
+          <Button type="submit" size="lg" className="w-full font-semibold rounded-xl" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang xử lý...
+              </>
+            ) : (
+              'Đăng nhập'
             )}
+          </Button>
 
-            <div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  'Đăng nhập'
-                )}
-              </Button>
-            </div>
-
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              Chưa có tài khoản?{' '}
-              <Link href={`/register?returnUrl=${encodeURIComponent(returnUrl)}`} className="text-primary hover:underline font-medium">
-                Đăng ký ngay
-              </Link>
-            </div>
-          </form>
-        </div>
+          <div className="pt-2 text-center text-sm text-muted-foreground">
+            Chưa có tài khoản?{' '}
+            <Link href={`/register?returnUrl=${encodeURIComponent(returnUrl)}`} className="text-primary hover:underline font-semibold">
+              Đăng ký ngay
+            </Link>
+          </div>
+        </form>
       </div>
     </div>
   );

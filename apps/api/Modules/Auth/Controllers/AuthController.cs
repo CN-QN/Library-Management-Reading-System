@@ -95,27 +95,27 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
         SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Registration successful."));
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Registration successful."));
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
         var device = GetDeviceNameFromUserAgent();
         var result = await _authService.LoginAsync(request, device, ipAddress);
         SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Login successful."));
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Login successful."));
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<UserProfileDto>>> Refresh([FromBody] RefreshRequest request)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Refresh([FromBody] RefreshRequest request)
     {
         var token = request.RefreshToken;
         if (string.IsNullOrEmpty(token))
@@ -132,7 +132,7 @@ public class AuthController : ControllerBase
         var result = await _authService.RefreshAsync(new RefreshRequest { RefreshToken = token }, ipAddress);
         SetAccessTokenCookie(result.AccessToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(ApiResponse<UserProfileDto>.SuccessResponse(result.User, "Token refreshed successfully."));
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result, "Token refreshed successfully."));
     }
 
     [Authorize]
