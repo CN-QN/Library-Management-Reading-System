@@ -148,10 +148,11 @@ export async function getMyReadingHistory(): Promise<ReadingHistoryItem[]> {
  * Tự động tính toán số ngày còn lại và trạng thái quá hạn/sắp hết hạn cho từng cuốn sách.
  */
 export async function getMyBorrowedBooks(userId?: string): Promise<BorrowedBook[]> {
+  if (!userId) {
+    return [];
+  }
   try {
-    const params: Record<string, string | number> = { limit: 50 };
-    if (userId) params.userId = userId;
-
+    const params: Record<string, string | number> = { limit: 50, userId };
     const res = await apiClient.get('/Borrowings', { params });
     const paged = res.data?.data || res.data;
     const borrowings: RawBorrowing[] = paged?.items || (Array.isArray(paged) ? paged : []);
