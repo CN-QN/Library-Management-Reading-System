@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace api.Database.Entities;
 
+[BsonIgnoreExtraElements]
 public class Book
 {
     [BsonId]
