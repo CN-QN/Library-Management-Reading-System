@@ -7,7 +7,7 @@ import type {
   ChapterContentDetail,
   ChapterParagraph,
 } from '@/types/Reading';
-import type { ReadingProgress as HomeReadingProgress } from '@/types/ReadingProgress';
+import type { InProgressBook } from '@/types/Profile';
 
 /**
  * Helper unwrap envelope `{ data: T }` của API response.
@@ -526,7 +526,7 @@ export async function getChapterDetail(
  * Cần truyền token/cookie vì API yêu cầu authorize.
  * Không dùng cache (no-store) vì data này thay đổi liên tục theo user.
  */
-export async function getAllReadingProgress(): Promise<HomeReadingProgress[] | null> {
+export async function getAllReadingProgress(): Promise<InProgressBook[] | null> {
   const isServer = typeof window === 'undefined';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -560,15 +560,13 @@ export async function getAllReadingProgress(): Promise<HomeReadingProgress[] | n
     if (!res.ok) return [];
     
     const resJson = await res.json();
-    // Tùy theo payload trả về có bọc trong data không (giống cách hàm getReadingProgress làm)
     const rawItems = resJson?.data || resJson;
     
     if (!Array.isArray(rawItems)) return [];
     
-    // Ánh xạ sang cấu trúc mảng ReadingProgress[] mà frontend mong đợi
     const progressList = await Promise.all(rawItems.map(async (rawItem: unknown) => {
       const raw = (rawItem || {}) as Record<string, unknown>;
-      const bookIdStr = String(raw.bookId || raw.BookId || '');
+      const bookIdStr = String(raw.bookId || raw.BookId || raw.id || '');
       
       let bookInfo = null;
       let coverData = null;
@@ -584,25 +582,46 @@ export async function getAllReadingProgress(): Promise<HomeReadingProgress[] | n
       }
 
       const chapterNumber = Number(raw.chapterNumber || raw.ChapterNumber || 1);
+      const rawCover = String(
+        raw.bookCoverImage ||
+        raw.BookCoverImage ||
+        raw.coverImage ||
+        raw.CoverImage ||
+        raw.coverAssetId ||
+        raw.CoverAssetId ||
+        bookInfo?.coverImage ||
+        coverData?.fileUrl ||
+        ''
+      );
+
+      const rawAuthor = String(
+        raw.authorName ||
+        raw.AuthorName ||
+        raw.author ||
+        bookInfo?.authorNames?.join(', ') ||
+        'Nhiều tác giả'
+      );
+
+      const rawTitle = String(raw.bookTitle || raw.BookTitle || bookInfo?.title || 'Sách đang đọc');
+      const rawSlug = String(raw.bookSlug || raw.BookSlug || bookInfo?.slug || bookIdStr);
+      const percentage = Math.min(100, Math.max(0, Math.round(Number(raw.percentage || raw.Percentage || 0))));
 
       return {
         bookId: bookIdStr,
-        book: {
-          id: bookIdStr,
-          title: bookInfo?.title || 'Chưa có tiêu đề',
-          slug: bookInfo?.slug || bookIdStr,
-          author: bookInfo?.authorNames?.join(', ') || 'Không rõ tác giả',
-          coverImage: coverData?.fileUrl || '',
-          rating: bookInfo?.rating || 0,
-          status: bookInfo?.status || 'PUBLISHED',
-        },
-        progressPercentage: Number(raw.percentage || raw.Percentage || raw.progressPercentage || raw.ProgressPercentage || 0),
+        bookTitle: rawTitle,
+        bookSlug: rawSlug,
+        bookCoverImage: rawCover,
+        authorName: rawAuthor,
+        chapterId: raw.chapterId || raw.ChapterId ? String(raw.chapterId || raw.ChapterId) : undefined,
+        chapterNumber,
+        chapterTitle: String(raw.chapterTitle || raw.ChapterTitle || `Chương ${chapterNumber}`),
+        scrollPosition: Number(raw.scrollPosition || raw.ScrollPosition || 0),
+        percentage,
         lastReadAt: String(raw.lastReadAt || raw.LastReadAt || new Date().toISOString()),
-        currentChapterId: raw.chapterId || raw.ChapterId ? String(raw.chapterId || raw.ChapterId) : undefined,
-        currentChapterTitle: `Chương ${chapterNumber}`,
-      } as HomeReadingProgress;
+      } as InProgressBook;
     }));
-    return progressList;
+
+    return progressList.filter((item) => item.percentage < 100);
   } catch (error) {
     console.error("Failed to fetch reading progress list:", error);
     return [];
