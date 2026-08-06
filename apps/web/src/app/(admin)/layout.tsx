@@ -15,6 +15,8 @@ import {
   ExternalLink,
   ShieldCheck,
   UserCheck,
+  Ticket,
+  Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
@@ -70,6 +72,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/borrowings',
       label: 'Mượn / Trả Sách Giấy',
       icon: Library,
+    },
+    {
+      href: '/admin/vouchers',
+      label: 'Quản Lý Voucher Giảm Giá',
+      icon: Ticket,
+    },
+    {
+      href: '/admin/banners',
+      label: 'Quản Lý Banner Trang Chủ',
+      icon: ImageIcon,
+    },
+    {
+      href: '/admin/flash-sale',
+      label: 'Sự Kiện Flash Sale',
+      icon: Zap,
     },
     {
       href: '/admin/reviews',

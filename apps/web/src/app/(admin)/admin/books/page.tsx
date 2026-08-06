@@ -311,10 +311,17 @@ export default function AdminBooksPage() {
                   id="title"
                   value={title}
                   onChange={(e) => {
-                    setTitle(e.target.value);
-                    if (!editingBook) {
-                      setSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''));
-                    }
+                    const newTitle = e.target.value;
+                    setTitle(newTitle);
+                    const computed = newTitle
+                      .toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/đ/g, 'd')
+                      .replace(/[^a-z0-9\s-]/g, '')
+                      .trim()
+                      .replace(/\s+/g, '-');
+                    setSlug(computed);
                   }}
                   placeholder="Nhập tên sách..."
                   className={errors.title ? 'border-destructive' : ''}
@@ -324,19 +331,19 @@ export default function AdminBooksPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="slug" className="text-xs font-semibold">Slug đường dẫn *</Label>
+                  <Label htmlFor="slug" className="text-xs font-semibold">Slug đường dẫn (Tự động tạo)</Label>
                   <Input
                     id="slug"
                     value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="dac-nhan-tam"
-                    className={errors.slug ? 'border-destructive font-mono text-xs' : 'font-mono text-xs'}
+                    readOnly
+                    placeholder="tudong-sinh-tu-tensach"
+                    className="font-mono text-xs bg-muted text-muted-foreground"
                   />
-                  {errors.slug && <p className="text-xs text-destructive mt-1">{errors.slug}</p>}
+                  <p className="text-[11px] text-muted-foreground mt-1">Đường dẫn chuẩn SEO được tự động tạo từ tên sách.</p>
                 </div>
 
                 <div>
-                  <Label htmlFor="isbn" className="text-xs font-semibold">Mã ISBN</Label>
+                  <Label htmlFor="isbn" className="text-xs font-semibold">Mã ISBN (Tùy chọn)</Label>
                   <Input
                     id="isbn"
                     value={isbn}
