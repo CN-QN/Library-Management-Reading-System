@@ -73,22 +73,22 @@ public class IndexCreator
             var bookCreatedAtKey = Builders<Book>.IndexKeys.Descending(b => b.CreatedAt);
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookCreatedAtKey));
 
-            var bookAuthorIdKey = Builders<Book>.IndexKeys.Ascending("Authors._id");
+            var bookAuthorIdKey = Builders<Book>.IndexKeys.Ascending("authors.authorId");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookAuthorIdKey));
 
-            var bookAuthorSlugKey = Builders<Book>.IndexKeys.Ascending("Authors.Slug");
+            var bookAuthorSlugKey = Builders<Book>.IndexKeys.Ascending("authors.slug");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookAuthorSlugKey));
 
-            var bookCategoryIdKey = Builders<Book>.IndexKeys.Ascending("Categories._id");
+            var bookCategoryIdKey = Builders<Book>.IndexKeys.Ascending("categories.categoryId");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookCategoryIdKey));
 
-            var bookCategorySlugKey = Builders<Book>.IndexKeys.Ascending("Categories.Slug");
+            var bookCategorySlugKey = Builders<Book>.IndexKeys.Ascending("categories.slug");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookCategorySlugKey));
 
-            var bookPublisherIdKey = Builders<Book>.IndexKeys.Ascending("Publisher._id");
+            var bookPublisherIdKey = Builders<Book>.IndexKeys.Ascending("publisher.publisherId");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookPublisherIdKey));
 
-            var bookPublisherSlugKey = Builders<Book>.IndexKeys.Ascending("Publisher.Slug");
+            var bookPublisherSlugKey = Builders<Book>.IndexKeys.Ascending("publisher.slug");
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookPublisherSlugKey));
 
             // 14. DigitalAssets
