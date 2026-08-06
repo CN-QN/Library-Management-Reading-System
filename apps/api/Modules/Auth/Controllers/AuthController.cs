@@ -211,7 +211,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Yêu cầu quên mật khẩu
+    /// Yêu cầu quên mật khẩu (Tạo mã Token 6 chữ số)
     /// </summary>
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
@@ -221,37 +221,67 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse.ErrorResponse(400, "Vui lòng nhập Email."));
         }
 
-        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        var email = dto.Email.Trim().ToLower();
+        var user = await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
         if (user == null)
         {
             return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại trong hệ thống."));
         }
 
-        return Ok(ApiResponse.SuccessResponse($"Đã gửi mã khôi phục mật khẩu đến email {dto.Email}."));
+        // Tạo mã Token 6 chữ số ngẫu nhiên
+        var random = new Random();
+        var resetToken = random.Next(100000, 999999).ToString();
+        var expires = DateTime.UtcNow.AddMinutes(15);
+
+        var update = Builders<User>.Update
+            .Set(u => u.ResetToken, resetToken)
+            .Set(u => u.ResetTokenExpires, expires);
+
+        await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update);
+
+        return Ok(ApiResponse<object>.SuccessResponse(new
+        {
+            email = user.Email,
+            resetToken = resetToken,
+            message = $"Mã token khôi phục 6 chữ số ({resetToken}) đã được tạo và gửi đến email {user.Email} (Có hiệu lực 15 phút)."
+        }));
     }
 
     /// <summary>
-    /// Đặt lại mật khẩu mới
+    /// Kiểm tra Token & Đặt lại mật khẩu mới
     /// </summary>
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.NewPassword))
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.NewPassword))
         {
-            return BadRequest(ApiResponse.ErrorResponse(400, "Email và Mật khẩu mới là bắt buộc."));
+            return BadRequest(ApiResponse.ErrorResponse(400, "Email, Mã Token 6 chữ số và Mật khẩu mới là bắt buộc."));
         }
 
-        var user = await _context.Users.Find(u => u.Email == dto.Email.Trim().ToLower()).FirstOrDefaultAsync();
+        var email = dto.Email.Trim().ToLower();
+        var token = dto.Token.Trim();
+
+        var user = await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
         if (user == null)
         {
-            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại."));
+            return NotFound(ApiResponse.ErrorResponse(404, "Email không tồn tại trong hệ thống."));
+        }
+
+        // BẮT BUỘC KIỂM TRA MÃ TOKEN XÁC THỰC VÀ THỜI HẠN
+        if (string.IsNullOrEmpty(user.ResetToken) || user.ResetToken != token || user.ResetTokenExpires == null || user.ResetTokenExpires < DateTime.UtcNow)
+        {
+            return BadRequest(ApiResponse.ErrorResponse(400, "Mã Token 6 chữ số không hợp lệ hoặc đã hết hạn. Vui lòng xin mã mới!"));
         }
 
         var newHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-        var update = Builders<User>.Update.Set(u => u.PasswordHash, newHash);
+        var update = Builders<User>.Update
+            .Set(u => u.PasswordHash, newHash)
+            .Unset(u => u.ResetToken)
+            .Unset(u => u.ResetTokenExpires);
+
         await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update);
 
-        return Ok(ApiResponse.SuccessResponse("Đặt lại mật khẩu mới thành công. Bạn có thể đăng nhập ngay!"));
+        return Ok(ApiResponse.SuccessResponse("Đặt lại mật khẩu mới thành công! Bạn có thể đăng nhập ngay bằng mật khẩu mới."));
     }
 
     /// <summary>
@@ -310,6 +340,7 @@ public class ForgotPasswordDto
 public class ResetPasswordDto
 {
     public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
 

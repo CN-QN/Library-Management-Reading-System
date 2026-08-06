@@ -39,4 +39,10 @@ public class User
 
     [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [BsonElement("resetToken")]
+    public string? ResetToken { get; set; }
+
+    [BsonElement("resetTokenExpires")]
+    public DateTime? ResetTokenExpires { get; set; }
 }
