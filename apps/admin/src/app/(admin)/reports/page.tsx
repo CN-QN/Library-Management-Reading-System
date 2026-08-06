@@ -47,20 +47,26 @@ function RevenueTrendChart({ chartData }: { chartData: typeof ALL_MONTHLY_REVENU
       />
       <CardBody className="p-4">
         <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                stroke="#64748b"
-                tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
-              />
-              <Tooltip formatter={(value: any) => formatVnd(Number(value))} />
-              <Legend />
-              <Bar dataKey="revenue" name="Doanh thu VietQR (VNĐ)" fill="#059669" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-slate-400 text-xs font-medium">
+              Không có dữ liệu trong khoảng thời gian đã chọn.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  stroke="#64748b"
+                  tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                />
+                <Tooltip formatter={(value: any) => formatVnd(Number(value))} />
+                <Legend />
+                <Bar dataKey="revenue" name="Doanh thu VietQR (VNĐ)" fill="#059669" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardBody>
     </Card>
@@ -110,10 +116,10 @@ export default function ReportsPage() {
 
   const [realRevenue, setRealRevenue] = useState<{ totalRevenue: number; successOrdersCount: number } | null>(null);
 
-  // Date Filter State
+  // Instant Reactive Date Filter State
   const [filterPreset, setFilterPreset] = useState<"ALL" | "TODAY" | "THIS_MONTH" | "YEAR_2026" | "CUSTOM">("ALL");
-  const [startDate, setStartDate] = useState("2026-01-01");
-  const [endDate, setEndDate] = useState("2026-12-31");
+  const [startDate, setStartDate] = useState("2026-02-01");
+  const [endDate, setEndDate] = useState("2026-08-31");
 
   useEffect(() => {
     apiClient.get<any>("/api/payments/admin/revenue-stats")
@@ -123,26 +129,16 @@ export default function ReportsPage() {
       .catch(() => null);
   }, []);
 
-  // Compute Filtered Chart Data based on Date Range
+  // Compute Filtered Chart Data Reactively
+  const startMonth = startDate ? startDate.slice(0, 7) : "2026-01";
+  const endMonth = endDate ? endDate.slice(0, 7) : "2026-12";
+
   const filteredChartData = ALL_MONTHLY_REVENUE_DATA.filter((item) => {
-    if (filterPreset === "ALL") return true;
-    if (filterPreset === "TODAY" || filterPreset === "THIS_MONTH") return item.dateStr === "2026-08";
-    if (filterPreset === "YEAR_2026") return item.dateStr.startsWith("2026");
-    if (filterPreset === "CUSTOM") {
-      const itemMonth = item.dateStr;
-      const startMonth = startDate.slice(0, 7);
-      const endMonth = endDate.slice(0, 7);
-      return itemMonth >= startMonth && itemMonth <= endMonth;
-    }
-    return true;
+    return item.dateStr >= startMonth && item.dateStr <= endMonth;
   });
 
-  const displayRevenue = filterPreset === "THIS_MONTH" || filterPreset === "TODAY"
-    ? 450000
-    : realRevenue?.totalRevenue || 450000;
-  const displayCount = filterPreset === "THIS_MONTH" || filterPreset === "TODAY"
-    ? 45
-    : realRevenue?.successOrdersCount || 45;
+  const displayRevenue = filteredChartData.reduce((sum, i) => sum + i.revenue, 0);
+  const displayCount = filteredChartData.reduce((sum, i) => sum + i.readers, 0);
 
   const handleApplyPreset = (preset: typeof filterPreset) => {
     setFilterPreset(preset);
@@ -156,10 +152,9 @@ export default function ReportsPage() {
       setStartDate("2026-01-01");
       setEndDate("2026-12-31");
     } else if (preset === "ALL") {
-      setStartDate("2026-01-01");
-      setEndDate("2026-12-31");
+      setStartDate("2026-02-01");
+      setEndDate("2026-08-31");
     }
-    showToast("Đã lọc báo cáo theo thời gian lựa chọn!", "success");
   };
 
   const handleExportExcel = () => {
@@ -218,7 +213,7 @@ export default function ReportsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-slate-600" />
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Lọc Doanh Thu Theo Thời Gian:</span>
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Lọc Doanh Thu Tự Động (Instant Auto-Filter):</span>
           </div>
 
           {/* Quick Presets */}
@@ -230,7 +225,7 @@ export default function ReportsPage() {
                 filterPreset === "ALL" ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
               }`}
             >
-              Tất Cả
+              Tất Cả (T2 - T8)
             </button>
             <button
               type="button"
@@ -257,20 +252,23 @@ export default function ReportsPage() {
                 filterPreset === "YEAR_2026" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
               }`}
             >
-              Năm 2026
+              Cả Năm 2026
             </button>
           </div>
         </div>
 
-        {/* Custom Date Inputs */}
+        {/* Custom Date Inputs - Instant Auto Filter */}
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-600">Từ ngày:</span>
             <input
               type="date"
               value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setFilterPreset("CUSTOM"); }}
-              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setFilterPreset("CUSTOM");
+              }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-bold text-xs text-slate-900 bg-slate-50"
             />
           </div>
 
@@ -279,18 +277,17 @@ export default function ReportsPage() {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setFilterPreset("CUSTOM"); }}
-              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setFilterPreset("CUSTOM");
+              }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-bold text-xs text-slate-900 bg-slate-50"
             />
           </div>
 
-          <Button
-            onClick={() => showToast(`Đã áp dụng bộ lọc từ ngày ${startDate} đến ${endDate}`, "success")}
-            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs gap-1.5 py-1.5 px-4 rounded-xl cursor-pointer"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            Lọc Dữ Liệu
-          </Button>
+          <span className="text-emerald-700 font-extrabold text-[11px] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+            ⚡ Đang hiển thị {filteredChartData.length} kỳ báo cáo ({startDate} đến {endDate})
+          </span>
         </div>
       </div>
 
@@ -302,7 +299,7 @@ export default function ReportsPage() {
             <DollarSign className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="text-2xl font-extrabold text-emerald-900">{displayRevenue.toLocaleString("vi-VN")} VNĐ</p>
-          <span className="text-[11px] text-emerald-700 font-semibold">↑ Theo khoảng thời gian được lọc</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">↑ Tính toán tự động theo khoảng ngày chọn</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">

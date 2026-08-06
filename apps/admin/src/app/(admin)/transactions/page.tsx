@@ -49,10 +49,10 @@ export default function TransactionsAdminPage() {
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
   const [printingInvoice, setPrintingInvoice] = useState<PaymentTransaction | null>(null);
 
-  // Date Filter State
+  // Instant Reactive Date Filter State
   const [filterPreset, setFilterPreset] = useState<"ALL" | "TODAY" | "THIS_MONTH" | "YEAR_2026" | "CUSTOM">("ALL");
-  const [startDate, setStartDate] = useState("2026-01-01");
-  const [endDate, setEndDate] = useState("2026-12-31");
+  const [startDate, setStartDate] = useState("2026-02-01");
+  const [endDate, setEndDate] = useState("2026-08-31");
 
   async function fetchTransactions() {
     setIsLoading(true);
@@ -82,10 +82,9 @@ export default function TransactionsAdminPage() {
       setStartDate("2026-01-01");
       setEndDate("2026-12-31");
     } else if (preset === "ALL") {
-      setStartDate("2026-01-01");
-      setEndDate("2026-12-31");
+      setStartDate("2026-02-01");
+      setEndDate("2026-08-31");
     }
-    showToast("Đã lọc danh sách giao dịch theo thời gian!", "success");
   };
 
   const filteredTxs = transactions.filter((t) => {
@@ -97,8 +96,7 @@ export default function TransactionsAdminPage() {
 
     if (!matchesSearch) return false;
 
-    // Date Filter
-    if (filterPreset === "ALL") return true;
+    // Date Filter - Instant Live Match
     const txDate = (t.paidAt || t.createdAt).slice(0, 10);
     return txDate >= startDate && txDate <= endDate;
   });
@@ -157,7 +155,7 @@ export default function TransactionsAdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-slate-600" />
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Lọc Giao Dịch Theo Thời Gian:</span>
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Lọc Giao Dịch Tự Động (Instant Auto-Filter):</span>
           </div>
 
           {/* Quick Presets */}
@@ -169,7 +167,7 @@ export default function TransactionsAdminPage() {
                 filterPreset === "ALL" ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
               }`}
             >
-              Tất Cả
+              Tất Cả (T2 - T8)
             </button>
             <button
               type="button"
@@ -196,20 +194,23 @@ export default function TransactionsAdminPage() {
                 filterPreset === "YEAR_2026" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200"
               }`}
             >
-              Năm 2026
+              Cả Năm 2026
             </button>
           </div>
         </div>
 
-        {/* Custom Date Inputs */}
+        {/* Custom Date Inputs - Instant Auto Filter */}
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-600">Từ ngày:</span>
             <input
               type="date"
               value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setFilterPreset("CUSTOM"); }}
-              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setFilterPreset("CUSTOM");
+              }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-bold text-xs text-slate-900 bg-slate-50"
             />
           </div>
 
@@ -218,18 +219,17 @@ export default function TransactionsAdminPage() {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setFilterPreset("CUSTOM"); }}
-              className="rounded-xl border border-slate-300 px-3 py-1.5 font-medium text-xs text-slate-800"
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setFilterPreset("CUSTOM");
+              }}
+              className="rounded-xl border border-slate-300 px-3 py-1.5 font-bold text-xs text-slate-900 bg-slate-50"
             />
           </div>
 
-          <Button
-            onClick={() => showToast(`Đã lọc danh sách từ ${startDate} đến ${endDate}`, "success")}
-            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs gap-1.5 py-1.5 px-4 rounded-xl cursor-pointer"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            Lọc Giao Dịch
-          </Button>
+          <span className="text-emerald-700 font-extrabold text-[11px] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+            ⚡ Đang hiển thị {filteredTxs.length} / {transactions.length} giao dịch ({startDate} đến {endDate})
+          </span>
         </div>
       </div>
 
@@ -294,42 +294,50 @@ export default function TransactionsAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredTxs.map((tx) => (
-                <tr key={tx.orderCode} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3.5 font-mono font-bold text-slate-900">#{tx.orderCode}</td>
-                  <td className="p-3.5 font-bold text-slate-800">{tx.bookTitle}</td>
-                  <td className="p-3.5 font-mono font-bold text-emerald-600">
-                    +{tx.amount.toLocaleString("vi-VN")}đ
-                  </td>
-                  <td className="p-3.5 font-mono text-slate-500">{tx.paymentContent}</td>
-                  <td className="p-3.5 text-slate-500">
-                    {tx.paidAt ? new Date(tx.paidAt).toLocaleString("vi-VN") : new Date(tx.createdAt).toLocaleString("vi-VN")}
-                  </td>
-                  <td className="p-3.5">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <CheckCircle2 className="h-3 w-3" /> THÀNH CÔNG
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-right">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTx(tx)}
-                        className="font-bold text-amber-600 hover:text-amber-700 underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5" /> Mã QR
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPrintingInvoice(tx)}
-                        className="font-bold text-slate-700 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Printer className="h-3.5 w-3.5 text-slate-600" /> In Hóa Đơn
-                      </button>
-                    </div>
+              {filteredTxs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                    Không tìm thấy giao dịch nào trong khoảng thời gian từ {startDate} đến {endDate}.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTxs.map((tx) => (
+                  <tr key={tx.orderCode} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-3.5 font-mono font-bold text-slate-900">#{tx.orderCode}</td>
+                    <td className="p-3.5 font-bold text-slate-800">{tx.bookTitle}</td>
+                    <td className="p-3.5 font-mono font-bold text-emerald-600">
+                      +{tx.amount.toLocaleString("vi-VN")}đ
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-500">{tx.paymentContent}</td>
+                    <td className="p-3.5 text-slate-500">
+                      {tx.paidAt ? new Date(tx.paidAt).toLocaleString("vi-VN") : new Date(tx.createdAt).toLocaleString("vi-VN")}
+                    </td>
+                    <td className="p-3.5">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" /> THÀNH CÔNG
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTx(tx)}
+                          className="font-bold text-amber-600 hover:text-amber-700 underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Mã QR
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPrintingInvoice(tx)}
+                          className="font-bold text-slate-700 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Printer className="h-3.5 w-3.5 text-slate-600" /> In Hóa Đơn
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
