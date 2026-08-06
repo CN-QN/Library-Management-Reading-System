@@ -62,7 +62,10 @@ public class IndexCreator
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookIsbnKey));
 
             var bookTextKey = Builders<Book>.IndexKeys.Text(b => b.Title).Text(b => b.Summary);
-            await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookTextKey));
+            await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(
+                bookTextKey,
+                new CreateIndexOptions { DefaultLanguage = "none", LanguageOverride = "none" }
+            ));
 
             var bookStatusKey = Builders<Book>.IndexKeys.Ascending(b => b.Status);
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookStatusKey));
