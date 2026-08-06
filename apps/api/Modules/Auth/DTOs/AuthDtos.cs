@@ -7,8 +7,6 @@ public class RegisterRequest
     public string Password { get; set; } = string.Empty;
 
     public string FullName { get; set; } = string.Empty;
-
-    public string StudentCode { get; set; } = string.Empty;
 }
 
 public class LoginRequest
@@ -34,7 +32,6 @@ public class UserProfileDto
 {
     public string Id { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string StudentCode { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public bool NotifyBookAvailable { get; set; } = true;

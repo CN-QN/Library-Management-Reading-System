@@ -7,7 +7,6 @@ export interface User {
   fullName?: string;
   firstName?: string;
   lastName?: string;
-  studentCode?: string;
   avatar?: string | null;
   branchId?: string;
   branchName?: string;
