@@ -269,16 +269,6 @@ namespace api.Repositories.Implementations
             return result.ModifiedCount > 0;
         }
 
-        public async Task<bool> UpdateChapterAsync(string bookId, string chapterId, UpdateDefinition<Book> update)
-        {
-            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId) &
-                         Builders<Book>.Filter.ElemMatch(b => b.Chapters,
-                             Builders<BookChapter>.Filter.Eq(c => c.ChapterId, chapterId));
-
-            var result = await _collection.UpdateOneAsync(filter, update);
-            return result.ModifiedCount > 0;
-        }
-
         public async Task<bool> ReplaceChaptersAsync(string bookId, IReadOnlyList<BookChapter> chapters)
         {
             var existingBook = await GetByIdAsync(bookId);
