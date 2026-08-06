@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, LogOut, User, Clock, ShieldCheck, MapPin, Phone, Mail } from 'lucide-react';
+import { BookOpen, LogOut, User, Clock, ShieldCheck, MapPin, Phone, Mail, Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 ];
 
 export default function ReaderLayout({ children }: { children: React.ReactNode }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -42,16 +44,62 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2">
           
           {/* Logo & Main Nav */}
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl hover:opacity-90 transition-opacity">
-              <BookOpen size={24} />
-              <span>LibraryHub</span>
+          <div className="flex items-center gap-2 sm:gap-6 min-w-0">
+            {/* Mobile Navigation Menu Drawer */}
+            <div className="md:hidden flex items-center shrink-0">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger render={
+                  <Button variant="ghost" size="icon" className="h-9 w-9 p-0 cursor-pointer" aria-label="Mở menu di động">
+                    <Menu className="h-5 w-5 text-foreground" />
+                  </Button>
+                } />
+                <SheetContent side="left" className="w-[280px] sm:w-[320px] p-6 flex flex-col justify-between">
+                  <div className="space-y-6">
+                    <SheetHeader className="p-0 border-b pb-4 text-left">
+                      <SheetTitle className="flex items-center gap-2 text-primary font-bold text-lg">
+                        <BookOpen size={22} />
+                        <span>LibraryHub</span>
+                      </SheetTitle>
+                    </SheetHeader>
+
+                    <nav className="flex flex-col gap-1.5">
+                      {NAV_ITEMS.map((item) => {
+                        const isActive =
+                          item.href === '/'
+                            ? pathname === '/'
+                            : pathname ? pathname.startsWith(item.href) : false;
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={cn(
+                              'px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-between',
+                              isActive
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            )}
+                          >
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            <Link href="/" className="flex items-center gap-2 text-primary font-bold text-lg sm:text-xl hover:opacity-90 transition-opacity shrink-0">
+              <BookOpen size={22} className="shrink-0" />
+              <span className="truncate">LibraryHub</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-7 text-sm font-medium">
@@ -81,7 +129,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
           </div>
 
           {/* User Menu / Login Button */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger render={
