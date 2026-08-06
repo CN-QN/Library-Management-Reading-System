@@ -52,6 +52,9 @@ public class SeedRunner
             // ===== 10. SYNC RATING STATS FOR ALL BOOKS =====
             await SyncAllBookRatingStatsAsync();
 
+            // ===== 11. SEED PROMOTIONS (VOUCHERS, BANNERS, FLASH SALE) =====
+            await SeedPromotionsAsync();
+
             _logger.LogInformation("Database seeding process completed successfully.");
         }
         catch (Exception ex)
@@ -577,9 +580,49 @@ public class SeedRunner
                     var update = Builders<Book>.Update
                         .Set(b => b.Stats.Rating, 0.0)
                         .Set(b => b.Stats.RatingCount, 0);
-                    await _context.Books.UpdateOneAsync(b => b.Id == book.Id, update);
                 }
             }
+        }
+    }
+
+    private async Task SeedPromotionsAsync()
+    {
+        var voucherCount = await _context.Vouchers.CountDocumentsAsync(FilterDefinition<Voucher>.Empty);
+        if (voucherCount == 0)
+        {
+            _logger.LogInformation("Seeding default Vouchers...");
+            await _context.Vouchers.InsertManyAsync(new[]
+            {
+                new Voucher { Code = "LH50OFF", DiscountType = "PERCENT", DiscountValue = 50, MinOrderValue = 10000, MaxUsage = 500, UsedCount = 124, ExpiresAt = DateTime.UtcNow.AddMonths(6), Status = "ACTIVE" },
+                new Voucher { Code = "HE5K", DiscountType = "FIXED", DiscountValue = 5000, MinOrderValue = 10000, MaxUsage = 1000, UsedCount = 450, ExpiresAt = DateTime.UtcNow.AddMonths(3), Status = "ACTIVE" },
+                new Voucher { Code = "SINHVIEN2026", DiscountType = "PERCENT", DiscountValue = 20, MinOrderValue = 10000, MaxUsage = 200, UsedCount = 200, ExpiresAt = DateTime.UtcNow.AddDays(-10), Status = "EXPIRED" }
+            });
+        }
+
+        var bannerCount = await _context.Banners.CountDocumentsAsync(FilterDefinition<Banner>.Empty);
+        if (bannerCount == 0)
+        {
+            _logger.LogInformation("Seeding default Banners...");
+            await _context.Banners.InsertManyAsync(new[]
+            {
+                new Banner { Title = "Chào Hè 2026 - Mở Kho Sách Số 10.000đ", Subtitle = "Khám phá hàng nghìn tác phẩm E-Book bản quyền đọc mượt mà trên mọi thiết bị", ImageUrl = "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1200", LinkUrl = "/books", IsActive = true, SortOrder = 1 },
+                new Banner { Title = "Flash Sale Đọc Sách Số Chỉ 5.000 VNĐ", Subtitle = "Thanh toán siêu tốc VietQR SePay tự động mở khóa ngay tức thì", ImageUrl = "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=1200", LinkUrl = "/books", IsActive = true, SortOrder = 2 }
+            });
+        }
+
+        var flashSaleCount = await _context.FlashSales.CountDocumentsAsync(FilterDefinition<FlashSale>.Empty);
+        if (flashSaleCount == 0)
+        {
+            _logger.LogInformation("Seeding default FlashSale...");
+            await _context.FlashSales.InsertOneAsync(new FlashSale
+            {
+                Name = "Giờ Vàng Giá Sách 5.000 VNĐ - Hè 2026",
+                OriginalPrice = 10000,
+                SalePrice = 5000,
+                StartTime = DateTime.UtcNow,
+                EndTime = DateTime.UtcNow.AddDays(7),
+                Status = "RUNNING"
+            });
         }
     }
 

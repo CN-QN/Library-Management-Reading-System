@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Ticket, Plus, Trash2, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Ticket, Plus, Trash2, Copy, Check, RefreshCw } from 'lucide-react';
+import apiClient from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,45 +22,10 @@ interface VoucherItem {
 }
 
 export default function AdminVouchersPage() {
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Demo Vouchers List
-  const [vouchers, setVouchers] = useState<VoucherItem[]>([
-    {
-      id: '1',
-      code: 'LH50OFF',
-      discountType: 'PERCENT',
-      discountValue: 50,
-      minOrderValue: 10000,
-      maxUsage: 500,
-      usedCount: 124,
-      expiresAt: '2026-12-31',
-      status: 'ACTIVE',
-    },
-    {
-      id: '2',
-      code: 'HE5K',
-      discountType: 'FIXED',
-      discountValue: 5000,
-      minOrderValue: 10000,
-      maxUsage: 1000,
-      usedCount: 450,
-      expiresAt: '2026-09-01',
-      status: 'ACTIVE',
-    },
-    {
-      id: '3',
-      code: 'SINHVIEN2026',
-      discountType: 'PERCENT',
-      discountValue: 20,
-      minOrderValue: 10000,
-      maxUsage: 200,
-      usedCount: 200,
-      expiresAt: '2026-06-30',
-      status: 'EXPIRED',
-    },
-  ]);
 
   // Form State
   const [code, setCode] = useState('');
@@ -68,33 +34,56 @@ export default function AdminVouchersPage() {
   const [maxUsage, setMaxUsage] = useState(100);
   const [expiresAt, setExpiresAt] = useState('2026-12-31');
 
-  const handleCreateVoucher = (e: React.FormEvent) => {
+  const fetchVouchers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiClient.get('/vouchers');
+      const data = res.data?.data || [];
+      setVouchers(data);
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách Voucher:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
+
+  const handleCreateVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
       alert('Vui lòng nhập Mã Voucher!');
       return;
     }
 
-    const newVoucher: VoucherItem = {
-      id: Date.now().toString(),
-      code: code.toUpperCase().trim(),
-      discountType,
-      discountValue: Number(discountValue),
-      minOrderValue: 10000,
-      maxUsage: Number(maxUsage),
-      usedCount: 0,
-      expiresAt,
-      status: 'ACTIVE',
-    };
-
-    setVouchers([newVoucher, ...vouchers]);
-    setIsModalOpen(false);
-    setCode('');
+    try {
+      await apiClient.post('/vouchers', {
+        code: code.toUpperCase().trim(),
+        discountType,
+        discountValue: Number(discountValue),
+        minOrderValue: 10000,
+        maxUsage: Number(maxUsage),
+        expiresAt: new Date(expiresAt).toISOString(),
+        status: 'ACTIVE',
+      });
+      setIsModalOpen(false);
+      setCode('');
+      fetchVouchers();
+    } catch (err) {
+      alert('Không thể tạo Voucher. Mã có thể đã tồn tại.');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa mã voucher này?')) {
-      setVouchers((prev) => prev.filter((v) => v.id !== id));
+  const handleDelete = async (id: string) => {
+    if (confirm('Bạn có chắc muốn xóa mã voucher này khỏi hệ thống database?')) {
+      try {
+        await apiClient.delete(`/vouchers/${id}`);
+        setVouchers((prev) => prev.filter((v) => v.id !== id));
+      } catch (err) {
+        alert('Không thể xóa Voucher.');
+      }
     }
   };
 
@@ -109,16 +98,22 @@ export default function AdminVouchersPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Quản Lý Voucher & Mã Giảm Giá</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Quản Lý Voucher & Mã Giảm Giá (Database API Real)</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Tạo và quản lý mã giảm giá ưu đãi khi mua quyền đọc sách số 10.000 VNĐ qua VietQR SePay.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-1.5 self-start sm:self-auto">
-          <Plus className="h-4 w-4" />
-          Tạo Voucher Mới
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button onClick={() => setIsModalOpen(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            Tạo Voucher Mới
+          </Button>
+          <Button onClick={fetchVouchers} variant="outline" size="sm" className="gap-1.5">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+        </div>
       </div>
 
       {/* Vouchers Table */}
@@ -126,65 +121,71 @@ export default function AdminVouchersPage() {
         <CardHeader className="pb-3 border-b border-border">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Ticket className="h-5 w-5 text-primary" />
-            Danh Sách Mã Giảm Giá ({vouchers.length})
+            Danh Sách Mã Giảm Giá Trong Database ({vouchers.length})
           </CardTitle>
         </CardHeader>
 
         <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-muted/40 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
-              <tr>
-                <th className="px-4 py-3">Mã Voucher</th>
-                <th className="px-4 py-3">Mức giảm giá</th>
-                <th className="px-4 py-3">Lượt sử dụng</th>
-                <th className="px-4 py-3">Ngày hết hạn</th>
-                <th className="px-4 py-3 text-center">Trạng thái</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {vouchers.map((v) => {
-                const isActive = v.status === 'ACTIVE';
+          {isLoading ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">Đang tải danh sách voucher từ database...</div>
+          ) : vouchers.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">Chưa có voucher nào trong database.</div>
+          ) : (
+            <table className="w-full text-sm text-left border-collapse">
+              <thead className="bg-muted/40 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
+                <tr>
+                  <th className="px-4 py-3">Mã Voucher</th>
+                  <th className="px-4 py-3">Mức giảm giá</th>
+                  <th className="px-4 py-3">Lượt sử dụng</th>
+                  <th className="px-4 py-3">Ngày hết hạn</th>
+                  <th className="px-4 py-3 text-center">Trạng thái</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {vouchers.map((v) => {
+                  const isActive = v.status === 'ACTIVE';
 
-                return (
-                  <tr key={v.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3.5 flex items-center gap-2">
-                      <span className="font-mono font-bold text-base text-primary bg-primary/10 px-2.5 py-1 rounded border border-primary/20">
-                        {v.code}
-                      </span>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyCode(v.code)}>
-                        {copiedCode === v.code ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                      </Button>
-                    </td>
+                  return (
+                    <tr key={v.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3.5 flex items-center gap-2">
+                        <span className="font-mono font-bold text-base text-primary bg-primary/10 px-2.5 py-1 rounded border border-primary/20">
+                          {v.code}
+                        </span>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyCode(v.code)}>
+                          {copiedCode === v.code ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        </Button>
+                      </td>
 
-                    <td className="px-4 py-3.5 font-semibold text-foreground">
-                      {v.discountType === 'PERCENT' ? `Giảm ${v.discountValue}%` : `Giảm ${v.discountValue.toLocaleString('vi-VN')} VNĐ`}
-                    </td>
+                      <td className="px-4 py-3.5 font-semibold text-foreground">
+                        {v.discountType === 'PERCENT' ? `Giảm ${v.discountValue}%` : `Giảm ${v.discountValue.toLocaleString('vi-VN')} VNĐ`}
+                      </td>
 
-                    <td className="px-4 py-3.5 font-medium">
-                      {v.usedCount} / {v.maxUsage} lượt
-                    </td>
+                      <td className="px-4 py-3.5 font-medium">
+                        {v.usedCount} / {v.maxUsage} lượt
+                      </td>
 
-                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                      {v.expiresAt}
-                    </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                        {new Date(v.expiresAt).toLocaleDateString('vi-VN')}
+                      </td>
 
-                    <td className="px-4 py-3.5 text-center">
-                      <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'bg-emerald-600' : ''}>
-                        {isActive ? 'Đang hoạt động' : 'Hết hạn'}
-                      </Badge>
-                    </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'bg-emerald-600' : ''}>
+                          {isActive ? 'Đang hoạt động' : 'Hết hạn'}
+                        </Badge>
+                      </td>
 
-                    <td className="px-4 py-3.5 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)} className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-4 py-3.5 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)} className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
 

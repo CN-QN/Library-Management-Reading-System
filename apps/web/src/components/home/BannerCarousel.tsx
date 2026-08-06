@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, BookOpen, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import apiClient from '@/lib/api-client';
 
 interface BannerSlide {
   id: string;
@@ -13,7 +13,7 @@ interface BannerSlide {
   linkUrl: string;
 }
 
-const DEFAULT_SLIDES: BannerSlide[] = [
+const FALLBACK_SLIDES: BannerSlide[] = [
   {
     id: '1',
     title: 'Chào Hè 2026 - Mở Kho Sách Số 10.000đ',
@@ -21,26 +21,37 @@ const DEFAULT_SLIDES: BannerSlide[] = [
     imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1200',
     linkUrl: '/books',
   },
-  {
-    id: '2',
-    title: 'Flash Sale Đọc Sách Số Chỉ 5.000 VNĐ',
-    subtitle: 'Thanh toán siêu tốc VietQR SePay tự động mở khóa ngay tức thì',
-    imageUrl: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=1200',
-    linkUrl: '/books',
-  },
 ];
 
 export default function BannerCarousel() {
+  const [slides, setSlides] = useState<BannerSlide[]>(FALLBACK_SLIDES);
   const [currentIdx, setCurrentIdx] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % DEFAULT_SLIDES.length);
-    }, 5000);
-    return () => clearInterval(timer);
+    const fetchBanners = async () => {
+      try {
+        const res = await apiClient.get('/banners');
+        const data = res.data?.data || [];
+        const activeBanners = data.filter((b: any) => b.isActive);
+        if (activeBanners.length > 0) {
+          setSlides(activeBanners);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải Banner từ API:', err);
+      }
+    };
+    fetchBanners();
   }, []);
 
-  const slide = DEFAULT_SLIDES[currentIdx];
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const slide = slides[currentIdx] || FALLBACK_SLIDES[0];
 
   return (
     <div className="relative w-full h-[320px] sm:h-[400px] rounded-2xl overflow-hidden shadow-xl border border-border group">
@@ -65,7 +76,7 @@ export default function BannerCarousel() {
 
         <div>
           <Link
-            href={slide.linkUrl}
+            href={slide.linkUrl || '/books'}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/30"
           >
             <BookOpen className="h-4 w-4" />
@@ -76,30 +87,34 @@ export default function BannerCarousel() {
       </div>
 
       {/* Navigation Buttons */}
-      <button
-        onClick={() => setCurrentIdx((prev) => (prev - 1 + DEFAULT_SLIDES.length) % DEFAULT_SLIDES.length)}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-
-      <button
-        onClick={() => setCurrentIdx((prev) => (prev + 1) % DEFAULT_SLIDES.length)}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-
-      {/* Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-        {DEFAULT_SLIDES.map((_, i) => (
+      {slides.length > 1 && (
+        <>
           <button
-            key={i}
-            onClick={() => setCurrentIdx(i)}
-            className={`h-2 rounded-full transition-all ${i === currentIdx ? 'w-6 bg-primary' : 'w-2 bg-white/50'}`}
-          />
-        ))}
-      </div>
+            onClick={() => setCurrentIdx((prev) => (prev - 1 + slides.length) % slides.length)}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={() => setCurrentIdx((prev) => (prev + 1) % slides.length)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Indicators */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentIdx(i)}
+                className={`h-2 rounded-full transition-all ${i === currentIdx ? 'w-6 bg-primary' : 'w-2 bg-white/50'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

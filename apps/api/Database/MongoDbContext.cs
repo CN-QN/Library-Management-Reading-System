@@ -57,9 +57,12 @@ public class MongoDbContext
     // ===== REVIEWS (M11) =====
     public IMongoCollection<Review> Reviews => _database.GetCollection<Review>("reviews");
 
-    // ===== PAYMENTS (SEPAY) =====
+    // ===== PAYMENTS & PROMOTIONS (SEPAY & PROMO) =====
     public IMongoCollection<PaymentOrder> PaymentOrders => _database.GetCollection<PaymentOrder>("payment_orders");
     public IMongoCollection<UserBookAccess> UserBookAccesses => _database.GetCollection<UserBookAccess>("user_book_accesses");
+    public IMongoCollection<Voucher> Vouchers => _database.GetCollection<Voucher>("vouchers");
+    public IMongoCollection<Banner> Banners => _database.GetCollection<Banner>("banners");
+    public IMongoCollection<FlashSale> FlashSales => _database.GetCollection<FlashSale>("flash_sales");
 
     // ===== SYSTEM SETTINGS (M15) =====
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("system_settings");
