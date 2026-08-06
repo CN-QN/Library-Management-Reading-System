@@ -38,6 +38,7 @@ export default function BannersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -107,6 +108,24 @@ export default function BannersPage() {
     }
   }
 
+  async function uploadBanner(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const asset = await mediaApi.upload(file, "banner", "promotions");
+      setMedia((current) => current.some((item) => item.id === asset.id) ? current : [...current, asset]);
+      setForm((current) => ({ ...current, mediaId: asset.id }));
+      showToast("Đã tải ảnh banner.", "success");
+    } catch (cause) {
+      showToast(cause instanceof Error ? cause.message : "Không thể tải ảnh banner.", "error");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  }
+
   async function toggle(item: Banner) {
     if (!item.mediaId) {
       showToast("Banner cũ chưa liên kết Media; hãy chỉnh sửa và chọn ảnh trước.", "error");
@@ -151,15 +170,15 @@ export default function BannersPage() {
 
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {isLoading ? (
-        <p className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500">Đang tải banner…</p>
+        <p className="rounded-xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm">Đang tải banner…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-white p-10 text-center text-slate-500">
+        <div className="rounded-xl bg-white p-10 text-center text-slate-500 shadow-sm">
           <ImageIcon className="mx-auto mb-2 h-8 w-8" />Chưa có banner.
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {items.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-xl border bg-white shadow-sm">
+            <article key={item.id} className="overflow-hidden rounded-xl bg-white shadow-sm">
               <div className="relative h-48 bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
@@ -171,7 +190,7 @@ export default function BannersPage() {
                   <p className="mt-1 text-sm text-slate-500">{item.subtitle || "Không có mô tả"}</p>
                   <p className="mt-1 text-xs text-slate-400">{item.linkUrl} · thứ tự {item.sortOrder}</p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                   <Button size="sm" variant="outline" onClick={() => void toggle(item)}>{item.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{item.isActive ? "Ẩn" : "Hiện"}</Button>
                   <Button size="sm" variant="outline" onClick={() => openEdit(item)}><Edit2 className="h-4 w-4" />Sửa</Button>
                   <Button size="sm" variant="danger" onClick={() => void remove(item)}><Trash2 className="h-4 w-4" />Xóa</Button>
@@ -189,21 +208,25 @@ export default function BannersPage() {
         footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="banner-form" type="submit" isLoading={isSaving}>Lưu banner</Button></>}
       >
         <form id="banner-form" onSubmit={save} className="space-y-4">
-          <Input label="Tiêu đề *" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          <Input label="Mô tả" value={form.subtitle} onChange={(event) => setForm({ ...form, subtitle: event.target.value })} />
-          <Select label="Ảnh banner trong Media *" required value={form.mediaId} onChange={(event) => setForm({ ...form, mediaId: event.target.value })}>
+          <Input label="Tiêu đề *" required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
+          <Input label="Mô tả" value={form.subtitle} onChange={(event) => setForm((current) => ({ ...current, subtitle: event.target.value }))} />
+          <Select label="Ảnh banner trong Media *" required value={form.mediaId} onChange={(event) => setForm((current) => ({ ...current, mediaId: event.target.value }))}>
             <option value="">Chọn ảnh banner…</option>
             {media.map((asset) => <option key={asset.id} value={asset.id}>{asset.originalFileName}</option>)}
           </Select>
+          <label className="block rounded-lg border border-dashed border-slate-300 p-3 text-center text-sm text-slate-600 hover:border-slate-500">
+            {isUploading ? "Đang tải ảnh…" : "Hoặc chọn ảnh mới từ máy"}
+            <input className="hidden" type="file" accept="image/*" disabled={isUploading || isSaving} onChange={uploadBanner} />
+          </label>
           {selectedMedia && (
-            <div className="overflow-hidden rounded-lg border bg-slate-50 p-2">
+            <div className="overflow-hidden rounded-lg bg-slate-50 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selectedMedia.fileUrl} alt="Xem trước banner" className="h-32 w-full rounded object-cover" />
             </div>
           )}
-          <Input label="Đường dẫn" required value={form.linkUrl} onChange={(event) => setForm({ ...form, linkUrl: event.target.value })} />
-          <Input label="Thứ tự" type="number" min={0} value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
-          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} />Hiển thị banner ngay</label>
+          <Input label="Đường dẫn" required value={form.linkUrl} onChange={(event) => setForm((current) => ({ ...current, linkUrl: event.target.value }))} />
+          <Input label="Thứ tự" type="number" min={0} value={form.sortOrder} onChange={(event) => setForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} />
+          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} />Hiển thị banner ngay</label>
         </form>
       </Modal>
     </div>

@@ -11,12 +11,14 @@ export const API_BASE_URL =
 export class ApiError extends Error {
   readonly statusCode: number;
   readonly errorCode?: string;
+  readonly details?: Array<{ field: string; code?: string; message: string }>;
 
-  constructor(message: string, statusCode: number, errorCode?: string) {
+  constructor(message: string, statusCode: number, errorCode?: string, details?: Array<{ field: string; code?: string; message: string }>) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
     this.errorCode = errorCode;
+    this.details = details;
   }
 }
 
@@ -79,7 +81,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!response.ok || !parsed || parsed.success === false) {
     const message = parsed?.message ?? response.statusText;
     const errorCode = parsed && !parsed.success ? parsed.errorCode : undefined;
-    throw new ApiError(message, response.status, errorCode);
+    const details = parsed && !parsed.success ? parsed.details : undefined;
+    throw new ApiError(message, response.status, errorCode, details);
   }
 
   return parsed.data;
