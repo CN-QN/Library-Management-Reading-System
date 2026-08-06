@@ -131,10 +131,6 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
                   <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span>Giờ mở cửa: T2 - T7 (08:00 - 20:00)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Bảo mật hệ thống chuẩn SSL 256-bit</span>
-                </div>
               </div>
             </div>
 
@@ -146,7 +142,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
               <ul className="space-y-2 text-xs text-muted-foreground">
                 <li>
                   <Link href="/" className="hover:text-primary transition-colors">
-                    Trang chủ Portal
+                    Trang chủ
                   </Link>
                 </li>
                 <li>
@@ -204,7 +200,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
               <div className="space-y-2.5 text-xs text-muted-foreground">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>Số 1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội</span>
+                  <span>140 Lê Trọng Tấn, Tân Phú, TP.HCM</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-primary shrink-0" />
@@ -220,7 +216,7 @@ export default function ReaderLayout({ children }: { children: React.ReactNode }
 
           {/* Bottom Copyright Bar */}
           <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-            <p>© 2026 LibraryHub Management System. Tất cả quyền được bảo lưu.</p>
+            <p>© 2026 LibraryHub Management System.</p>
             <div className="flex items-center gap-6">
               <span className="hover:text-foreground cursor-pointer transition-colors">
                 Điều khoản dịch vụ
