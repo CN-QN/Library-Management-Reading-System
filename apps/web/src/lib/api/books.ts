@@ -45,6 +45,7 @@ export interface SearchBooksParams {
   Limit?: number;
   CategoryId?: string;
   Language?: string;
+  Availability?: string;
   AccessType?: string;
   SortBy?: string;
   SortOrder?: 'asc' | 'desc';

@@ -65,6 +65,7 @@ namespace api.Repositories.Implementations
             string? status,
             string? availability,
             string? accessType,
+            string? language,
             int page,
             int limit,
             string sortBy = "createdAt",
@@ -105,6 +106,20 @@ namespace api.Repositories.Implementations
             if (!string.IsNullOrEmpty(accessType))
             {
                 filters.Add(filterBuilder.Eq(b => b.AccessType, accessType));
+            }
+
+            // Lọc theo Language
+            if (!string.IsNullOrEmpty(language))
+            {
+                var langs = language.Split(',').Select(l => l.Trim()).ToList();
+                if (langs.Count == 1)
+                {
+                    filters.Add(filterBuilder.Eq(b => b.Language, langs[0]));
+                }
+                else if (langs.Count > 1)
+                {
+                    filters.Add(filterBuilder.In(b => b.Language, langs));
+                }
             }
 
             // Lọc theo tình trạng bản sao dựa vào book_copies

@@ -188,7 +188,7 @@ function FilterContent({
             <div key={language.value ?? 'vi'} className="flex items-center space-x-2">
               <Checkbox
                 id={`language-${language.value}`}
-                checked={selectedLanguage === language.value}
+                checked={selectedLanguage.split(',').includes(language.value ?? '')}
                 onCheckedChange={(checked) => onLanguageChange(language.value ?? '', checked === true)}
               />
               <Label htmlFor={`language-${language.value}`} className="text-sm font-normal cursor-pointer">
@@ -315,7 +315,16 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       sortOptions={sortOptions}
       onKeywordChange={(value) => replaceParams({ Keyword: value || null })}
       onCategoryChange={(value) => replaceParams({ CategoryId: value === 'all' ? null : value })}
-      onLanguageChange={(value, checked) => replaceParams({ Language: checked ? value : null })}
+      onLanguageChange={(value, checked) => {
+        const currentLangs = selectedLanguage ? selectedLanguage.split(',') : [];
+        if (checked) {
+          if (!currentLangs.includes(value)) currentLangs.push(value);
+        } else {
+          const idx = currentLangs.indexOf(value);
+          if (idx > -1) currentLangs.splice(idx, 1);
+        }
+        replaceParams({ Language: currentLangs.length > 0 ? currentLangs.join(',') : null });
+      }}
       onAvailabilityChange={(value) => replaceParams({ Availability: value === 'all' ? null : value })}
       onSortChange={handleSortChange}
       onClearFilters={handleClearFilters}
