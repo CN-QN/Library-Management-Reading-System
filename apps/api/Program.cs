@@ -21,6 +21,7 @@ using api.Modules.Notifications.Services;
 using api.Modules.Files.Services;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
+using api.Modules.Payment.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -114,6 +115,11 @@ builder.Services.AddScoped<
     builder.Services.AddScoped<IBorrowingRepository, BorrowingRepository>();
     builder.Services.AddScoped<IFineRepository, FineRepository>();
     builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+
+    // ===== PAYMENT MODULE (SEPAY & REDIS PUB/SUB) =====
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IRedisPaymentService, RedisPaymentService>();
+    builder.Services.AddScoped<IPaymentService, PaymentService>();
 
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<IReadingSessionRepository, ReadingSessionRepository>();
@@ -258,6 +264,7 @@ builder.Services.AddScoped<
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<api.Modules.Payment.Hubs.PaymentHub>("/hubs/payment");
 
     await app.RunAsync();
 }
