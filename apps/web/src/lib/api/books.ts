@@ -4,11 +4,11 @@ import { Book, BookAuthorSnapshot, BookCategorySnapshot, BookPublisherSnapshot }
 
 /**
  * Lấy danh sách sách đang thịnh hành.
- * Sử dụng ISR cache của Next.js (3600s) để giảm tải cho DB vì danh sách này ít thay đổi liên tục.
+ * Sử dụng ISR cache của Next.js (60s) để tối ưu hiệu năng và cập nhật kịp thời.
  */
 export async function getTrendingBooks(limit: number = 10): Promise<Book[]> {
   const res = await fetch(`${API_URL}/Books/trending?limit=${limit}`, {
-    next: { revalidate: 3600 },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error('Failed to fetch trending books');
   const data = await res.json();
@@ -18,11 +18,11 @@ export async function getTrendingBooks(limit: number = 10): Promise<Book[]> {
 
 /**
  * Lấy danh sách sách mới phát hành.
- * Sử dụng ISR cache (3600s) tương tự mục thịnh hành.
+ * Sử dụng ISR cache của Next.js (60s).
  */
 export async function getNewReleases(limit: number = 10): Promise<Book[]> {
   const res = await fetch(`${API_URL}/Books/new-releases?limit=${limit}`, {
-    next: { revalidate: 3600 },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error('Failed to fetch new releases');
   const data = await res.json();

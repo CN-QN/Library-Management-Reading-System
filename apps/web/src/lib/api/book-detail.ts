@@ -144,7 +144,7 @@ export const getBookBySlug = cache(async (slug: string): Promise<BookDetail> => 
  */
 export const getBookById = cache(async (id: string): Promise<BookDetail> => {
   const res = await fetch(`${API_URL}/Books/${encodeURIComponent(id)}`, {
-    next: { revalidate: 3600 },
+    next: { revalidate: 60 },
   });
 
   if (res.status === 404) {
