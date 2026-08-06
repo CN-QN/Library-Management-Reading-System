@@ -247,9 +247,19 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
   const selectedAccessType = searchParams.get('AccessType') || '';
   const selectedSort = searchParams.get('Sort') || searchParams.get('SortBy') || DEFAULT_SORT;
 
-  // Chuyển đổi danh sách thể loại từ dữ liệu API backend
+  // Chuyển đổi danh sách thể loại từ dữ liệu API backend (khử trùng lặp theo tên chuẩn hóa)
   const categoryOptions = useMemo(() => {
-    return filtersData?.categories?.map((c) => ({ value: c.id, label: c.name })) ?? [];
+    if (!filtersData?.categories) return [];
+    const seen = new Set<string>();
+    const result: { value: string; label: string }[] = [];
+    for (const c of filtersData.categories) {
+      const normKey = (c.name || c.slug || c.id || '').toLowerCase().trim();
+      if (normKey && !seen.has(normKey)) {
+        seen.add(normKey);
+        result.push({ value: c.id || c.slug, label: c.name });
+      }
+    }
+    return result;
   }, [filtersData]);
 
   // Tùy chọn hình thức đọc (miễn phí / trả phí) từ API backend với fallback

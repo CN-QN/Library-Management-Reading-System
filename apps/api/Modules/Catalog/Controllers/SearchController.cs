@@ -39,7 +39,7 @@ namespace api.Modules.Catalog.Controllers
                 
                 var categories = books.SelectMany(b => b.Categories)
                     .Where(c => !string.IsNullOrWhiteSpace(c.Name))
-                    .GroupBy(c => string.IsNullOrWhiteSpace(c.Slug) ? c.Name.ToLowerInvariant().Trim() : c.Slug.ToLowerInvariant().Trim())
+                    .GroupBy(c => c.Name.ToLowerInvariant().Trim())
                     .Select(g => g.First())
                     .OrderBy(c => c.Name)
                     .ToList();
