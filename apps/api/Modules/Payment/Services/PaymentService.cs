@@ -83,9 +83,11 @@ public class PaymentService : IPaymentService
         _logger.LogInformation("Processing SePay Webhook: Content='{Content}', Amount={Amount}, Gateway='{Gateway}'",
             dto.Content, dto.TransferAmount, dto.Gateway);
 
-        if (string.IsNullOrWhiteSpace(dto.Content))
+        // Nếu là request kiểm thử từ nút "Gửi thử" trên SePay Dashboard
+        if (dto.Content.Contains("SEPAY TEST WEBHOOK", StringComparison.OrdinalIgnoreCase) || dto.Content.Contains("TEST", StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            _logger.LogInformation("SePay test webhook signal verified successfully.");
+            return true;
         }
 
         // Tìm mã đơn hàng dạng LHxxxxxx trong nội dung chuyển khoản
