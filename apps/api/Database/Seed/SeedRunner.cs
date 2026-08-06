@@ -67,6 +67,16 @@ public class SeedRunner
                 await _context.Database.DropCollectionAsync(col);
                 _logger.LogInformation("Dropped collection: {CollectionName}", col);
             }
+
+            // Self-healing: if 'books' contains old schema documents (e.g. has 'publisherId'), drop it and 'book_copies' to force a clean seed
+            var booksCollection = _context.Database.GetCollection<BsonDocument>("books");
+            var hasOldSchema = await booksCollection.Find(Builders<BsonDocument>.Filter.Exists("publisherId")).AnyAsync();
+            if (hasOldSchema)
+            {
+                _logger.LogWarning("Old catalog schema detected in 'books' collection. Dropping 'books' and 'book_copies' to trigger a clean embedded seed...");
+                await _context.Database.DropCollectionAsync("books");
+                await _context.Database.DropCollectionAsync("book_copies");
+            }
         }
     }
 
