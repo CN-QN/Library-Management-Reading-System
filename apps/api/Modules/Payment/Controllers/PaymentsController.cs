@@ -68,14 +68,19 @@ public class PaymentsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(_sePaySettings.ApiKey))
         {
             var expectedToken = _sePaySettings.ApiKey.Trim();
-            var providedToken = authHeader?.Replace("Apikey", "", StringComparison.OrdinalIgnoreCase)
-                                          .Replace("Bearer", "", StringComparison.OrdinalIgnoreCase)
-                                          .Trim() ?? "";
+
+            // Lấy token từ header Authorization hoặc x-sepay-api-key
+            var rawHeader = authHeader ?? Request.Headers["x-sepay-api-key"].ToString();
+            var providedToken = rawHeader
+                ?.Replace("Apikey", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("Bearer", "", StringComparison.OrdinalIgnoreCase)
+                .Trim() ?? "";
 
             if (!string.Equals(expectedToken, providedToken, StringComparison.Ordinal))
             {
-                _logger.LogWarning("SePay Webhook Authorization header verification failed");
-                return Unauthorized(new { status = 401, message = "Unauthorized webhook request" });
+                _logger.LogWarning("SePay Webhook Authorization verification failed. Expected ApiKey in appsettings.json: '{Expected}', Received header: '{Header}'",
+                    expectedToken, rawHeader);
+                return Unauthorized(new { status = 401, message = "Unauthorized webhook request. Secret token mismatch." });
             }
         }
 
