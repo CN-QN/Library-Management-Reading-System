@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Library,
   ShieldCheck,
+  Mail,
 } from "lucide-react";
 
 interface NavItem {
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/flash-sale", label: "Sự kiện Flash Sale", epic: "E5.13", permissions: [], icon: Zap },
   { href: "/media", label: "Thư viện Media", epic: "E5.14", permissions: [], icon: HardDrive },
   { href: "/reviews", label: "Kiểm duyệt Đánh giá", epic: "E5.15", permissions: [], icon: Star },
+  { href: "/email-campaigns", label: "Gửi Email & Tin tức", epic: "E5.17", permissions: [], icon: Mail },
   { href: "/reports", label: "Báo cáo & Thống kê", epic: "E5.7", permissions: [Permissions.ReportView], icon: BarChart2 },
   { href: "/settings", label: "Cấu hình hệ thống", epic: "E5.9", permissions: [Permissions.SettingRead], icon: Settings },
   { href: "/audit-logs", label: "Nhật ký hệ thống", epic: "E5.10", permissions: [Permissions.AuditRead], icon: History },
