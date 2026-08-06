@@ -69,17 +69,18 @@ public class PaymentsController : ControllerBase
         {
             var expectedToken = _sePaySettings.ApiKey.Trim();
 
-            // Lấy token từ header Authorization hoặc x-sepay-api-key
-            var rawHeader = authHeader ?? Request.Headers["x-sepay-api-key"].ToString();
-            var providedToken = rawHeader
-                ?.Replace("Apikey", "", StringComparison.OrdinalIgnoreCase)
-                .Replace("Bearer", "", StringComparison.OrdinalIgnoreCase)
-                .Trim() ?? "";
+            // Kiểm tra token ở tất cả các vị trí header SePay có thể gửi
+            var authHeaderStr = Request.Headers["Authorization"].ToString();
+            var xApiKeyHeaderStr = Request.Headers["x-sepay-api-key"].ToString();
+            var apiKeyHeaderStr = Request.Headers["Apikey"].ToString();
+            var customHeaderStr = Request.Headers["api-key"].ToString();
 
-            if (!string.Equals(expectedToken, providedToken, StringComparison.Ordinal))
+            var combinedHeaders = $"{authHeaderStr} {xApiKeyHeaderStr} {apiKeyHeaderStr} {customHeaderStr}".Trim();
+
+            if (string.IsNullOrWhiteSpace(combinedHeaders) || !combinedHeaders.Contains(expectedToken, StringComparison.Ordinal))
             {
-                _logger.LogWarning("SePay Webhook Authorization verification failed. Expected ApiKey in appsettings.json: '{Expected}', Received header: '{Header}'",
-                    expectedToken, rawHeader);
+                _logger.LogWarning("SePay Webhook Authorization verification failed. Expected ApiKey: '{Expected}', Received headers: Authorization='{Auth}', x-sepay-api-key='{XApi}', Apikey='{Apikey}'",
+                    expectedToken, authHeaderStr, xApiKeyHeaderStr, apiKeyHeaderStr);
                 return Unauthorized(new { status = 401, message = "Unauthorized webhook request. Secret token mismatch." });
             }
         }
