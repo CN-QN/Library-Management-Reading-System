@@ -1,19 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { BookCover } from "@/components/ui/book-cover";
 import { useToast } from "@/components/ui/toast";
-import { useAsync } from "@/hooks/use-async";
 import { slugify } from "@/lib/slugify";
-import { booksApi, type Book, type CreateBookInput, type UpdateBookInput } from "@/lib/api/books";
-import { categoriesApi } from "@/lib/api/categories";
-import { authorsApi } from "@/lib/api/authors";
+import {
+  booksApi,
+  type Book,
+  type BookAuthorSnapshot,
+  type BookCategorySnapshot,
+  type BookPublisherSnapshot,
+  type CreateBookInput,
+  type UpdateBookInput,
+} from "@/lib/api/books";
 
 const ACCESS_TYPES = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
 
@@ -22,19 +26,176 @@ interface CreateFormValues {
   slug: string;
   isbn: string;
   summary: string;
-  publisherId: string;
   publicationYear: string;
   language: string;
   accessType: string;
+  // Publisher inline
+  publisherId: string;
+  publisherName: string;
+  publisherSlug: string;
 }
 
 interface EditFormValues {
   title: string;
   summary: string;
-  publisherId: string;
   publicationYear: string;
   language: string;
   accessType: string;
+  // Publisher inline
+  publisherId: string;
+  publisherName: string;
+  publisherSlug: string;
+}
+
+// ---------------------------------------------------------------------------
+// Inline author row editor
+// ---------------------------------------------------------------------------
+
+function AuthorRow({
+  author,
+  index,
+  onChange,
+  onRemove,
+}: {
+  author: BookAuthorSnapshot;
+  index: number;
+  onChange: (a: BookAuthorSnapshot) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
+      <div className="col-span-3">
+        <label className="mb-1 block text-xs text-slate-500">ID tác giả</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={author.authorId}
+          onChange={(e) => onChange({ ...author, authorId: e.target.value })}
+          placeholder="author-uuid"
+        />
+      </div>
+      <div className="col-span-3">
+        <label className="mb-1 block text-xs text-slate-500">Tên</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={author.name}
+          onChange={(e) => onChange({ ...author, name: e.target.value })}
+          placeholder="Tên tác giả"
+        />
+      </div>
+      <div className="col-span-2">
+        <label className="mb-1 block text-xs text-slate-500">Slug</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={author.slug}
+          onChange={(e) => onChange({ ...author, slug: e.target.value })}
+          placeholder="slug"
+        />
+      </div>
+      <div className="col-span-2">
+        <label className="mb-1 block text-xs text-slate-500">Vai trò</label>
+        <select
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={author.role}
+          onChange={(e) => onChange({ ...author, role: e.target.value })}
+        >
+          <option value="AUTHOR">AUTHOR</option>
+          <option value="CO_AUTHOR">CO_AUTHOR</option>
+          <option value="EDITOR">EDITOR</option>
+          <option value="TRANSLATOR">TRANSLATOR</option>
+        </select>
+      </div>
+      <div className="col-span-1">
+        <label className="mb-1 block text-xs text-slate-500">Thứ tự</label>
+        <input
+          type="number"
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={author.order}
+          onChange={(e) => onChange({ ...author, order: Number(e.target.value) })}
+          min={1}
+        />
+      </div>
+      <div className="col-span-1 flex justify-end">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+          aria-label={`Xóa tác giả ${index + 1}`}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline category row editor
+// ---------------------------------------------------------------------------
+
+function CategoryRow({
+  category,
+  index,
+  onChange,
+  onRemove,
+}: {
+  category: BookCategorySnapshot;
+  index: number;
+  onChange: (c: BookCategorySnapshot) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
+      <div className="col-span-4">
+        <label className="mb-1 block text-xs text-slate-500">ID thể loại</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={category.categoryId}
+          onChange={(e) => onChange({ ...category, categoryId: e.target.value })}
+          placeholder="category-uuid"
+        />
+      </div>
+      <div className="col-span-4">
+        <label className="mb-1 block text-xs text-slate-500">Tên</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={category.name}
+          onChange={(e) => onChange({ ...category, name: e.target.value })}
+          placeholder="Tên thể loại"
+        />
+      </div>
+      <div className="col-span-3">
+        <label className="mb-1 block text-xs text-slate-500">Slug</label>
+        <input
+          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          value={category.slug}
+          onChange={(e) => onChange({ ...category, slug: e.target.value })}
+          placeholder="slug"
+        />
+      </div>
+      <div className="col-span-1 flex justify-end items-end">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+          aria-label={`Xóa thể loại ${index + 1}`}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function emptyAuthor(order: number): BookAuthorSnapshot {
+  return { authorId: "", name: "", slug: "", role: "AUTHOR", order };
+}
+
+function emptyCategory(): BookCategorySnapshot {
+  return { categoryId: "", name: "", slug: "" };
 }
 
 /** Uploads the cover via the real Files API; failure doesn't block the save flow. */
@@ -108,25 +269,25 @@ function CoverPicker({
   );
 }
 
-/** Real Author/Category options, backed by the Catalog CRUD endpoints. */
-function useCatalogOptions() {
-  const fetchCategories = useCallback(() => categoriesApi.list(), []);
-  const fetchAuthors = useCallback(() => authorsApi.search({ page: 1, pageSize: 200 }), []);
-  const { data: categories } = useAsync(fetchCategories);
-  const { data: authorsPage } = useAsync(fetchAuthors);
-  return {
-    categories: categories ?? [],
-    authors: authorsPage?.items ?? [],
-  };
+// ---------------------------------------------------------------------------
+// Publisher inline fields helper
+// ---------------------------------------------------------------------------
+
+function buildPublisher(id: string, name: string, slug: string): BookPublisherSnapshot | undefined {
+  if (!id && !name) return undefined;
+  return { publisherId: id, name, slug: slug || slugify(name) };
 }
+
+// ---------------------------------------------------------------------------
+// CreateBookForm
+// ---------------------------------------------------------------------------
 
 export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void }) {
   const { showToast } = useToast();
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
-  const [authorIds, setAuthorIds] = useState<string[]>([]);
-  const [categoryIds, setCategoryIds] = useState<string[]>([]);
-  const { authors, categories } = useCatalogOptions();
+  const [authors, setAuthors] = useState<BookAuthorSnapshot[]>([emptyAuthor(1)]);
+  const [categories, setCategories] = useState<BookCategorySnapshot[]>([emptyCategory()]);
   const {
     register,
     handleSubmit,
@@ -141,6 +302,8 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       isbn: "",
       summary: "",
       publisherId: "",
+      publisherName: "",
+      publisherSlug: "",
       publicationYear: "",
       language: "vi",
       accessType: "FREE",
@@ -148,6 +311,30 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
   });
 
   const title = watch("title");
+
+  function updateAuthor(index: number, a: BookAuthorSnapshot) {
+    setAuthors((prev) => prev.map((x, i) => (i === index ? a : x)));
+  }
+  function removeAuthor(index: number) {
+    setAuthors((prev) => prev.filter((_, i) => i !== index));
+  }
+  function addAuthor() {
+    setAuthors((prev) => [...prev, emptyAuthor(prev.length + 1)]);
+  }
+
+  function updateCategory(index: number, c: BookCategorySnapshot) {
+    setCategories((prev) => prev.map((x, i) => (i === index ? c : x)));
+  }
+  function removeCategory(index: number) {
+    setCategories((prev) => prev.filter((_, i) => i !== index));
+  }
+  function addCategory() {
+    setCategories((prev) => [...prev, emptyCategory()]);
+  }
+
+  function autoSlugPublisher(name: string) {
+    if (!slugTouched) setValue("publisherSlug", slugify(name));
+  }
 
   async function onSubmit(values: CreateFormValues) {
     try {
@@ -166,17 +353,20 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         }
       }
 
+      const validAuthors = authors.filter((a) => a.authorId && a.name);
+      const validCategories = categories.filter((c) => c.categoryId && c.name);
+
       const payload: CreateBookInput = {
         title: values.title,
         slug: values.slug || slugify(values.title),
         isbn: values.isbn || undefined,
         summary: values.summary || undefined,
-        publisherId: values.publisherId || undefined,
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
-        authorIds,
-        categoryIds,
+        authors: validAuthors,
+        categories: validCategories,
+        publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
       };
 
       const book = await booksApi.create(payload);
@@ -210,7 +400,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
           })}
         />
         <Input label="ISBN" error={errors.isbn?.message} {...register("isbn")} />
-        <Input label="Nhà xuất bản (ID)" {...register("publisherId")} />
         <Input
           label="Năm xuất bản"
           type="number"
@@ -228,13 +417,67 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
 
       <Textarea label="Tóm tắt" {...register("summary")} />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <MultiSelect label="Tác giả" options={authors} selectedIds={authorIds} onChange={setAuthorIds} />
-        <MultiSelect label="Thể loại" options={categories} selectedIds={categoryIds} onChange={setCategoryIds} />
+      {/* Publisher */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
+          <Input
+            label="Tên NXB"
+            {...register("publisherName", {
+              onChange: (e) => autoSlugPublisher(e.target.value as string),
+            })}
+            placeholder="Tên nhà xuất bản"
+          />
+          <Input label="Slug NXB" {...register("publisherSlug")} placeholder="slug-nxb" />
+        </div>
       </div>
-      <p className="-mt-3 text-xs text-slate-400">
-        Nhà xuất bản vẫn chưa có API danh sách để chọn — nhập tạm ID.
-      </p>
+
+      {/* Authors */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Tác giả</p>
+        <div className="space-y-2">
+          {authors.map((a, i) => (
+            <AuthorRow
+              key={i}
+              index={i}
+              author={a}
+              onChange={(updated) => updateAuthor(i, updated)}
+              onRemove={() => removeAuthor(i)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addAuthor}
+          className="mt-2 rounded-md px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          + Thêm tác giả
+        </button>
+      </div>
+
+      {/* Categories */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Thể loại</p>
+        <div className="space-y-2">
+          {categories.map((c, i) => (
+            <CategoryRow
+              key={i}
+              index={i}
+              category={c}
+              onChange={(updated) => updateCategory(i, updated)}
+              onRemove={() => removeCategory(i)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addCategory}
+          className="mt-2 rounded-md px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          + Thêm thể loại
+        </button>
+      </div>
 
       <CoverPicker title={title} file={coverFile} onChange={setCoverFile} />
 
@@ -245,6 +488,10 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
   );
 }
 
+// ---------------------------------------------------------------------------
+// EditBookForm
+// ---------------------------------------------------------------------------
+
 export function EditBookForm({
   book,
   onSaved,
@@ -254,9 +501,12 @@ export function EditBookForm({
 }) {
   const { showToast } = useToast();
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [authorIds, setAuthorIds] = useState<string[]>(book.authorIds);
-  const [categoryIds, setCategoryIds] = useState<string[]>(book.categoryIds);
-  const { authors, categories } = useCatalogOptions();
+  const [authors, setAuthors] = useState<BookAuthorSnapshot[]>(
+    book.authors?.length ? book.authors : [emptyAuthor(1)]
+  );
+  const [categories, setCategories] = useState<BookCategorySnapshot[]>(
+    book.categories?.length ? book.categories : [emptyCategory()]
+  );
   const {
     register,
     handleSubmit,
@@ -266,7 +516,9 @@ export function EditBookForm({
     defaultValues: {
       title: book.title,
       summary: book.summary ?? "",
-      publisherId: "",
+      publisherId: book.publisher?.publisherId ?? "",
+      publisherName: book.publisher?.name ?? "",
+      publisherSlug: book.publisher?.slug ?? "",
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
       language: book.language,
       accessType: book.accessType,
@@ -275,17 +527,40 @@ export function EditBookForm({
 
   const title = watch("title");
 
+  function updateAuthor(index: number, a: BookAuthorSnapshot) {
+    setAuthors((prev) => prev.map((x, i) => (i === index ? a : x)));
+  }
+  function removeAuthor(index: number) {
+    setAuthors((prev) => prev.filter((_, i) => i !== index));
+  }
+  function addAuthor() {
+    setAuthors((prev) => [...prev, emptyAuthor(prev.length + 1)]);
+  }
+
+  function updateCategory(index: number, c: BookCategorySnapshot) {
+    setCategories((prev) => prev.map((x, i) => (i === index ? c : x)));
+  }
+  function removeCategory(index: number) {
+    setCategories((prev) => prev.filter((_, i) => i !== index));
+  }
+  function addCategory() {
+    setCategories((prev) => [...prev, emptyCategory()]);
+  }
+
   async function onSubmit(values: EditFormValues) {
     try {
+      const validAuthors = authors.filter((a) => a.authorId && a.name);
+      const validCategories = categories.filter((c) => c.categoryId && c.name);
+
       const payload: UpdateBookInput = {
         title: values.title,
         summary: values.summary || undefined,
-        publisherId: values.publisherId || undefined,
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
         language: values.language || undefined,
         accessType: values.accessType || undefined,
-        authorIds,
-        categoryIds,
+        authors: validAuthors,
+        categories: validCategories,
+        publisher: buildPublisher(values.publisherId, values.publisherName, values.publisherSlug),
       };
       const updated = await booksApi.update(book.id, payload);
       await tryUploadCover(book.id, coverFile, showToast);
@@ -314,11 +589,10 @@ export function EditBookForm({
           {...register("title", { required: "Vui lòng nhập tên sách." })}
         />
         <Input
-          label="Nhà xuất bản (ID)"
-          placeholder={book.publisherName ? `Hiện tại: ${book.publisherName}` : "Chưa có"}
-          {...register("publisherId")}
+          label="Năm xuất bản"
+          type="number"
+          {...register("publicationYear")}
         />
-        <Input label="Năm xuất bản" type="number" {...register("publicationYear")} />
         <Input label="Ngôn ngữ" {...register("language")} />
         <Select label="Loại truy cập" {...register("accessType")}>
           {ACCESS_TYPES.map((type) => (
@@ -329,13 +603,61 @@ export function EditBookForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <MultiSelect label="Tác giả" options={authors} selectedIds={authorIds} onChange={setAuthorIds} />
-        <MultiSelect label="Thể loại" options={categories} selectedIds={categoryIds} onChange={setCategoryIds} />
+      {/* Publisher */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
+          <Input label="Tên NXB" {...register("publisherName")} placeholder="Tên nhà xuất bản" />
+          <Input label="Slug NXB" {...register("publisherSlug")} placeholder="slug-nxb" />
+        </div>
       </div>
-      <p className="-mt-3 text-xs text-slate-400">
-        Nhà xuất bản vẫn chưa có API danh sách để chọn — nhập tạm ID.
-      </p>
+
+      {/* Authors */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Tác giả</p>
+        <div className="space-y-2">
+          {authors.map((a, i) => (
+            <AuthorRow
+              key={i}
+              index={i}
+              author={a}
+              onChange={(updated) => updateAuthor(i, updated)}
+              onRemove={() => removeAuthor(i)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addAuthor}
+          className="mt-2 rounded-md px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          + Thêm tác giả
+        </button>
+      </div>
+
+      {/* Categories */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Thể loại</p>
+        <div className="space-y-2">
+          {categories.map((c, i) => (
+            <CategoryRow
+              key={i}
+              index={i}
+              category={c}
+              onChange={(updated) => updateCategory(i, updated)}
+              onRemove={() => removeCategory(i)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addCategory}
+          className="mt-2 rounded-md px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          + Thêm thể loại
+        </button>
+      </div>
 
       <Textarea label="Tóm tắt" {...register("summary")} />
 
