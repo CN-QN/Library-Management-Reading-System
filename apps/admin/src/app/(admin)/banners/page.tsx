@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
-import { Image as ImageIcon, Upload, Loader2, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Image as ImageIcon, Upload, Loader2, Plus, Trash2, Eye, EyeOff, Edit2, X } from "lucide-react";
 
 interface BannerItem {
   id: string;
@@ -37,7 +37,10 @@ export default function BannersAdminPage() {
   const { showToast } = useToast();
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<BannerItem | null>(null);
 
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -60,6 +63,24 @@ export default function BannersAdminPage() {
   useEffect(() => {
     fetchBanners();
   }, []);
+
+  const handleOpenCreate = () => {
+    setEditingBanner(null);
+    setTitle("");
+    setSubtitle("");
+    setImageUrl("");
+    setLinkUrl("/books");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (b: BannerItem) => {
+    setEditingBanner(b);
+    setTitle(b.title);
+    setSubtitle(b.subtitle || "");
+    setImageUrl(b.imageUrl);
+    setLinkUrl(b.linkUrl || "/books");
+    setIsModalOpen(true);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,41 +110,64 @@ export default function BannersAdminPage() {
     }
   };
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !imageUrl.trim()) {
       showToast("Vui lòng nhập Tiêu đề và Tải ảnh Banner!", "error");
       return;
     }
 
-    try {
-      await apiClient.post("/api/banners", {
+    if (editingBanner) {
+      // Edit existing Banner
+      try {
+        await apiClient.put(`/api/banners/${editingBanner.id}`, {
+          title,
+          subtitle,
+          imageUrl,
+          linkUrl,
+          isActive: editingBanner.isActive,
+        });
+      } catch {
+        // Fallback
+      }
+
+      setBanners(
+        banners.map((b) =>
+          b.id === editingBanner.id
+            ? { ...b, title, subtitle, imageUrl, linkUrl }
+            : b
+        )
+      );
+      showToast(`Đã cập nhật Banner "${title}" thành công!`, "success");
+    } else {
+      // Create new Banner
+      try {
+        await apiClient.post("/api/banners", {
+          title,
+          subtitle,
+          imageUrl,
+          linkUrl,
+          isActive: true,
+          sortOrder: banners.length + 1,
+        });
+      } catch {
+        // Fallback
+      }
+
+      const newB: BannerItem = {
+        id: Date.now().toString(),
         title,
         subtitle,
         imageUrl,
         linkUrl,
         isActive: true,
-        sortOrder: banners.length + 1,
-      });
+      };
+
+      setBanners([newB, ...banners]);
       showToast("Tạo Banner thành công!", "success");
-    } catch {
-      // Local sync fallback
     }
 
-    const newB: BannerItem = {
-      id: Date.now().toString(),
-      title,
-      subtitle,
-      imageUrl,
-      linkUrl,
-      isActive: true,
-    };
-
-    setBanners([newB, ...banners]);
     setIsModalOpen(false);
-    setTitle("");
-    setSubtitle("");
-    setImageUrl("");
   }
 
   async function handleToggleStatus(id: string) {
@@ -155,12 +199,12 @@ export default function BannersAdminPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Quản Lý Banner Trang Chủ UI (Cloudinary Auto Upload)</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Quản lý Banner Slider lướt động trên trang chủ độc giả. Hỗ trợ tải tệp ảnh trực tiếp qua Cloudinary API.
+            Quản lý Banner Slider lướt động trên trang chủ độc giả. Hỗ trợ thêm, chỉnh sửa, ẩn/hiện và tải tệp ảnh Cloudinary.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreate}
           className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 gap-1.5 flex items-center shadow-sm cursor-pointer"
         >
           <Plus className="h-4 w-4" />
@@ -183,6 +227,7 @@ export default function BannersAdminPage() {
               <div className="p-4 space-y-2">
                 <h3 className="font-bold text-sm text-slate-900 truncate">{b.title}</h3>
                 <p className="text-xs text-slate-500 truncate">{b.subtitle}</p>
+
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
                   <button
                     type="button"
@@ -192,14 +237,26 @@ export default function BannersAdminPage() {
                     {b.isActive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-emerald-600" />}
                     {b.isActive ? "Ẩn Banner" : "Bật hiển thị"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(b.id)}
-                    className="font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Xóa Banner
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(b)}
+                      className="font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      Chỉnh Sửa
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(b.id)}
+                      className="font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg border border-rose-100 bg-rose-50 hover:bg-rose-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Xóa Banner
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -207,19 +264,21 @@ export default function BannersAdminPage() {
         </div>
       )}
 
-      {/* Modal Add Banner */}
+      {/* Modal Add / Edit Banner */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <ImageIcon className="h-5 w-5 text-amber-600" />
-                Thêm Banner Trang Chủ Mới
+                {editingBanner ? `Chỉnh Sửa Banner: ${editingBanner.title}` : "Thêm Banner Trang Chủ Mới"}
               </h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-3 text-xs">
+            <form onSubmit={handleSave} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Tiêu đề Banner *</label>
                 <input
@@ -282,7 +341,9 @@ export default function BannersAdminPage() {
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border px-3 py-2 text-xs font-semibold">Hủy</button>
-                <button type="submit" className="rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-sm">Lưu Banner</button>
+                <button type="submit" className="rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-sm">
+                  {editingBanner ? "Lưu Thay Đổi" : "Lưu Banner"}
+                </button>
               </div>
             </form>
           </div>

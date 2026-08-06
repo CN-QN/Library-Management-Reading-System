@@ -58,6 +58,33 @@ public class BannersController : ControllerBase
     }
 
     /// <summary>
+    /// Chỉnh sửa Banner (Admin)
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize]
+    public async Task<IActionResult> Update(string id, [FromBody] Banner dto)
+    {
+        var existing = await _context.Banners.Find(b => b.Id == id).FirstOrDefaultAsync();
+        if (existing == null) return NotFound(ApiResponse<object>.ErrorResponse(404, "Không tìm thấy Banner."));
+
+        existing.Title = dto.Title;
+        existing.Subtitle = dto.Subtitle;
+        existing.ImageUrl = dto.ImageUrl;
+        existing.LinkUrl = dto.LinkUrl;
+
+        await _context.Banners.ReplaceOneAsync(b => b.Id == id, existing);
+
+        try
+        {
+            var db = _redisContext.GetDatabase();
+            await db.KeyDeleteAsync("banners_list");
+        }
+        catch { }
+
+        return Ok(ApiResponse<Banner>.SuccessResponse(existing, "Cập nhật Banner thành công."));
+    }
+
+    /// <summary>
     /// Đổi trạng thái Ẩn/Hiện Banner (Admin)
     /// </summary>
     [HttpPatch("{id}/status")]
