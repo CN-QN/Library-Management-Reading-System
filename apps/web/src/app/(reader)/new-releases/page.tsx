@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+
 import { Metadata } from 'next';
 import { getNewReleases } from '@/lib/api/books';
 import { BookListContainer } from '@/components/reader/books/BookListContainer';
