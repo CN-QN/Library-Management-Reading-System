@@ -30,14 +30,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuthStore();
 
-  // Route Guard: CHỈ cho phép ADMIN hoặc LIBRARIAN truy cập Admin Portal
+  const adminRoles = ['ADMIN', 'SUPER_ADMIN', 'LIBRARY_ADMIN', 'LIBRARIAN', 'CONTENT_EDITOR'];
+  const hasAdminRole = user?.roles?.some((r) => adminRoles.includes(r.toUpperCase())) ?? false;
+
+  // Route Guard: CHỈ cho phép ADMIN, SUPER_ADMIN, LIBRARY_ADMIN, LIBRARIAN truy cập Admin Portal
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push('/login?returnUrl=/admin/dashboard');
+      } else if (!hasAdminRole) {
+        alert('Tài khoản của bạn không có quyền truy cập vào Trang Quản Trị Admin!');
+        router.push('/');
       }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, hasAdminRole, isLoading, router]);
 
   const navItems = [
     {
@@ -72,7 +78,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
   ];
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated || !hasAdminRole) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
