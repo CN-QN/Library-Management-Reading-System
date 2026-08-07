@@ -283,5 +283,19 @@ namespace api.Modules.Reading.Services
         }
 
         #endregion
+
+        public async Task DeleteProgressAsync(string userId, string bookId)
+        {
+            // Delete from MongoDB
+            await _progressRepository.DeleteByUserIdAndBookIdAsync(userId, bookId);
+
+            // Delete from Redis Cache
+            var db = _redisContext.GetDatabase();
+            var hashKey = $"reading_progress:{userId}:{bookId}";
+            await db.KeyDeleteAsync(hashKey);
+
+            // Remove from dirty set
+            await db.SetRemoveAsync("reading_progress:dirty", hashKey);
+        }
     }
 }

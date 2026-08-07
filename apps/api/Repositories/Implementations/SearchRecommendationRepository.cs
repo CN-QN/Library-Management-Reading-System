@@ -5,6 +5,7 @@ using api.Modules.SearchAndRecommendation.DTOs;
 using api.Repositories.Interfaces;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace api.Repositories.Implementations
 {
@@ -53,7 +54,17 @@ namespace api.Repositories.Implementations
 
             if (!string.IsNullOrEmpty(filter.CategoryId))
             {
-                matchDoc.Add("categories.categoryId", filter.CategoryId);
+                var normCat = filter.CategoryId.Trim();
+                var slugCat = normCat.ToLowerInvariant().Replace(' ', '-');
+                var catOr = new BsonArray
+                {
+                    new BsonDocument("categories.categoryId", filter.CategoryId),
+                    new BsonDocument("categories.slug", filter.CategoryId),
+                    new BsonDocument("categories.slug", new BsonRegularExpression($"^{Regex.Escape(normCat)}$", "i")),
+                    new BsonDocument("categories.slug", new BsonRegularExpression($"^{Regex.Escape(slugCat)}$", "i")),
+                    new BsonDocument("categories.name", new BsonRegularExpression($"^{Regex.Escape(normCat)}$", "i"))
+                };
+                matchDoc.Add("$or", catOr);
             }
 
             if (!string.IsNullOrEmpty(filter.AuthorId))

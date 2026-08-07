@@ -103,6 +103,7 @@ export function EditProfileModal({
 
       const url = res.data?.data?.fileUrl;
       if (url) {
+        // Cập nhật URL xem trước ảnh trong modal local state, không trigger onSuccess toàn cục cho đến khi người dùng nhấn nút Lưu
         setAvatarUrl(url);
       }
     } catch (err: unknown) {

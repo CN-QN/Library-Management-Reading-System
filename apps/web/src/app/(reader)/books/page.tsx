@@ -37,6 +37,7 @@ export default async function BooksPage({
   const keyword = getStringParam(resolvedParams, 'Keyword');
   const categoryId = getStringParam(resolvedParams, 'CategoryId');
   const language = getStringParam(resolvedParams, 'Language');
+  const availability = getStringParam(resolvedParams, 'Availability');
   const accessType = getStringParam(resolvedParams, 'AccessType');
   const sortBy = getStringParam(resolvedParams, 'SortBy');
   const rawSortOrder = getStringParam(resolvedParams, 'SortOrder');
@@ -58,6 +59,7 @@ export default async function BooksPage({
       Limit: validLimit,
       CategoryId: categoryId,
       Language: language,
+      Availability: availability,
       AccessType: accessType,
       SortBy: sortBy,
       SortOrder: sortBy ? sortOrder : undefined,
@@ -74,6 +76,7 @@ export default async function BooksPage({
     if (keyword) params.set('Keyword', keyword);
     if (categoryId) params.set('CategoryId', categoryId);
     if (language) params.set('Language', language);
+    if (availability) params.set('Availability', availability);
     if (accessType) params.set('AccessType', accessType);
     const sort = getStringParam(resolvedParams, 'Sort');
     if (sort) params.set('Sort', sort);

@@ -91,6 +91,8 @@ namespace api.Modules.Reading.Controllers
                         p.BookId,
                         BookTitle  = book?.Title,
                         BookSlug   = book?.Slug,
+                        BookCoverImage = book?.CoverAssetId,
+                        AuthorName = book?.Authors != null && book.Authors.Any() ? string.Join(", ", book.Authors.Select(a => a.Name)) : "Nhiều tác giả",
                         p.ChapterId,
                         p.ChapterNumber,
                         p.ScrollPosition,
@@ -135,8 +137,10 @@ namespace api.Modules.Reading.Controllers
                         BookId = bookId,
                         BookTitle = book?.Title,
                         BookSlug = book?.Slug,
+                        BookCoverImage = book?.CoverAssetId,
+                        AuthorName = book?.Authors != null && book.Authors.Any() ? string.Join(", ", book.Authors.Select(a => a.Name)) : "Nhiều tác giả",
                         ChapterId = bufferedProgress.ChapterId,
-                        ChapterNumber = 1,
+                        ChapterNumber = bufferedProgress.ChapterNumber,
                         ScrollPosition = bufferedProgress.ScrollPosition,
                         Percentage = bufferedProgress.Percentage,
                         Status = "READING",
@@ -155,6 +159,8 @@ namespace api.Modules.Reading.Controllers
                     progress.BookId,
                     BookTitle     = book?.Title,
                     BookSlug      = book?.Slug,
+                    BookCoverImage = book?.CoverAssetId,
+                    AuthorName    = book?.Authors != null && book.Authors.Any() ? string.Join(", ", book.Authors.Select(a => a.Name)) : "Nhiều tác giả",
                     progress.ChapterId,
                     progress.ChapterNumber,
                     progress.ScrollPosition,
@@ -168,6 +174,29 @@ namespace api.Modules.Reading.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lấy tiến trình đọc sách {BookId}.", bookId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy tiến trình đọc."));
+            }
+        }
+
+        /// <summary>
+        /// DELETE /api/Reading/progress/{bookId}
+        /// Xóa tiến trình đọc của user hiện tại cho một cuốn sách cụ thể
+        /// </summary>
+        [HttpDelete("progress/{bookId}")]
+        public async Task<IActionResult> DeleteProgress(string bookId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized(ApiResponse<object>.ErrorResponse(401, "Không xác định được người dùng."));
+
+                await _progressService.DeleteProgressAsync(userId, bookId);
+                return Ok(ApiResponse<object>.SuccessResponse(null, "Xóa tiến trình đọc thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa tiến trình đọc sách {BookId}.", bookId);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi xóa tiến trình đọc."));
             }
         }
     }

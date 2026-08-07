@@ -8,5 +8,6 @@ namespace api.Repositories.Interfaces
         Task<List<ReadingProgress>> GetByUserIdAsync(string userId);
         Task UpsertAsync(ReadingProgress progress);
         Task BulkWriteAsync(List<ReadingProgress> progresses);
+        Task DeleteByUserIdAndBookIdAsync(string userId, string bookId);
     }
 }

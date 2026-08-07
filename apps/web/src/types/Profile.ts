@@ -21,6 +21,9 @@ export interface InProgressBook {
   percentage: number;
   /** Chuỗi thời gian đọc gần nhất định dạng ISO 8601 */
   lastReadAt: string;
+  /** Loại truy cập của cuốn sách ('FREE' | 'PREMIUM' | 'PAID') */
+  accessType?: string;
+  isPremium?: boolean;
 }
 
 /**

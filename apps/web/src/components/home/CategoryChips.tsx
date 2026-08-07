@@ -24,7 +24,7 @@ export async function CategoryChips() {
           <Link key={category.categoryId} href={`/books?CategoryId=${category.categoryId}`} className="shrink-0">
             <Badge 
               variant="secondary" 
-              className="px-4 py-2 text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-all duration-300 rounded-full cursor-pointer shadow-sm"
+              className="px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold hover:bg-primary hover:text-primary-foreground transition-all duration-300 rounded-2xl sm:rounded-full cursor-pointer shadow-xs hover:shadow-md hover:scale-105 active:scale-95 border border-border/50"
             >
               {category.name}
             </Badge>
