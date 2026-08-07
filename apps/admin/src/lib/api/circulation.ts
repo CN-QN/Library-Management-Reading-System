@@ -55,14 +55,14 @@ export interface BorrowingQuery {
   branchId?: string;
   status?: string;
   keyword?: string;
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
 }
 
 function buildQueryString(query: BorrowingQuery): string {
   const params = new URLSearchParams();
-  params.set("page", String(query.page));
-  params.set("limit", String(query.limit));
+  params.set("page", String(query.page ?? 1));
+  params.set("limit", String(query.limit ?? 10));
   if (query.userId) params.set("userId", query.userId);
   if (query.branchId) params.set("branchId", query.branchId);
   if (query.status) params.set("status", query.status);

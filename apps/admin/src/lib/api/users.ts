@@ -104,7 +104,7 @@ export const usersApi = {
     apiClient.delete<void>(`/api/users/${id}/roles/${userRoleId}`),
 
   getCurrentBorrowings: (id: string) =>
-    circulationApi.search({ userId: id }),
+    circulationApi.search({ userId: id, page: 1, limit: 20 }),
 
   getReadingHistory: (id: string) =>
     apiClient.get<UserReadingHistoryItem[]>(`/api/Reading/user/${id}`),
