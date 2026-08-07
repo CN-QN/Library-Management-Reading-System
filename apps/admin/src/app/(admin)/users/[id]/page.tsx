@@ -4,7 +4,7 @@ import { use, useCallback, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { useAsync } from "@/hooks/use-async";
-import { usersApi, type AppUser } from "@/lib/api/users";
+import { usersApi, type AppUser, type UserReadingHistoryItem } from "@/lib/api/users";
 import { ApiError } from "@/lib/api-client";
 import { describeErrorCode } from "@/lib/error-codes";
 import { useToast } from "@/components/ui/toast";
@@ -16,13 +16,123 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { AssignRoleModal } from "@/components/users/assign-role-modal";
-import { PendingBackendCard } from "@/components/users/pending-backend-card";
 import { Permissions } from "@/lib/permissions";
+import { BookOpen, Repeat, Clock, Book } from "lucide-react";
 
 interface ProfileFormValues {
   fullName: string;
-  avatar: string;
-  branchId: string;
+}
+
+function UserBorrowingsSection({ userId }: { userId: string }) {
+  const fetchBorrowings = useCallback(() => usersApi.getCurrentBorrowings(userId), [userId]);
+  const { data, isLoading, error } = useAsync(fetchBorrowings);
+
+  const borrowings = data?.items ?? [];
+
+  return (
+    <Card>
+      <CardHeader
+        title="Sách đang mượn"
+        description="Danh sách các phiếu mượn và sách đang được mượn bởi người dùng"
+      />
+      <CardBody>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-red-600">Không thể tải danh sách sách đang mượn.</p>
+        ) : borrowings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 text-slate-400">
+            <Repeat className="h-8 w-8 mb-2 opacity-50" />
+            <p className="text-sm">Người dùng hiện không mượn cuốn sách nào.</p>
+          </div>
+        ) : (
+          <div className="divide-y border rounded-lg overflow-hidden">
+            {borrowings.map((b) => (
+              <div key={b.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm text-slate-900">{b.code}</span>
+                    <StatusBadge status={b.status} />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Số sách mượn: <span className="font-semibold text-slate-700">{b.items.length} cuốn</span> · Hạn trả:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {new Date(b.expectedReturnAt).toLocaleDateString("vi-VN")}
+                    </span>
+                  </p>
+                </div>
+                <Link
+                  href={`/borrowings/${b.id}`}
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 border rounded-md px-3 py-1.5 self-start sm:self-center"
+                >
+                  Xem chi tiết
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function UserReadingHistorySection({ userId }: { userId: string }) {
+  const fetchHistory = useCallback(() => usersApi.getReadingHistory(userId), [userId]);
+  const { data: history, isLoading, error } = useAsync(fetchHistory);
+
+  return (
+    <Card>
+      <CardHeader
+        title="Lịch sử đọc sách"
+        description="Tiến trình đọc sách điện tử của người dùng trên hệ thống"
+      />
+      <CardBody>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-red-600">Không thể tải lịch sử đọc sách.</p>
+        ) : !history || history.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 text-slate-400">
+            <BookOpen className="h-8 w-8 mb-2 opacity-50" />
+            <p className="text-sm">Chưa có lịch sử đọc sách nào.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {history.map((item: UserReadingHistoryItem) => (
+              <div key={item.id} className="p-3 border rounded-xl flex items-start gap-3 bg-slate-50/50">
+                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
+                  <Book className="h-5 w-5" />
+                </div>
+                <div className="space-y-1 min-w-0 flex-1">
+                  <h4 className="font-semibold text-sm text-slate-900 truncate">
+                    {item.bookTitle ?? "Sách điện tử"}
+                  </h4>
+                  <p className="text-xs text-slate-500">{item.authorName}</p>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-slate-600 font-medium">
+                      Chương {item.chapterNumber ?? 1} · {Math.round(item.percentage ?? 0)}%
+                    </span>
+                    {item.lastReadAt && (
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(item.lastReadAt).toLocaleDateString("vi-VN")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
 }
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,8 +156,6 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     values: current
       ? {
           fullName: current.fullName,
-          avatar: current.avatar ?? "",
-          branchId: current.branchId ?? "",
         }
       : undefined,
   });
@@ -56,8 +164,6 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     try {
       const updated = await usersApi.update(id, {
         fullName: values.fullName,
-        avatar: values.avatar || undefined,
-        branchId: values.branchId || undefined,
       });
       setUser(updated);
       showToast("Cập nhật hồ sơ thành công.", "success");
@@ -152,14 +258,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <CardHeader title="Hồ sơ" description={`Mã sinh viên: ${current.studentCode} · ${current.email}`} />
             <CardBody>
               <form onSubmit={handleSubmit(onSubmitProfile)} className="space-y-4" noValidate>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="max-w-md">
                   <Input
                     label="Họ tên"
                     error={errors.fullName?.message}
                     {...register("fullName", { required: "Vui lòng nhập họ tên." })}
                   />
-                  <Input label="Chi nhánh (ID)" {...register("branchId")} />
-                  <Input label="URL ảnh đại diện" {...register("avatar")} />
                 </div>
                 <Button type="submit" isLoading={isSubmitting}>
                   Lưu thay đổi
@@ -216,15 +320,11 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </Card>
 
-          <PendingBackendCard
-            title="Sách đang mượn"
-            description="Backend chưa có module Circulation/Borrowing (chỉ mới có Auth, Catalog, DigitalContent, Inventory, Roles, Users) nên chưa có API để hiển thị phiếu mượn hiện tại. Đã định nghĩa sẵn hợp đồng GET /api/users/{id}/borrowings trong lib/api/users.ts, chờ backend triển khai."
-          />
+          {/* Connected Real Borrowed Books */}
+          <UserBorrowingsSection userId={current.id} />
 
-          <PendingBackendCard
-            title="Lịch sử đọc"
-            description="Tương tự, backend chưa có module Reading Progress. Hợp đồng GET /api/users/{id}/reading-history đã được định nghĩa sẵn, chờ backend triển khai."
-          />
+          {/* Connected Real Reading History */}
+          <UserReadingHistorySection userId={current.id} />
         </>
       )}
 

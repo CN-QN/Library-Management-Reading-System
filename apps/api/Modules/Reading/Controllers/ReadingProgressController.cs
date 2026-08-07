@@ -199,5 +199,46 @@ namespace api.Modules.Reading.Controllers
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi xóa tiến trình đọc."));
             }
         }
+
+        /// <summary>
+        /// GET /api/Reading/user/{userId}
+        /// Lấy lịch sử đọc sách của người dùng theo UserId (Cho Admin)
+        /// </summary>
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetUserReadingHistory(string userId)
+        {
+            try
+            {
+                var progressList = await _progressRepository.GetByUserIdAsync(userId);
+                var result = new List<object>();
+                foreach (var p in progressList)
+                {
+                    var book = await _bookRepository.GetByIdAsync(p.BookId);
+                    result.Add(new
+                    {
+                        p.Id,
+                        p.BookId,
+                        BookTitle  = book?.Title,
+                        BookSlug   = book?.Slug,
+                        BookCoverImage = book?.CoverAssetId,
+                        AuthorName = book?.Authors != null && book.Authors.Any() ? string.Join(", ", book.Authors.Select(a => a.Name)) : "Nhiều tác giả",
+                        p.ChapterId,
+                        p.ChapterNumber,
+                        p.ScrollPosition,
+                        p.Percentage,
+                        p.Status,
+                        p.LastReadAt,
+                        p.Version
+                    });
+                }
+
+                return Ok(ApiResponse<object>.SuccessResponse(result, $"Lấy lịch sử đọc của người dùng thành công ({result.Count} cuốn)."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy lịch sử đọc cho user {UserId}.", userId);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "Lỗi hệ thống khi lấy lịch sử đọc."));
+            }
+        }
     }
 }

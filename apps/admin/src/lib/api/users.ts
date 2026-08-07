@@ -65,6 +65,22 @@ function buildQueryString(query: UserQuery): string {
   return params.toString();
 }
 
+import { circulationApi } from "./circulation";
+
+export interface UserReadingHistoryItem {
+  id: string;
+  bookId: string;
+  bookTitle?: string;
+  bookSlug?: string;
+  bookCoverImage?: string;
+  authorName?: string;
+  chapterId?: string;
+  chapterNumber?: number;
+  percentage?: number;
+  status?: string;
+  lastReadAt?: string;
+}
+
 export const usersApi = {
   search: (query: UserQuery) =>
     apiClient.get<PagedResult<AppUser>>(`/api/users?${buildQueryString(query)}`),
@@ -87,22 +103,9 @@ export const usersApi = {
   removeRole: (id: string, userRoleId: string) =>
     apiClient.delete<void>(`/api/users/${id}/roles/${userRoleId}`),
 
-  /**
-   * ⚠️ NOT YET IMPLEMENTED ON THE BACKEND — there is no Circulation/
-   * Borrowing module yet (only Auth/Catalog/DigitalContent/Inventory/
-   * Roles/Users exist), so a user's current loans have no endpoint.
-   * Suggested contract: `GET /api/users/{id}/borrowings` returning the
-   * user's open `borrowings`/`borrowing_items` (see design doc M06).
-   */
   getCurrentBorrowings: (id: string) =>
-    apiClient.get<unknown[]>(`/api/users/${id}/borrowings`),
+    circulationApi.search({ userId: id }),
 
-  /**
-   * ⚠️ NOT YET IMPLEMENTED ON THE BACKEND — there is no Reading
-   * Progress module yet either. Suggested contract:
-   * `GET /api/users/{id}/reading-history` returning recent
-   * `reading_progress`/`reading_sessions` entries (see design doc M09).
-   */
   getReadingHistory: (id: string) =>
-    apiClient.get<unknown[]>(`/api/users/${id}/reading-history`),
+    apiClient.get<UserReadingHistoryItem[]>(`/api/Reading/user/${id}`),
 };
