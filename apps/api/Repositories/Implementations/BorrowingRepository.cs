@@ -1,6 +1,8 @@
 using api.Database.Entities;
 using api.Repositories.Interfaces;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace api.Repositories.Implementations
 {
@@ -65,30 +67,71 @@ namespace api.Repositories.Implementations
         public async Task<(List<Borrowing> Items, long Total)> SearchAsync(string? userId, string? branchId, string? status, string? keyword, int page, int limit)
         {
             var builder = Builders<Borrowing>.Filter;
-            var filter = builder.Empty;
+            var filters = new List<FilterDefinition<Borrowing>>();
 
-            if (!string.IsNullOrEmpty(userId))
+            if (!string.IsNullOrWhiteSpace(userId))
             {
-                filter &= builder.Eq(b => b.UserId, userId);
+                var trimmedUser = userId.Trim();
+                var usersCollection = _borrowingsCollection.Database.GetCollection<User>("users");
+                var userRegex = new BsonRegularExpression(Regex.Escape(trimmedUser), "i");
+
+                var matchingUserIds = await usersCollection.Find(
+                    u => u.Id == trimmedUser ||
+                         u.StudentCode == trimmedUser
+                ).Project(u => u.Id).ToListAsync();
+
+                if (!matchingUserIds.Any())
+                {
+                    matchingUserIds = await usersCollection.Find(
+                        Builders<User>.Filter.Regex(u => u.FullName, userRegex) |
+                        Builders<User>.Filter.Regex(u => u.StudentCode, userRegex)
+                    ).Project(u => u.Id).ToListAsync();
+                }
+
+                if (matchingUserIds.Any())
+                {
+                    filters.Add(builder.In(b => b.UserId, matchingUserIds) | builder.Regex(b => b.UserId, userRegex));
+                }
+                else
+                {
+                    filters.Add(builder.Regex(b => b.UserId, userRegex));
+                }
             }
 
-            if (!string.IsNullOrEmpty(branchId))
+            if (!string.IsNullOrWhiteSpace(branchId))
             {
-                filter &= builder.Eq(b => b.BranchId, branchId);
+                filters.Add(builder.Eq(b => b.BranchId, branchId.Trim()));
             }
 
-            if (!string.IsNullOrEmpty(status))
+            if (!string.IsNullOrWhiteSpace(status))
             {
-                filter &= builder.Eq(b => b.Status, status);
+                filters.Add(builder.Eq(b => b.Status, status.Trim()));
             }
 
-            if (!string.IsNullOrEmpty(keyword))
+            if (!string.IsNullOrWhiteSpace(keyword))
             {
-                filter &= builder.Regex(b => b.Code, new MongoDB.Bson.BsonRegularExpression(keyword, "i"));
+                var trimmedKw = Regex.Escape(keyword.Trim());
+                var kwRegex = new BsonRegularExpression(trimmedKw, "i");
+
+                var usersCollection = _borrowingsCollection.Database.GetCollection<User>("users");
+                var matchingUserIds = await usersCollection.Find(
+                    Builders<User>.Filter.Regex(u => u.FullName, kwRegex) |
+                    Builders<User>.Filter.Regex(u => u.StudentCode, kwRegex) |
+                    Builders<User>.Filter.Regex(u => u.Email, kwRegex)
+                ).Project(u => u.Id).ToListAsync();
+
+                var kwFilter = builder.Regex(b => b.Code, kwRegex) | builder.Regex(b => b.UserId, kwRegex);
+                if (matchingUserIds.Any())
+                {
+                    kwFilter |= builder.In(b => b.UserId, matchingUserIds);
+                }
+                filters.Add(kwFilter);
             }
+
+            var filter = filters.Any() ? builder.And(filters) : builder.Empty;
 
             var total = await _borrowingsCollection.CountDocumentsAsync(filter);
-            var skip = (page - 1) * limit;
+            var skip = Math.Max(0, (page - 1) * limit);
             var items = await _borrowingsCollection.Find(filter)
                 .Skip(skip)
                 .Limit(limit)
