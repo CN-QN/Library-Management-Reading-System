@@ -12,6 +12,7 @@ import {
   getReadingStats,
   deleteReadingProgress,
 } from '@/lib/api/profile';
+import { getMyOrders, type PaymentQrData } from '@/lib/api/payment';
 import {
   ProfileHeroHeader,
   ReadingStatsGrid,
@@ -54,6 +55,7 @@ export function ProfileContainer({
   const [inProgressBooks, setInProgressBooks] = useState<InProgressBook[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingHistoryItem[]>([]);
   const [borrowedBooks, setBorrowedBooks] = useState<BorrowedBook[]>([]);
+  const [paymentOrders, setPaymentOrders] = useState<PaymentQrData[]>([]);
   const [stats, setStats] = useState<ReadingStats>({
     completedBooksCount: 0,
     inProgressBooksCount: 0,
@@ -63,6 +65,7 @@ export function ProfileContainer({
   });
 
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [isLoadingPayments, setIsLoadingPayments] = useState<boolean>(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const [profileOverride, setProfileOverride] = useState<{ fullName?: string; avatar?: string | null }>({});
@@ -87,15 +90,17 @@ export function ProfileContainer({
   const loadProfileData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [progress, history, borrowed] = await Promise.all([
+      const [progress, history, borrowed, orders] = await Promise.all([
         getMyReadingProgress(),
         getMyReadingHistory(),
         getMyBorrowedBooks(user?.id),
+        getMyOrders(),
       ]);
 
       setInProgressBooks(progress);
       setReadingHistory(history);
       setBorrowedBooks(borrowed);
+      setPaymentOrders(orders);
 
       const calculatedStats = getReadingStats(progress, history, borrowed);
       setStats(calculatedStats);
@@ -103,8 +108,18 @@ export function ProfileContainer({
       console.warn('Lỗi khi tải dữ liệu trang cá nhân:', error);
     } finally {
       setIsLoadingData(false);
+      setIsLoadingPayments(false);
     }
   }, [user]);
+
+  const loadPaymentOrders = useCallback(async () => {
+    setIsLoadingPayments(true);
+    try {
+      setPaymentOrders(await getMyOrders());
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  }, []);
 
   useEffect(() => {
     // The profile APIs are the external source synchronized by this effect.
@@ -202,6 +217,7 @@ export function ProfileContainer({
           reading: inProgressBooks.length,
           history: readingHistory.length,
           borrowed: borrowedBooks.filter((b) => b.status !== 'RETURNED').length,
+          payments: paymentOrders.length,
         }}
       />
 
@@ -235,7 +251,11 @@ export function ProfileContainer({
           <BorrowedBooksTab borrowed={borrowedBooks} isLoading={isLoadingData} />
         )}
         {activeTab === 'payments' && (
-          <PaymentHistoryTab />
+          <PaymentHistoryTab
+            orders={paymentOrders}
+            isLoading={isLoadingPayments}
+            onRefresh={loadPaymentOrders}
+          />
         )}
       </div>
 

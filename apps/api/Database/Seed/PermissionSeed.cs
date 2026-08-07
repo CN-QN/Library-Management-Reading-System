@@ -94,7 +94,7 @@ public static class PermissionSeed
             "LIBRARY_ADMIN", new()
             {
                 Constants.Permissions.UserRead, Constants.Permissions.UserCreate, Constants.Permissions.UserUpdate, Constants.Permissions.UserLock,
-                Constants.Permissions.BookRead, Constants.Permissions.BookCreate, Constants.Permissions.BookUpdate, Constants.Permissions.BookArchive,
+                Constants.Permissions.BookRead, Constants.Permissions.BookCreate, Constants.Permissions.BookUpdate, Constants.Permissions.BookArchive, Constants.Permissions.BookPublish,
                 Constants.Permissions.CopyRead, Constants.Permissions.CopyCreate, Constants.Permissions.CopyUpdateStatus,
                 Constants.Permissions.LoanCreate, Constants.Permissions.LoanReturn, Constants.Permissions.LoanExtend,
                 Constants.Permissions.ReportView, Constants.Permissions.ReportExport,

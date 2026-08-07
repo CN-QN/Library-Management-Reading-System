@@ -18,6 +18,7 @@ public class BookResponseDto
     public decimal Price { get; set; }
     public string Status { get; set; } = "DRAFT";
     public string? CoverAssetId { get; set; }
+    public string? CoverImageUrl { get; set; }
     public int TotalChapters { get; set; }
     public int ViewCount { get; set; }
     public int ReadingCount { get; set; }

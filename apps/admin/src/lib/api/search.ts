@@ -9,6 +9,7 @@ export interface SearchBookResult {
   summary?: string | null;
   publisherId?: string | null;
   coverAssetId?: string | null;
+  coverImageUrl?: string | null;
   accessType: string;
   status: string;
   publicationYear?: number | null;

@@ -40,6 +40,15 @@ public sealed class FakeBookRepository : IBookRepository
         return Task.CompletedTask;
     }
 
+    public Task<bool> SetStatusAsync(string id, string status)
+    {
+        var book = _books.FirstOrDefault(book => book.Id == id);
+        if (book == null) return Task.FromResult(false);
+        book.Status = status;
+        book.UpdatedAt = DateTime.UtcNow;
+        return Task.FromResult(true);
+    }
+
     public Task DeleteAsync(string id)
     {
         _books.RemoveAll(b => b.Id == id);

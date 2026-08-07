@@ -26,7 +26,20 @@ namespace api.Modules.DigitalContent.Services
 
         public async Task<List<BookChapter>> GetByBookIdAsync(string bookId)
         {
-            return await _bookRepository.GetChaptersByBookIdAsync(bookId);
+            var chapters = await _bookRepository.GetChaptersByBookIdAsync(bookId);
+
+            // Repair legacy book statuses: a book with at least one public chapter
+            // must be visible as published as well.
+            if (chapters.Any(chapter => chapter.Status == "PUBLISHED"))
+                await _bookRepository.SetStatusAsync(bookId, "PUBLISHED");
+
+            return chapters;
+        }
+
+        public async Task<int> GetNextNumberAsync(string bookId)
+        {
+            var chapters = await _bookRepository.GetChaptersByBookIdAsync(bookId);
+            return chapters.Count == 0 ? 1 : chapters.Max(chapter => chapter.Number) + 1;
         }
 
         public async Task<ChapterContentDto?> GetContentAsync(string bookId, string chapterId)
@@ -127,6 +140,7 @@ namespace api.Modules.DigitalContent.Services
             chapter.UpdatedAt = DateTime.UtcNow;
 
             await _bookRepository.ReplaceChapterAsync(bookId, chapterId, chapter);
+            await _bookRepository.SetStatusAsync(bookId, "PUBLISHED");
 
             _logger.LogInformation("Chapter published: {Title} by user {UserId}", chapter.Title, userId);
 

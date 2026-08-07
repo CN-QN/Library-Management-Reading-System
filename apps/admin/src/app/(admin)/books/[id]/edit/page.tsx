@@ -2,37 +2,31 @@
 
 import { use, useCallback, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAsync } from "@/hooks/use-async";
 import { booksApi, type Book } from "@/lib/api/books";
 import { ApiError } from "@/lib/api-client";
 import { describeErrorCode } from "@/lib/error-codes";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/context/auth-context";
-import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EditBookForm } from "@/components/books/book-form";
-import { ArchiveBookDialog } from "@/components/books/archive-book-dialog";
 import { Permissions } from "@/lib/permissions";
 
 const NEXT_STATUS: Record<string, { label: string; status: string }[]> = {
-  DRAFT: [{ label: "Gửi duyệt", status: "REVIEW" }],
-  REVIEW: [{ label: "Xuất bản", status: "PUBLISHED" }],
+  DRAFT: [{ label: "Xuất bản", status: "PUBLISHED" }],
   PUBLISHED: [{ label: "Chuyển về nháp", status: "DRAFT" }],
-  ARCHIVED: [{ label: "Khôi phục về nháp", status: "DRAFT" }],
 };
 
 export default function EditBookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const { showToast } = useToast();
   const { can } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
-  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   const fetchBook = useCallback(() => booksApi.getById(id), [id]);
   const { data, error, isLoading, retry } = useAsync(fetchBook);
@@ -123,22 +117,10 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
             <CardBody>
               <EditBookForm book={current} onSaved={setBook} />
             </CardBody>
-            {can(Permissions.BookDelete) && current.status !== "ARCHIVED" && (
-              <CardFooter className="flex justify-end">
-                <Button variant="danger" size="sm" onClick={() => setShowArchiveDialog(true)}>
-                  Lưu trữ sách
-                </Button>
-              </CardFooter>
-            )}
           </Card>
         </>
       )}
 
-      <ArchiveBookDialog
-        book={showArchiveDialog ? current ?? null : null}
-        onClose={() => setShowArchiveDialog(false)}
-        onArchived={() => router.push("/books")}
-      />
       </div>
     </div>
   );

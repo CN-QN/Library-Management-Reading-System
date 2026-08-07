@@ -309,7 +309,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       {/* Khu vực Đánh giá & Bình luận */}
       <ReviewsSection
         bookId={book.id}
-        hasReadBook={Boolean(progress)}
+        hasReadBook={Boolean(progress) || book.accessType === 'FREE' || book.price === 0}
       />
     </main>
   );

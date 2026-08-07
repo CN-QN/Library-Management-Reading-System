@@ -14,9 +14,11 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/badge";
 import { BookCover } from "@/components/ui/book-cover";
 import { DataTable, type Column } from "@/components/ui/table";
-import { ArchiveBookDialog } from "@/components/books/archive-book-dialog";
+import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/context/auth-context";
+import { Permissions } from "@/lib/permissions";
 
-const STATUS_OPTIONS = ["DRAFT", "REVIEW", "PUBLISHED", "ARCHIVED"];
+const STATUS_OPTIONS = ["DRAFT", "PUBLISHED"];
 const ACCESS_TYPE_OPTIONS = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
 const PAGE_SIZE = 10;
 
@@ -29,7 +31,9 @@ export default function BooksListPage() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [bookToArchive, setBookToArchive] = useState<Book | null>(null);
+  const [changingStatusBookId, setChangingStatusBookId] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const { can } = useAuth();
 
   const debouncedKeyword = useDebouncedValue(keyword);
 
@@ -63,6 +67,19 @@ export default function BooksListPage() {
     return sortOrder === "asc" ? " ▲" : " ▼";
   }
 
+  async function changeBookStatus(book: Book, status: "DRAFT" | "PUBLISHED") {
+    setChangingStatusBookId(book.id);
+    try {
+      await booksApi.updateStatus(book.id, status);
+      showToast(status === "PUBLISHED" ? `Đã xuất bản “${book.title}”.` : `Đã chuyển “${book.title}” về nháp.`, "success");
+      retry();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Không thể xuất bản sách.", "error");
+    } finally {
+      setChangingStatusBookId(null);
+    }
+  }
+
   const columns: Column<Book>[] = [
     {
       key: "title",
@@ -73,7 +90,7 @@ export default function BooksListPage() {
       ),
       render: (book) => (
         <div className="flex items-center gap-3">
-          <BookCover title={book.title} size={32} coverUrl={book.coverAssetId} />
+          <BookCover title={book.title} size={32} coverUrl={book.coverImageUrl ?? book.coverAssetId} />
           <div className="min-w-0">
             <p className="truncate font-medium text-slate-900">{book.title}</p>
             <p className="truncate text-xs text-slate-400">{book.isbn ?? "Chưa có ISBN"}</p>
@@ -131,13 +148,26 @@ export default function BooksListPage() {
           >
             Sửa
           </Link>
-          <button
-            type="button"
-            onClick={() => setBookToArchive(book)}
-            className="rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50"
-          >
-            Lưu trữ
-          </button>
+          {can(Permissions.BookPublish) && book.status === "DRAFT" && (
+            <button
+              type="button"
+              onClick={() => void changeBookStatus(book, "PUBLISHED")}
+              disabled={changingStatusBookId === book.id}
+              className="rounded-md px-2 py-1 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {changingStatusBookId === book.id ? "Đang xuất bản…" : "Xuất bản"}
+            </button>
+          )}
+          {can(Permissions.BookPublish) && book.status === "PUBLISHED" && (
+            <button
+              type="button"
+              onClick={() => void changeBookStatus(book, "DRAFT")}
+              disabled={changingStatusBookId === book.id}
+              className="rounded-md px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {changingStatusBookId === book.id ? "Đang chuyển…" : "Chuyển về nháp"}
+            </button>
+          )}
         </div>
       ),
     },
@@ -221,12 +251,6 @@ export default function BooksListPage() {
           )}
         </>
       )}
-
-      <ArchiveBookDialog
-        book={bookToArchive}
-        onClose={() => setBookToArchive(null)}
-        onArchived={retry}
-      />
     </div>
   );
 }

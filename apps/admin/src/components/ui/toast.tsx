@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-type ToastVariant = "success" | "error" | "info";
+type ToastVariant = "success" | "warning" | "error" | "info";
 
 interface ToastItem {
   id: number;
@@ -26,12 +26,14 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
   success: "border-emerald-500/40 bg-emerald-50 text-emerald-900",
+  warning: "border-amber-500/40 bg-amber-50 text-amber-900",
   error: "border-red-500/40 bg-red-50 text-red-900",
   info: "border-slate-300 bg-white text-slate-900",
 };
 
 const VARIANT_ICON: Record<ToastVariant, string> = {
   success: "",
+  warning: "!",
   error: "✕",
   info: "ℹ",
 };

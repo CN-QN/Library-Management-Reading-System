@@ -44,6 +44,9 @@ public class Book
     [BsonElement("coverAssetId")]
     public string? CoverAssetId { get; set; }
 
+    [BsonElement("coverImageUrl")]
+    public string? CoverImageUrl { get; set; }
+
     [BsonElement("accessType")]
     public string AccessType { get; set; } = "FREE";
 

@@ -7,6 +7,7 @@ using System.Security.Claims;
 using api.Auth;
 using api.Common.Constants;
 using api.Modules.Payment.Services;
+using api.Database.Entities;
 namespace api.Modules.DigitalContent.Controllers
 {
     [ApiController]
@@ -61,19 +62,7 @@ namespace api.Modules.DigitalContent.Controllers
             {
                 var chapters = await _chapterService.GetByBookIdAsync(bookId);
                 return Ok(ApiResponse<object>.SuccessResponse(
-                    chapters.Select(chapter => new
-                    {
-                        chapterId = chapter.ChapterId,
-                        chapter.Number,
-                        chapter.Title,
-                        chapter.Summary,
-                        chapter.Status,
-                        chapter.WordCount,
-                        chapter.ReadingTime,
-                        chapter.PublishedAt,
-                        chapter.CreatedAt,
-                        chapter.UpdatedAt
-                    }),
+                    chapters.Select(chapter => ToResponse(chapter, bookId)),
                     "Chapters retrieved successfully"
                 ));
             }
@@ -81,6 +70,28 @@ namespace api.Modules.DigitalContent.Controllers
             {
                 _logger.LogError(ex, "Error getting chapters for book {BookId}", bookId);
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving chapters"));
+            }
+        }
+
+        /// <summary>
+        /// Lấy số thứ tự đề xuất khi tạo chapter mới.
+        /// </summary>
+        [HttpGet("next-number")]
+        [RequirePermission("chapter.create")]
+        public async Task<IActionResult> GetNextNumber(string bookId)
+        {
+            try
+            {
+                var nextNumber = await _chapterService.GetNextNumberAsync(bookId);
+                return Ok(ApiResponse<object>.SuccessResponse(
+                    new { nextNumber },
+                    "Next chapter number retrieved successfully"
+                ));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting next chapter number for book {BookId}", bookId);
+                return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while retrieving the next chapter number"));
             }
         }
 
@@ -101,7 +112,7 @@ namespace api.Modules.DigitalContent.Controllers
                 if (accessDenied != null) return accessDenied;
 
                 return Ok(ApiResponse<object>.SuccessResponse(
-                    chapter,
+                    ToResponse(chapter, bookId),
                     "Chapter retrieved successfully"
                 ));
             }
@@ -157,7 +168,7 @@ namespace api.Modules.DigitalContent.Controllers
                     nameof(GetById),
                     new { bookId, chapterId = chapter.ChapterId },
                     ApiResponse<object>.SuccessResponse(
-                        chapter,
+                        ToResponse(chapter, bookId),
                         "Chapter created successfully",
                         null,
                         201
@@ -191,7 +202,7 @@ namespace api.Modules.DigitalContent.Controllers
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
                 return Ok(ApiResponse<object>.SuccessResponse(
-                    chapter,
+                    ToResponse(chapter, bookId),
                     "Chapter updated successfully"
                 ));
             }
@@ -222,7 +233,7 @@ namespace api.Modules.DigitalContent.Controllers
                     return NotFound(ApiResponse<object>.ErrorResponse(404, "Chapter not found"));
 
                 return Ok(ApiResponse<object>.SuccessResponse(
-                    chapter,
+                    ToResponse(chapter, bookId),
                     "Chapter published successfully"
                 ));
             }
@@ -289,5 +300,22 @@ namespace api.Modules.DigitalContent.Controllers
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(500, "An error occurred while reordering chapters"));
             }
         }
+
+        private static ChapterResponseDto ToResponse(BookChapter chapter, string bookId) => new()
+        {
+            Id = chapter.ChapterId,
+            BookId = bookId,
+            Title = chapter.Title,
+            Number = chapter.Number,
+            Summary = chapter.Summary,
+            Content = chapter.Content,
+            Status = chapter.Status,
+            WordCount = chapter.WordCount,
+            ReadingTime = chapter.ReadingTime,
+            CreatedBy = chapter.CreatedBy,
+            CreatedAt = chapter.CreatedAt,
+            UpdatedAt = chapter.UpdatedAt,
+            PublishedAt = chapter.PublishedAt
+        };
     }
 }

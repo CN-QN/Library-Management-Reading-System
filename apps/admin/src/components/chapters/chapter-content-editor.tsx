@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -15,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { ParagraphEditor } from "./paragraph-editor";
 import type { ChapterContent, ChapterImage, ChapterTable, Footnote, Paragraph } from "@/lib/api/chapters";
+import { mediaApi } from "@/lib/api/media";
+import { useToast } from "@/components/ui/toast";
+
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 function newId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -43,7 +48,16 @@ export function ChapterContentEditor({
   value: ChapterContent;
   onChange: (content: ChapterContent) => void;
 }) {
+  const { showToast } = useToast();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef(value);
+  const [imageIdToUpload, setImageIdToUpload] = useState<string | null>(null);
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    contentRef.current = value;
+  }, [value]);
 
   function addParagraph() {
     onChange({ ...value, paragraphs: [...value.paragraphs, newParagraph(value.paragraphs.length)] });
@@ -86,6 +100,47 @@ export function ChapterContentEditor({
 
   function removeImage(id: string) {
     onChange({ ...value, images: (value.images ?? []).filter((img) => img.id !== id) });
+  }
+
+  function chooseImage(imageId: string) {
+    setImageIdToUpload(imageId);
+    imageInputRef.current?.click();
+  }
+
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    const imageId = imageIdToUpload;
+    event.target.value = "";
+    setImageIdToUpload(null);
+
+    if (!file || !imageId) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Vui lòng chọn tệp hình ảnh.", "error");
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      showToast("Ảnh không được vượt quá 10 MB.", "error");
+      return;
+    }
+
+    setUploadingImageId(imageId);
+    try {
+      const asset = await mediaApi.upload(file, "chapter-image", "chapter-content");
+      const latestContent = contentRef.current;
+      onChange({
+        ...latestContent,
+        images: (latestContent.images ?? []).map((image) =>
+          image.id === imageId
+            ? { ...image, url: asset.fileUrl, altText: image.altText || file.name }
+            : image,
+        ),
+      });
+      showToast("Đã tải ảnh lên.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể tải ảnh lên.", "error");
+    } finally {
+      setUploadingImageId(null);
+    }
   }
 
   function addTable() {
@@ -176,21 +231,41 @@ export function ChapterContentEditor({
             </Button>
           }
         />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={uploadImage}
+        />
         {(value.images ?? []).length > 0 && (
           <CardBody className="space-y-3">
             {(value.images ?? []).map((image) => (
-              <div key={image.id} className="grid grid-cols-1 gap-2 rounded-md border border-slate-200 p-3 sm:grid-cols-3">
-                <Input
-                  placeholder="URL ảnh"
-                  value={image.url}
-                  onChange={(e) => updateImage(image.id, { url: e.target.value })}
-                />
-                <Input
-                  placeholder="Chú thích"
-                  value={image.caption ?? ""}
-                  onChange={(e) => updateImage(image.id, { caption: e.target.value })}
-                />
-                <div className="flex gap-2">
+              <div key={image.id} className="space-y-2 rounded-md border border-slate-200 p-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    isLoading={uploadingImageId === image.id}
+                    onClick={() => chooseImage(image.id)}
+                  >
+                    Tải ảnh lên
+                  </Button>
+                  <span className="self-center text-xs text-slate-500">PNG, JPG, WEBP… tối đa 10 MB</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Input
+                    placeholder="URL ảnh hoặc tự tải ảnh lên"
+                    value={image.url}
+                    onChange={(e) => updateImage(image.id, { url: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Chú thích"
+                    value={image.caption ?? ""}
+                    onChange={(e) => updateImage(image.id, { caption: e.target.value })}
+                  />
+                  <div className="flex gap-2">
                   <Input
                     placeholder="Alt text"
                     value={image.altText ?? ""}
@@ -199,7 +274,17 @@ export function ChapterContentEditor({
                   <Button type="button" size="sm" variant="ghost" onClick={() => removeImage(image.id)}>
                     Xóa
                   </Button>
+                  </div>
                 </div>
+                {image.url && (
+                  // This preview supports uploaded files and externally hosted image URLs.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={image.url}
+                    alt={image.altText || image.caption || "Ảnh chương"}
+                    className="max-h-48 rounded-md border border-slate-200 object-contain"
+                  />
+                )}
               </div>
             ))}
           </CardBody>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +17,10 @@ import {
   type CreateBookInput,
   type UpdateBookInput,
 } from "@/lib/api/books";
-import { mediaApi } from "@/lib/api/media";
 
 const ACCESS_TYPES = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_COVER_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 interface CreateFormValues {
   title: string;
@@ -28,8 +29,6 @@ interface CreateFormValues {
   publicationYear: string;
   accessType: string;
   price: string;
-  // Publisher inline
-  publisherId: string;
   publisherName: string;
 }
 
@@ -39,8 +38,6 @@ interface EditFormValues {
   publicationYear: string;
   accessType: string;
   price: string;
-  // Publisher inline
-  publisherId: string;
   publisherName: string;
 }
 
@@ -61,16 +58,7 @@ function AuthorRow({
 }) {
   return (
     <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
-      <div className="col-span-5">
-        <label className="mb-1 block text-xs text-slate-500">ID tác giả</label>
-        <input
-          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-          value={author.authorId}
-          onChange={(e) => onChange({ ...author, authorId: e.target.value })}
-          placeholder="author-uuid"
-        />
-      </div>
-      <div className="col-span-3">
+      <div className="col-span-7">
         <label className="mb-1 block text-xs text-slate-500">Tên</label>
         <input
           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
@@ -133,16 +121,7 @@ function CategoryRow({
 }) {
   return (
     <div className="grid grid-cols-12 gap-2 items-end rounded-md border border-slate-200 p-2">
-      <div className="col-span-7">
-        <label className="mb-1 block text-xs text-slate-500">ID thể loại</label>
-        <input
-          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-          value={category.categoryId}
-          onChange={(e) => onChange({ ...category, categoryId: e.target.value })}
-          placeholder="category-uuid"
-        />
-      </div>
-      <div className="col-span-4">
+      <div className="col-span-11">
         <label className="mb-1 block text-xs text-slate-500">Tên</label>
         <input
           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
@@ -191,14 +170,37 @@ function CoverPicker({
   onFileSelect: (file: File | null) => void;
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(existingCoverUrl ?? undefined);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+  }, []);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.type && !ACCEPTED_COVER_TYPES.has(file.type)) {
+      setFileError("Chỉ chấp nhận ảnh PNG, JPEG hoặc WEBP.");
+      onFileSelect(null);
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_COVER_BYTES) {
+      setFileError("Ảnh bìa không được vượt quá 10 MB.");
+      onFileSelect(null);
+      e.target.value = "";
+      return;
+    }
+
     // Tạo preview blob URL cho người dùng xem trước, CHƯA gọi API upload
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const blobUrl = URL.createObjectURL(file);
+    objectUrlRef.current = blobUrl;
     setPreviewUrl(blobUrl);
+    setFileError(null);
     onFileSelect(file);
   }
 
@@ -223,6 +225,7 @@ function CoverPicker({
             />
           </label>
           <p className="text-xs text-slate-400">PNG/JPEG/WEBP, tối đa 10 MB.</p>
+          {fileError ? <p className="text-xs font-medium text-red-600">{fileError}</p> : null}
         </div>
       </div>
     </div>
@@ -233,9 +236,10 @@ function CoverPicker({
 // Publisher inline fields helper
 // ---------------------------------------------------------------------------
 
-function buildPublisher(id: string, name: string): BookPublisherSnapshot | undefined {
-  if (!id && !name) return undefined;
-  return { publisherId: id, name, slug: "" };
+function buildPublisher(name: string): BookPublisherSnapshot | undefined {
+  const trimmedName = name.trim();
+  if (!trimmedName) return undefined;
+  return { publisherId: "", name: trimmedName, slug: "" };
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +263,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       title: "",
       isbn: "",
       summary: "",
-      publisherId: "",
       publisherName: "",
       publicationYear: "",
       accessType: "FREE",
@@ -300,8 +303,8 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         }
       }
 
-      const validAuthors = authors.filter((a) => a.authorId && a.name);
-      const validCategories = categories.filter((c) => c.categoryId && c.name);
+      const validAuthors = authors.filter((a) => a.name.trim());
+      const validCategories = categories.filter((c) => c.name.trim());
 
       const payload: CreateBookInput = {
         title: values.title,
@@ -312,21 +315,27 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
-        publisher: buildPublisher(values.publisherId, values.publisherName),
+        publisher: buildPublisher(values.publisherName),
       };
 
-      const book = await booksApi.create(payload);
+      let book = await booksApi.create(payload);
+      let coverUploadError: string | null = null;
 
-      // Nếu có chọn ảnh bìa, upload trực tiếp lên Cloudinary sau khi sách vừa được tạo thành công
       if (coverFile) {
         try {
-          await booksApi.uploadCover(book.id, coverFile);
-        } catch {
-          showToast("Đã tạo sách nhưng upload ảnh bìa thất bại.", "warning");
+          const cover = await booksApi.uploadCover(book.id, coverFile);
+          book = { ...book, coverAssetId: cover.id, coverImageUrl: cover.url };
+        } catch (err) {
+          coverUploadError = err instanceof Error ? err.message : "Không rõ nguyên nhân.";
         }
       }
 
-      showToast("Tạo sách thành công.", "success");
+      showToast(
+        coverUploadError
+          ? `Đã tạo sách, nhưng chưa tải được ảnh bìa: ${coverUploadError}`
+          : "Tạo sách thành công.",
+        coverUploadError ? "warning" : "success"
+      );
       onCreated(book);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Không thể tạo sách.", "error");
@@ -381,10 +390,7 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       {/* Publisher */}
       <div>
         <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
-          <Input label="Tên NXB" {...register("publisherName")} placeholder="Tên nhà xuất bản" />
-        </div>
+        <Input label="Tên NXB" {...register("publisherName")} placeholder="Ví dụ: NXB Kim Đồng" />
       </div>
 
       {/* Authors */}
@@ -474,7 +480,6 @@ export function EditBookForm({
     defaultValues: {
       title: book.title,
       summary: book.summary ?? "",
-      publisherId: book.publisher?.publisherId ?? "",
       publisherName: book.publisher?.name ?? "",
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
       accessType: book.accessType,
@@ -507,8 +512,8 @@ export function EditBookForm({
 
   async function onSubmit(values: EditFormValues) {
     try {
-      const validAuthors = authors.filter((a) => a.authorId && a.name);
-      const validCategories = categories.filter((c) => c.categoryId && c.name);
+      const validAuthors = authors.filter((a) => a.name.trim());
+      const validCategories = categories.filter((c) => c.name.trim());
 
       const payload: UpdateBookInput = {
         title: values.title,
@@ -518,21 +523,26 @@ export function EditBookForm({
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
-        publisher: buildPublisher(values.publisherId, values.publisherName),
+        publisher: buildPublisher(values.publisherName),
       };
       let updated = await booksApi.update(book.id, payload);
 
-      // Nếu có chọn ảnh bìa mới, upload trực tiếp lên Cloudinary sau khi submit
+      let coverUploadError: string | null = null;
       if (coverFile) {
         try {
           const res = await booksApi.uploadCover(book.id, coverFile);
-          updated = { ...updated, coverAssetId: res.url };
-        } catch {
-          showToast("Đã lưu thông tin sách nhưng upload ảnh bìa mới thất bại.", "warning");
+          updated = { ...updated, coverAssetId: res.id, coverImageUrl: res.url };
+        } catch (err) {
+          coverUploadError = err instanceof Error ? err.message : "Không rõ nguyên nhân.";
         }
       }
 
-      showToast("Cập nhật sách thành công.", "success");
+      showToast(
+        coverUploadError
+          ? `Đã lưu thông tin sách, nhưng chưa tải được ảnh bìa: ${coverUploadError}`
+          : "Cập nhật sách thành công.",
+        coverUploadError ? "warning" : "success"
+      );
       onSaved(updated);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Không thể cập nhật sách.", "error");
@@ -587,10 +597,7 @@ export function EditBookForm({
       {/* Publisher */}
       <div>
         <p className="mb-2 text-sm font-medium text-slate-700">Nhà xuất bản</p>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <Input label="Publisher ID" {...register("publisherId")} placeholder="uuid" />
-          <Input label="Tên NXB" {...register("publisherName")} placeholder="Tên nhà xuất bản" />
-        </div>
+        <Input label="Tên NXB" {...register("publisherName")} placeholder="Ví dụ: NXB Kim Đồng" />
       </div>
 
       {/* Authors */}
@@ -647,7 +654,7 @@ export function EditBookForm({
 
       <CoverPicker
         title={title}
-        existingCoverUrl={book.coverAssetId}
+        existingCoverUrl={book.coverImageUrl ?? book.coverAssetId}
         onFileSelect={(file) => setCoverFile(file)}
       />
 

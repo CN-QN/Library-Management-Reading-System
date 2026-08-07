@@ -93,6 +93,69 @@ public sealed class ChapterContent
 
     [BsonElement("conclusion")]
     public string? Conclusion { get; set; }
+
+    [BsonElement("tables")]
+    public List<ChapterTable> Tables { get; set; } = new();
+
+    [BsonElement("images")]
+    public List<ChapterImage> Images { get; set; } = new();
+
+    [BsonElement("footnotes")]
+    public List<ChapterFootnote> Footnotes { get; set; } = new();
+}
+
+public sealed class ChapterImage
+{
+    [BsonElement("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
+    [BsonElement("url")]
+    public string Url { get; set; } = string.Empty;
+
+    [BsonElement("caption")]
+    public string? Caption { get; set; }
+
+    [BsonElement("altText")]
+    public string? AltText { get; set; }
+
+    [BsonElement("width")]
+    public int? Width { get; set; }
+
+    [BsonElement("height")]
+    public int? Height { get; set; }
+
+    [BsonElement("alignment")]
+    public string Alignment { get; set; } = "center";
+}
+
+public sealed class ChapterTable
+{
+    [BsonElement("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
+    [BsonElement("caption")]
+    public string? Caption { get; set; }
+
+    [BsonElement("headers")]
+    public List<string> Headers { get; set; } = new();
+
+    [BsonElement("rows")]
+    public List<List<string>> Rows { get; set; } = new();
+
+    [BsonElement("columnWidths")]
+    public List<int>? ColumnWidths { get; set; }
+}
+
+public sealed class ChapterFootnote
+{
+    [BsonElement("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
+    [BsonElement("reference")]
+    public string Reference { get; set; } = string.Empty;
+
+    [BsonElement("content")]
+    public string Content { get; set; } = string.Empty;
 }
 
 public sealed class Paragraph

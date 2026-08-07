@@ -53,6 +53,7 @@ export interface Book {
   price: number;
   status: string;
   coverAssetId?: string | null;
+  coverImageUrl?: string | null;
   totalChapters: number;
   viewCount: number;
   rating: number;
@@ -176,6 +177,6 @@ export const booksApi = {
         "/api/admin/media/upload",
         formData
       )
-      .then((res) => ({ url: res.fileUrl }));
+      .then((res) => ({ id: res.id, url: res.fileUrl }));
   },
 };

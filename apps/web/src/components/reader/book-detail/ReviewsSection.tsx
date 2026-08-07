@@ -241,21 +241,68 @@ export function ReviewsSection({
 
   /**
    * Xử lý gửi bài đánh giá mới của độc giả.
-   * Sau khi tạo thành công: Cập nhật state bài viết cá nhân, tải lại thống kê, làm mới Server Component header và quay về trang 1 danh sách.
+   * Tự động thử làm mới phiên đăng nhập (checkAuth) nếu chưa có ID hoặc nếu gặp lỗi 401.
    */
   const handleCreateReview = async (data: { rating: number; comment: string }) => {
-    if (!activeUserId) {
+    let currentUserId = activeUserId;
+
+    // Nếu activeUserId chưa sẵn sàng trong state, thử gọi checkAuth() từ cookie/session
+    if (!currentUserId) {
+      try {
+        await useAuthStore.getState().checkAuth();
+        const refreshedUser = useAuthStore.getState().user;
+        currentUserId = refreshedUser?.id || null;
+      } catch {
+        // Bỏ qua nếu checkAuth thất bại
+      }
+    }
+
+    if (!currentUserId) {
       throw new Error('Vui lòng đăng nhập để gửi đánh giá.');
     }
 
-    await createReview({
-      bookId,
-      userId: activeUserId,
-      userFullName: activeUserName,
-      userEmail: activeUserEmail,
-      rating: data.rating,
-      comment: data.comment,
-    });
+    const currentUser = useAuthStore.getState().user;
+    const name = currentUser
+      ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.fullName || currentUser.email
+      : activeUserName;
+
+    try {
+      await createReview({
+        bookId,
+        userId: currentUserId,
+        userFullName: name,
+        userEmail: currentUser?.email || activeUserEmail,
+        rating: data.rating,
+        comment: data.comment,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('đăng nhập') || msg.includes('401') || msg.includes('Unauthorized')) {
+        try {
+          await useAuthStore.getState().checkAuth();
+          const retryUser = useAuthStore.getState().user;
+          if (retryUser?.id) {
+            await createReview({
+              bookId,
+              userId: retryUser.id,
+              userFullName: `${retryUser.firstName || ''} ${retryUser.lastName || ''}`.trim() || retryUser.fullName || retryUser.email,
+              userEmail: retryUser.email,
+              rating: data.rating,
+              comment: data.comment,
+            });
+            await loadUserReview();
+            await loadStats();
+            setPage(1);
+            await loadReviews();
+            router.refresh();
+            return;
+          }
+        } catch {
+          // Fallback throw original error
+        }
+      }
+      throw err;
+    }
 
     await loadUserReview();
     await loadStats();

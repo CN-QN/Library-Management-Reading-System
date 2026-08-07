@@ -10,12 +10,14 @@ namespace api.Modules.Catalog.Services
     public class ReviewService : IReviewService
     {
         private readonly MongoDbContext _context;
+        private readonly RedisContext? _redisContext;
         private readonly ILogger<ReviewService> _logger;
 
-        public ReviewService(MongoDbContext context, ILogger<ReviewService> logger)
+        public ReviewService(MongoDbContext context, ILogger<ReviewService> logger, RedisContext? redisContext = null)
         {
             _context = context;
             _logger = logger;
+            _redisContext = redisContext;
         }
 
         public async Task<PagedResult<ReviewResponseDto>> GetReviewsAsync(string bookId, int? ratingFilter, string sortBy = "newest", int page = 1, int pageSize = 10)
@@ -54,29 +56,30 @@ namespace api.Modules.Catalog.Services
                 .Find(r => r.BookId == bookId && r.Status == "APPROVED")
                 .ToListAsync();
 
-            var totalReviews = reviews.Count;
-            var distribution = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } };
-            var percentages = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } };
-
-            if (totalReviews == 0)
+            if (!reviews.Any())
             {
                 return new ReviewStatsDto
                 {
                     AverageRating = 0,
                     TotalReviews = 0,
-                    Distribution = distribution,
-                    Percentages = percentages
+                    Distribution = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } },
+                    Percentages = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } }
                 };
             }
 
-            double sum = 0;
-            foreach (var r in reviews)
+            var totalReviews = reviews.Count;
+            var sum = (double)reviews.Sum(r => r.Rating);
+            var distribution = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } };
+
+            foreach (var review in reviews)
             {
-                var star = Math.Clamp(r.Rating, 1, 5);
-                distribution[star]++;
-                sum += r.Rating;
+                if (distribution.ContainsKey(review.Rating))
+                {
+                    distribution[review.Rating]++;
+                }
             }
 
+            var percentages = new Dictionary<int, int>();
             foreach (var key in distribution.Keys)
             {
                 percentages[key] = (int)Math.Round((double)distribution[key] / totalReviews * 100);
@@ -102,11 +105,85 @@ namespace api.Modules.Catalog.Services
 
         public async Task<ReviewResponseDto> CreateReviewAsync(string userId, CreateReviewDto dto)
         {
-            // Check if user has read this book
-            var hasRead = await _context.ReadingProgresses.Find(p => p.UserId == userId && p.BookId == dto.BookId).AnyAsync();
+            // 1. Check ReadingProgresses in Mongo
+            var hasRead = await _context.ReadingProgresses
+                .Find(p => p.UserId == userId && p.BookId == dto.BookId)
+                .AnyAsync();
+
+            // 2. Check ReadingSessions in Mongo
+            if (!hasRead)
+            {
+                hasRead = await _context.ReadingSessions
+                    .Find(s => s.UserId == userId && s.BookId == dto.BookId)
+                    .AnyAsync();
+            }
+
+            // 3. Check UserBookAccesses in Mongo
+            if (!hasRead)
+            {
+                hasRead = await _context.UserBookAccesses
+                    .Find(a => a.UserId == userId && a.BookId == dto.BookId)
+                    .AnyAsync();
+            }
+
+            // 4. Check Redis cache/buffer
+            if (!hasRead && _redisContext != null)
+            {
+                try
+                {
+                    var db = _redisContext.GetDatabase();
+                    var key1 = $"reading_progress:{userId}:{dto.BookId}";
+                    var key2 = $"reading_buffer:{userId}:{dto.BookId}";
+                    hasRead = await db.KeyExistsAsync(key1) || await db.KeyExistsAsync(key2);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Lỗi kiểm tra Redis key cho user {UserId}, book {BookId}", userId, dto.BookId);
+                }
+            }
+
+            // 5. Check if book is FREE or zero-price
+            var book = await _context.Books.Find(b => b.Id == dto.BookId).FirstOrDefaultAsync();
+            if (!hasRead && book != null)
+            {
+                if (string.Equals(book.AccessType, "FREE", StringComparison.OrdinalIgnoreCase) || book.Price == 0)
+                {
+                    hasRead = true;
+                }
+            }
+
             if (!hasRead)
             {
                 throw new InvalidOperationException("Bạn cần bắt đầu đọc cuốn sách này trước khi gửi nhận xét & đánh giá.");
+            }
+
+            // Upsert ReadingProgress to Mongo if not present yet
+            var progressExists = await _context.ReadingProgresses
+                .Find(p => p.UserId == userId && p.BookId == dto.BookId)
+                .AnyAsync();
+
+            if (!progressExists)
+            {
+                try
+                {
+                    var newProgress = new ReadingProgress
+                    {
+                        UserId = userId,
+                        BookId = dto.BookId,
+                        ChapterId = "",
+                        ChapterNumber = 1,
+                        ScrollPosition = 0,
+                        Percentage = 100,
+                        Status = "COMPLETED",
+                        Version = 1,
+                        LastReadAt = DateTime.UtcNow
+                    };
+                    await _context.ReadingProgresses.InsertOneAsync(newProgress);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Lỗi khi tự tạo tiến độ đọc cho user {UserId}, book {BookId}", userId, dto.BookId);
+                }
             }
 
             // Check if user already reviewed this book

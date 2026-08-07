@@ -66,6 +66,10 @@ try
     builder.Services.AddScoped<IndexCreator>();
     builder.Services.AddScoped<SeedRunner>();
 
+    // Cloudinary
+    builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+    builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
+
     builder.Services.AddScoped<IFileService, FileService>();
 
     builder.Services.AddStackExchangeRedisCache(options =>
@@ -145,7 +149,7 @@ builder.Services.AddScoped<
     builder.Services.AddSingleton<api.Common.Middleware.IRedisRateLimiterService, api.Common.Middleware.RedisRateLimiterService>();
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddSingleton<IMediaProcessor, ImageSharpMediaProcessor>();
-    builder.Services.AddHttpClient<ICloudinaryClient, CloudinaryClient>();
+    builder.Services.AddScoped<ICloudinaryClient, CloudinaryClient>();
 
     builder.Services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
     builder.Services.AddScoped<api.Modules.DigitalContent.Services.IRedisReadingBufferService, api.Modules.DigitalContent.Services.RedisReadingBufferService>();

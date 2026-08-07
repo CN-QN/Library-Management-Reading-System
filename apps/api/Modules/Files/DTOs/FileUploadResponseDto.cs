@@ -8,6 +8,7 @@ namespace api.Modules.Files.DTOs
         public string FileType { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string? BookId { get; set; }
+        public string? PublicId { get; set; }
         public DateTime UploadedAt { get; set; }
     }
 }

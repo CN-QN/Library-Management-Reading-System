@@ -42,6 +42,7 @@ namespace api.Modules.SearchAndRecommendation.DTOs
         public string? Summary { get; set; }
         public string? PublisherId { get; set; }
         public string? CoverAssetId { get; set; }
+        public string? CoverImageUrl { get; set; }
         public string AccessType { get; set; } = "FREE";
         public string Status { get; set; } = "PUBLISHED";
         public int? PublicationYear { get; set; }

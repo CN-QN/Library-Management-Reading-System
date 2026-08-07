@@ -10,6 +10,7 @@ namespace api.Repositories.Interfaces
         Task<List<Book>> GetAllAsync();
         Task InsertAsync(Book book);
         Task UpdateAsync(string id, Book book);
+        Task<bool> SetStatusAsync(string id, string status);
         Task DeleteAsync(string id);
         Task<(List<Book> Items, long Total)> SearchAsync(
             string? keyword,

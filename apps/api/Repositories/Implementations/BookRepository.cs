@@ -52,6 +52,16 @@ namespace api.Repositories.Implementations
             await _collection.ReplaceOneAsync(filter, book);
         }
 
+        public async Task<bool> SetStatusAsync(string id, string status)
+        {
+            var filter = Builders<Book>.Filter.Eq(book => book.Id, id);
+            var update = Builders<Book>.Update
+                .Set(book => book.Status, status)
+                .Set(book => book.UpdatedAt, DateTime.UtcNow);
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.MatchedCount > 0;
+        }
+
         public async Task DeleteAsync(string id)
         {
             var filter = Builders<Book>.Filter.Eq(b => b.Id, id);

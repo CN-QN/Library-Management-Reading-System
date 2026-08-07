@@ -16,6 +16,11 @@ namespace api.Modules.DigitalContent.Services
         Task<List<BookChapter>> GetByBookIdAsync(string bookId);
 
         /// <summary>
+        /// Lấy số thứ tự đề xuất cho chapter mới của một sách.
+        /// </summary>
+        Task<int> GetNextNumberAsync(string bookId);
+
+        /// <summary>
         /// Lấy nội dung chapter
         /// </summary>
         Task<ChapterContentDto?> GetContentAsync(string bookId, string chapterId);

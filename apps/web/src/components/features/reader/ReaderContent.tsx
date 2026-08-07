@@ -277,8 +277,80 @@ export function ReaderContent({
             <BookOpen className="w-4 h-4" />
             Tóm tắt kết chương
           </div>
+          <p className="italic opacity-90">{chapter.content.conclusion}</p>
         </aside>
       )}
+
+      {/* 5. CHAPTER END ACTION: ĐIỀU HƯỚNG CUỐI CHƯƠNG */}
+      <div className="mt-14 sm:mt-20 pt-8 border-t border-stone-200/40 dark:border-stone-800/40">
+        {!isLastChapter && nextChapterId ? (
+          /* TRƯỜNG HỢP A: CÓ CHƯƠNG TIẾP THEO -> NÚT ĐỌC CHƯƠNG TIẾP THEO LỚN */
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <p className={cn('text-xs font-semibold uppercase tracking-wider', themeClasses.mutedText)}>
+              Bạn đã xem hết chương {chapter.number}
+            </p>
+            <Link
+              href={`/books/${bookSlug}/read?chapterId=${nextChapterId}`}
+              className={cn(
+                'group inline-flex items-center justify-center gap-3 px-6 sm:px-8 py-3.5 rounded-2xl text-sm sm:text-base font-bold transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0',
+                themeClasses.nextBtn
+              )}
+            >
+              <span>
+                Đọc chương tiếp theo {nextChapterNumber ? `(Chương ${nextChapterNumber})` : ''}
+              </span>
+              <ArrowRight className="w-5 h-5 shrink-0 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        ) : (
+          /* TRƯỜNG HỢP B: LÀ CHƯƠNG CUỐI CÙNG -> CARD CHÚC MỪNG VÀ NÚT ĐÁNH GIÁ */
+          <div
+            className={cn(
+              'p-6 sm:p-8 rounded-3xl border text-center space-y-6 shadow-xs',
+              themeClasses.cardCongratsBg
+            )}
+          >
+            <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center shadow-2xs">
+              <CheckCircle className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2 max-w-md mx-auto">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+                🎉 Chúc mừng bạn đã hoàn thành cuốn sách!
+              </h3>
+              <p className={cn('text-xs sm:text-sm leading-relaxed', themeClasses.mutedText)}>
+                Bạn đã đọc xong toàn bộ các chương của cuốn sách{' '}
+                <strong className="font-semibold text-current">"{bookTitle}"</strong>. Hãy chia sẻ cảm xúc và đánh giá cuốn sách này nhé!
+              </p>
+            </div>
+
+            {/* 2 Nút điều hướng cho chương cuối */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Link
+                href={`/books/${bookSlug}`}
+                className={cn(
+                  'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer',
+                  themeClasses.actionBtnSecondary
+                )}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Quay về trang sách</span>
+              </Link>
+
+              <Link
+                href={`/books/${bookSlug}#reviews`}
+                className={cn(
+                  'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer',
+                  themeClasses.nextBtn
+                )}
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+                <span>Viết đánh giá & Nhận xét</span>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
     </article>
   );
 }

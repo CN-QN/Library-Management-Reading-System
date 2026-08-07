@@ -136,6 +136,11 @@ namespace api.Repositories.Implementations
                         Summary = bookDoc.Contains("summary") && !bookDoc["summary"].BsonType.Equals(BsonType.Null) ? bookDoc["summary"].AsString : null,
                         PublisherId = bookDoc.Contains("publisher") && !bookDoc["publisher"].BsonType.Equals(BsonType.Null) && bookDoc["publisher"].AsBsonDocument.Contains("publisherId") ? bookDoc["publisher"]["publisherId"].AsString : null,
                         CoverAssetId = bookDoc.Contains("coverAssetId") && !bookDoc["coverAssetId"].BsonType.Equals(BsonType.Null) ? bookDoc["coverAssetId"].ToString() : null,
+                        CoverImageUrl = bookDoc.Contains("coverImageUrl") && !bookDoc["coverImageUrl"].BsonType.Equals(BsonType.Null)
+                            ? bookDoc["coverImageUrl"].AsString
+                            : bookDoc.Contains("coverAssetId") && bookDoc["coverAssetId"].IsString && Uri.TryCreate(bookDoc["coverAssetId"].AsString, UriKind.Absolute, out _)
+                                ? bookDoc["coverAssetId"].AsString
+                                : null,
                         AccessType = bookDoc.Contains("accessType") ? bookDoc["accessType"].AsString : "FREE",
                         Status = bookDoc.Contains("status") ? bookDoc["status"].AsString : "PUBLISHED",
                         PublicationYear = bookDoc.Contains("publicationYear") && !bookDoc["publicationYear"].BsonType.Equals(BsonType.Null) ? bookDoc["publicationYear"].AsInt32 : null,
@@ -378,6 +383,8 @@ namespace api.Repositories.Implementations
                     Summary = book.Summary,
                     PublisherId = book.Publisher?.PublisherId,
                     CoverAssetId = book.CoverAssetId,
+                    CoverImageUrl = book.CoverImageUrl ??
+                        (Uri.TryCreate(book.CoverAssetId, UriKind.Absolute, out _) ? book.CoverAssetId : null),
                     AccessType = book.AccessType,
                     Status = book.Status,
                     PublicationYear = book.PublicationYear,

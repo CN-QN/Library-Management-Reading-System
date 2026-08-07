@@ -103,7 +103,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Authors = dto.Authors.Select((a, i) => new BookAuthorSnapshot
                 {
-                    AuthorId = a.AuthorId,
+                    AuthorId = string.IsNullOrWhiteSpace(a.AuthorId) ? SnapshotId("author", a.Name) : a.AuthorId,
                     Name = a.Name,
                     Slug = GenerateSlug(a.Name),
                     Role = a.Role ?? "AUTHOR",
@@ -116,7 +116,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Categories = dto.Categories.Select(c => new BookCategorySnapshot
                 {
-                    CategoryId = c.CategoryId,
+                    CategoryId = string.IsNullOrWhiteSpace(c.CategoryId) ? SnapshotId("category", c.Name) : c.CategoryId,
                     Name = c.Name,
                     Slug = GenerateSlug(c.Name)
                 }).ToList();
@@ -127,7 +127,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Publisher = new BookPublisherSnapshot
                 {
-                    PublisherId = dto.Publisher.PublisherId,
+                    PublisherId = string.IsNullOrWhiteSpace(dto.Publisher.PublisherId) ? SnapshotId("publisher", dto.Publisher.Name) : dto.Publisher.PublisherId,
                     Name = dto.Publisher.Name,
                     Slug = GenerateSlug(dto.Publisher.Name)
                 };
@@ -161,7 +161,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Authors = dto.Authors.Select((a, i) => new BookAuthorSnapshot
                 {
-                    AuthorId = a.AuthorId,
+                    AuthorId = string.IsNullOrWhiteSpace(a.AuthorId) ? SnapshotId("author", a.Name) : a.AuthorId,
                     Name = a.Name,
                     Slug = GenerateSlug(a.Name),
                     Role = a.Role ?? "AUTHOR",
@@ -174,7 +174,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Categories = dto.Categories.Select(c => new BookCategorySnapshot
                 {
-                    CategoryId = c.CategoryId,
+                    CategoryId = string.IsNullOrWhiteSpace(c.CategoryId) ? SnapshotId("category", c.Name) : c.CategoryId,
                     Name = c.Name,
                     Slug = GenerateSlug(c.Name)
                 }).ToList();
@@ -185,7 +185,7 @@ namespace api.Modules.Catalog.Services
             {
                 book.Publisher = new BookPublisherSnapshot
                 {
-                    PublisherId = dto.Publisher.PublisherId,
+                    PublisherId = string.IsNullOrWhiteSpace(dto.Publisher.PublisherId) ? SnapshotId("publisher", dto.Publisher.Name) : dto.Publisher.PublisherId,
                     Name = dto.Publisher.Name,
                     Slug = GenerateSlug(dto.Publisher.Name)
                 };
@@ -256,6 +256,8 @@ namespace api.Modules.Catalog.Services
                 Status = book.Status,
                 TotalChapters = book.TotalChapters,
                 CoverAssetId = book.CoverAssetId,
+                CoverImageUrl = book.CoverImageUrl ??
+                    (Uri.TryCreate(book.CoverAssetId, UriKind.Absolute, out _) ? book.CoverAssetId : null),
                 ViewCount = book.Stats?.ViewCount ?? 0,
                 Rating = book.Stats?.Rating ?? 0,
                 CreatedAt = book.CreatedAt,
@@ -314,5 +316,7 @@ namespace api.Modules.Catalog.Services
             if (slug.Length > 90) slug = slug[..90].TrimEnd('-');
             return slug;
         }
+
+        private static string SnapshotId(string type, string name) => $"{type}:{GenerateSlug(name)}";
     }
 }

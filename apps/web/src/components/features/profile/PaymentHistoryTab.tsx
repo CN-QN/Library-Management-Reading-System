@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { CreditCard, CheckCircle2, Clock, BookOpen, Eye, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getMyOrders, type PaymentQrData } from '@/lib/api/payment';
+import type { PaymentQrData } from '@/lib/api/payment';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,9 +12,15 @@ import { PaymentModal } from '@/components/features/payment/PaymentModal';
 
 const ITEMS_PER_PAGE = 5;
 
-export function PaymentHistoryTab() {
-  const [orders, setOrders] = useState<PaymentQrData[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export function PaymentHistoryTab({
+  orders,
+  isLoading,
+  onRefresh,
+}: {
+  orders: PaymentQrData[];
+  isLoading: boolean;
+  onRefresh: () => Promise<void>;
+}) {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Modal states
@@ -27,22 +33,6 @@ export function PaymentHistoryTab() {
     bookId: '',
     bookTitle: '',
   });
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getMyOrders();
-      setOrders(data);
-    } catch (err) {
-      console.error('Lỗi tải lịch sử mua sách:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
 
   const handleOpenDetail = (order: PaymentQrData) => {
     setSelectedOrder(order);
@@ -101,7 +91,7 @@ export function PaymentHistoryTab() {
           <CreditCard className="h-5 w-5 text-primary" />
           Lịch sử giao dịch VietQR SePay ({orders.length})
         </h3>
-        <Button variant="ghost" size="sm" onClick={fetchOrders} className="gap-1.5 text-xs text-slate-600">
+        <Button variant="ghost" size="sm" onClick={() => void onRefresh()} className="gap-1.5 text-xs text-slate-600">
           <RefreshCw className="h-3.5 w-3.5" />
           Làm mới
         </Button>
@@ -258,7 +248,7 @@ export function PaymentHistoryTab() {
           bookId={payQrModal.bookId}
           bookTitle={payQrModal.bookTitle}
           onPaymentSuccess={() => {
-            fetchOrders();
+            void onRefresh();
           }}
         />
       )}
