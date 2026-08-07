@@ -508,10 +508,11 @@ public class SeedRunner
 
         foreach (var book in books)
         {
-            var copyCount = random.Next(2, 6);
+            var copyCount = random.Next(3, 6);
             for (int i = 1; i <= copyCount; i++)
             {
-                var status = statuses[random.Next(statuses.Length)];
+                // Bản sao đầu tiên và thứ 2 luôn là AVAILABLE để đảm bảo mọi cuốn sách đều mượn được
+                var status = i <= 2 ? "AVAILABLE" : statuses[random.Next(statuses.Length)];
                 var condition = conditions[random.Next(conditions.Length)];
 
                 var copy = new BookCopy

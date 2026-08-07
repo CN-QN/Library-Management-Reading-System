@@ -1,43 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ApiError } from "@/lib/api-client";
-import { usersApi, type BranchOption, type CreateUserInput } from "@/lib/api/users";
+import { usersApi, type CreateUserInput } from "@/lib/api/users";
 
 interface FormValues {
   email: string;
   password: string;
   fullName: string;
-  branchId: string;
 }
 
 export default function CreateUserPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [branchError, setBranchError] = useState("");
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    defaultValues: { email: "", password: "", fullName: "", branchId: "" },
+    defaultValues: { email: "", password: "", fullName: "" },
   });
-
-  useEffect(() => {
-    usersApi.branches()
-      .then(setBranches)
-      .catch((error) => setBranchError(error instanceof Error ? error.message : "Không thể tải chi nhánh."));
-  }, []);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -45,7 +34,6 @@ export default function CreateUserPage() {
         email: values.email,
         password: values.password,
         fullName: values.fullName,
-        branchId: values.branchId || undefined,
       };
       const user = await usersApi.create(payload);
       showToast("Tạo người dùng thành công.", "success");
@@ -54,8 +42,8 @@ export default function CreateUserPage() {
       if (err instanceof ApiError && err.details?.length) {
         for (const detail of err.details) {
           const field = detail.field.charAt(0).toLowerCase() + detail.field.slice(1);
-          if (field === "email" || field === "password" || field === "fullName" || field === "branchId") {
-            setError(field, { message: detail.message });
+          if (field === "email" || field === "password" || field === "fullName") {
+            setError(field as keyof FormValues, { message: detail.message });
           }
         }
       } else {
@@ -107,15 +95,6 @@ export default function CreateUserPage() {
                 },
               })}
             />
-            <Select label="Chi nhánh" error={errors.branchId?.message} {...register("branchId")}>
-              <option value="">Không chọn chi nhánh</option>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}{branch.code ? ` (${branch.code})` : ""}
-                </option>
-              ))}
-            </Select>
-            {branchError && <p className="-mt-2 text-xs text-red-600">{branchError}</p>}
 
             <Button type="submit" isLoading={isSubmitting}>
               Tạo người dùng
