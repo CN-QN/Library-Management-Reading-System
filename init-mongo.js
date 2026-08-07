@@ -27,7 +27,10 @@ db.createCollection('roles');
 
 // Tạo indexes
 db.books.createIndex({ slug: 1 }, { unique: true });
-db.books.createIndex({ title: 'text', summary: 'text' });
+db.books.createIndex(
+  { title: 'text', summary: 'text' },
+  { default_language: "none", language_override: "none" }
+);
 db.authors.createIndex({ slug: 1 }, { unique: true });
 db.categories.createIndex({ slug: 1 }, { unique: true });
 db.chapters.createIndex({ bookId: 1, number: 1 }, { unique: true });
