@@ -37,7 +37,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/borrowings", label: "Mượn / Trả", epic: "E5.6", permissions: [Permissions.LoanCreate, Permissions.LoanReturn, Permissions.LoanExtend], icon: Repeat },
   { href: "/transactions", label: "Quản lý Thanh toán", epic: "E5.18", permissions: [Permissions.PaymentRead, Permissions.ReportView], icon: CreditCard },
   { href: "/banners", label: "Quản lý Banner UI", epic: "E5.12", permissions: [Permissions.PromotionBannerManage], icon: ImageIcon },
-  { href: "/flash-sale", label: "Sự kiện Flash Sale", epic: "E5.13", permissions: [Permissions.PromotionFlashSaleManage], icon: Zap },
   { href: "/reviews", label: "Kiểm duyệt Đánh giá", epic: "E5.15", permissions: [Permissions.ReviewModerate], icon: Star },
   { href: "/reports", label: "Báo cáo & Thống kê", epic: "E5.7", permissions: [Permissions.ReportView], icon: BarChart2 },
 ];

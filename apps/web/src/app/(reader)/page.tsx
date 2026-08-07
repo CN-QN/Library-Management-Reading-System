@@ -1,5 +1,4 @@
 import BannerCarousel from '@/components/home/BannerCarousel';
-import FlashSaleSection from '@/components/home/FlashSaleSection';
 import { HeroSearch } from '@/components/home/HeroSearch';
 import { CategoryChips } from '@/components/home/CategoryChips';
 import { ContinueReading } from '@/components/home/ContinueReading';
@@ -26,8 +25,6 @@ export default function HomePage() {
       
       <HeroSearch />
 
-      <FlashSaleSection />
-      
       <AsyncSection fallback={<div className="h-14 w-full flex items-center justify-center animate-pulse bg-muted/20 rounded-full" />}>
         <CategoryChips />
       </AsyncSection>

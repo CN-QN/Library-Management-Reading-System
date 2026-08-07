@@ -492,51 +492,56 @@ public class SeedRunner
 
     private async Task SeedBookCopiesAsync(List<Book> books, LibraryBranch defaultBranch)
     {
-        var count = await _context.BookCopies.CountDocumentsAsync(Builders<BookCopy>.Filter.Empty);
-        if (count > 0) return;
+        if (!books.Any())
+        {
+            books = await _context.Books.Find(Builders<Book>.Filter.Empty).ToListAsync();
+        }
 
         if (!books.Any()) return;
 
-        _logger.LogInformation("Seeding 100+ book copies...");
-        var copies = new List<BookCopy>();
+        var branchId = defaultBranch?.Id ?? "BRANCH001";
         var random = new Random();
-        var branchId = defaultBranch?.Id;
-        var counter = 1;
-
         var statuses = new[] { "AVAILABLE", "BORROWED", "RESERVED", "MAINTENANCE" };
         var conditions = new[] { "NEW", "GOOD", "DAMAGED" };
 
+        var newCopies = new List<BookCopy>();
+        var counter = (int)await _context.BookCopies.CountDocumentsAsync(Builders<BookCopy>.Filter.Empty) + 1;
+
         foreach (var book in books)
         {
-            var copyCount = random.Next(3, 6);
-            for (int i = 1; i <= copyCount; i++)
+            var existingCopiesCount = await _context.BookCopies.CountDocumentsAsync(c => c.BookId == book.Id);
+            if (existingCopiesCount == 0)
             {
-                // Bản sao đầu tiên và thứ 2 luôn là AVAILABLE để đảm bảo mọi cuốn sách đều mượn được
-                var status = i <= 2 ? "AVAILABLE" : statuses[random.Next(statuses.Length)];
-                var condition = conditions[random.Next(conditions.Length)];
-
-                var copy = new BookCopy
+                var copyCount = random.Next(3, 6);
+                for (int i = 1; i <= copyCount; i++)
                 {
-                    BookId = book.Id,
-                    BranchId = branchId ?? "BRANCH001",
-                    Barcode = $"BC{counter:D10}",
-                    ShelfCode = $"A{random.Next(1, 10)}-{random.Next(1, 20):D2}",
-                    Condition = condition,
-                    Status = status,
-                    Price = random.Next(50000, 300000),
-                    AcquiredAt = DateTime.UtcNow.AddDays(-random.Next(1, 730)),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                copies.Add(copy);
-                counter++;
+                    // 2 bản sao đầu tiên luôn là AVAILABLE để đảm bảo người dùng có thể tạo phiếu mượn
+                    var status = i <= 2 ? "AVAILABLE" : statuses[random.Next(statuses.Length)];
+                    var condition = conditions[random.Next(conditions.Length)];
+
+                    var copy = new BookCopy
+                    {
+                        BookId = book.Id,
+                        BranchId = branchId,
+                        Barcode = $"BC{counter:D10}",
+                        ShelfCode = $"A{random.Next(1, 10)}-{random.Next(1, 20):D2}",
+                        Condition = condition,
+                        Status = status,
+                        Price = random.Next(50000, 300000),
+                        AcquiredAt = DateTime.UtcNow.AddDays(-random.Next(1, 730)),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    newCopies.Add(copy);
+                    counter++;
+                }
             }
         }
 
-        if (copies.Any())
+        if (newCopies.Any())
         {
-            await _context.BookCopies.InsertManyAsync(copies);
-            _logger.LogInformation($"Seeded {copies.Count} book copies");
+            await _context.BookCopies.InsertManyAsync(newCopies);
+            _logger.LogInformation($"Seeded {newCopies.Count} missing book copies across books without copies.");
         }
     }
 
@@ -778,6 +783,8 @@ public class SeedRunner
             var today = DateTime.UtcNow;
             int counter = 1;
 
+            var allCopies = await _context.BookCopies.Find(Builders<BookCopy>.Filter.Empty).ToListAsync();
+
             // Rải đều 90 ngày: 2-4 lượt mượn mỗi ngày
             for (int dayOffset = 90; dayOffset >= 0; dayOffset--)
             {
@@ -798,6 +805,9 @@ public class SeedRunner
                     var expectedReturn = isOverdue ? borrowDate.AddDays(3) : borrowDate.AddDays(loanDays);
                     var closedAt = isReturned ? borrowDate.AddDays(random.Next(1, loanDays)) : (DateTime?)null;
 
+                    var copy = allCopies.Any() ? allCopies[counter % allCopies.Count] : null;
+                    var targetCopyId = copy?.Id ?? ObjectId.GenerateNewId().ToString();
+
                     borrowings.Add(new Borrowing
                     {
                         Id = borrowingId,
@@ -817,11 +827,17 @@ public class SeedRunner
                     {
                         Id = ObjectId.GenerateNewId().ToString(),
                         BorrowingId = borrowingId,
-                        CopyId = ObjectId.GenerateNewId().ToString(),
+                        CopyId = targetCopyId,
                         DueAt = expectedReturn,
                         ReturnedAt = closedAt,
                         Status = isReturned ? "RETURNED" : (isOverdue ? "OVERDUE" : "BORROWED")
                     });
+
+                    if (copy != null && !isReturned)
+                    {
+                        copy.Status = "BORROWED";
+                        await _context.BookCopies.ReplaceOneAsync(c => c.Id == copy.Id, copy);
+                    }
 
                     counter++;
                 }

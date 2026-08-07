@@ -24,8 +24,7 @@ public class IndexCreator
             var emailKey = Builders<User>.IndexKeys.Ascending(u => u.Email);
             await _context.Users.Indexes.CreateOneAsync(new CreateIndexModel<User>(emailKey, new CreateIndexOptions { Unique = true }));
 
-            var studentCodeKey = Builders<User>.IndexKeys.Ascending(u => u.StudentCode);
-            await _context.Users.Indexes.CreateOneAsync(new CreateIndexModel<User>(studentCodeKey, new CreateIndexOptions { Unique = true }));
+           
 
             var googleSubjectKey = Builders<User>.IndexKeys.Ascending(u => u.GoogleSubject);
             await _context.Users.Indexes.CreateOneAsync(new CreateIndexModel<User>(googleSubjectKey,
@@ -47,17 +46,7 @@ public class IndexCreator
             var userRoleKey = Builders<UserRole>.IndexKeys.Ascending(ur => ur.UserId).Ascending(ur => ur.RoleId).Ascending(ur => ur.BranchId);
             await _context.UserRoles.Indexes.CreateOneAsync(new CreateIndexModel<UserRole>(userRoleKey, new CreateIndexOptions { Unique = true }));
 
-            // 6. AuthSessions (TTL index on ExpiresAt, Index on UserId)
-            var authSessionTtl = Builders<AuthSession>.IndexKeys.Ascending(asess => asess.ExpiresAt);
-            await _context.AuthSessions.Indexes.CreateOneAsync(new CreateIndexModel<AuthSession>(authSessionTtl, new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
-
-            var authSessionUserId = Builders<AuthSession>.IndexKeys.Ascending(asess => asess.UserId);
-            await _context.AuthSessions.Indexes.CreateOneAsync(new CreateIndexModel<AuthSession>(authSessionUserId));
-
-            // 7. LibraryBranches
-            var branchCodeKey = Builders<LibraryBranch>.IndexKeys.Ascending(b => b.Code);
-            await _context.LibraryBranches.Indexes.CreateOneAsync(new CreateIndexModel<LibraryBranch>(branchCodeKey, new CreateIndexOptions { Unique = true }));
-
+           
             // 10. Books
             var bookSlugKey = Builders<Book>.IndexKeys.Ascending(b => b.Slug);
             await _context.Books.Indexes.CreateOneAsync(new CreateIndexModel<Book>(bookSlugKey, new CreateIndexOptions { Unique = true }));

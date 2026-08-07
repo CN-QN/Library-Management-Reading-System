@@ -26,14 +26,9 @@ public class FlashSaleController : ControllerBase
     /// Lấy sự kiện Flash Sale hiện tại (Cho Trang chủ & Admin)
     /// </summary>
     [HttpGet("current")]
-    public async Task<IActionResult> GetCurrent()
+    public IActionResult GetCurrent()
     {
-        var sale = await _context.FlashSales
-            .Find(s => s.Status == "RUNNING" && s.EndTime > DateTime.UtcNow)
-            .SortByDescending(s => s.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        return Ok(ApiResponse<FlashSale>.SuccessResponse(sale, "Lấy thông tin Flash Sale thành công."));
+        return Ok(ApiResponse<FlashSale?>.SuccessResponse(null, "Không có sự kiện Flash Sale."));
     }
 
     /// <summary>

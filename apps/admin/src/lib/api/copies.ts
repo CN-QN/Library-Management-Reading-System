@@ -19,4 +19,9 @@ export interface Copy {
 
 export const copiesApi = {
   getByBookId: (bookId: string) => apiClient.get<Copy[]>(`/api/copies/book/${bookId}`),
+  search: (keyword: string) =>
+    apiClient.get<{ items: Copy[]; totalItems: number }>(
+      `/api/copies?keyword=${encodeURIComponent(keyword)}&limit=10`
+    ),
 };
+
