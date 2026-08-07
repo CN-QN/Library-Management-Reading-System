@@ -29,7 +29,7 @@ public sealed class PasswordRecoveryService : IPasswordRecoveryService
         var user = await _context.Users.Find(u => u.Email == normalized).FirstOrDefaultAsync(cancellationToken);
         if (user is null) return null;
 
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        var token = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
         var update = Builders<User>.Update
             .Set(u => u.ResetToken, Hash(token))
             .Set(u => u.ResetTokenExpires, DateTime.UtcNow.AddMinutes(15));
@@ -37,16 +37,18 @@ public sealed class PasswordRecoveryService : IPasswordRecoveryService
 
         var resetUrl = $"{_emailSettings.WebBaseUrl.TrimEnd('/')}/login?resetEmail={Uri.EscapeDataString(normalized)}&resetToken={Uri.EscapeDataString(token)}";
 
-        _logger.LogInformation("[PASSWORD RECOVERY] Email: {Email} | Reset Token: {Token} | URL: {ResetUrl}", normalized, token, resetUrl);
+        _logger.LogInformation("[PASSWORD RECOVERY] Email: {Email} | OTP Code: {Token} | URL: {ResetUrl}", normalized, token, resetUrl);
 
         try
         {
-            await _emailSender.SendAsync(normalized, "Khôi phục mật khẩu LibraryHub",
-                $"<p>Bạn đã yêu cầu đặt lại mật khẩu.</p><p><a href=\"{resetUrl}\">Đặt lại mật khẩu</a></p><p>Liên kết hết hạn sau 15 phút. Mã token: <strong>{token}</strong></p>", cancellationToken);
+            await _emailSender.SendAsync(normalized, "Mã xác nhận khôi phục mật khẩu LibraryHub",
+                $"<p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản <strong>{normalized}</strong>.</p>" +
+                $"<p>Mã xác nhận của bạn là: <strong style=\"font-size: 22px; letter-spacing: 4px; color: #d97706;\">{token}</strong></p>" +
+                $"<p>Mã xác nhận có hiệu lực trong 15 phút. Bạn cũng có thể bấm <a href=\"{resetUrl}\">vào đây để đặt lại mật khẩu</a>.</p>", cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[PASSWORD RECOVERY] Email delivery failed, but token remains valid for reset. Reset URL: {ResetUrl}", resetUrl);
+            _logger.LogWarning(ex, "[PASSWORD RECOVERY] Email delivery failed. OTP Code: {Token} | Reset URL: {ResetUrl}", token, resetUrl);
         }
 
         return token;

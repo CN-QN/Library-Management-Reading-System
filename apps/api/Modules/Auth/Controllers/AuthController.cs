@@ -253,12 +253,7 @@ public class AuthController : ControllerBase
         }
 
         var token = await _passwordRecovery.RequestAsync(dto.Email, cancellationToken);
-        if (_environment.IsDevelopment() && !string.IsNullOrEmpty(token))
-        {
-            return Ok(ApiResponse<object>.SuccessResponse(new { token }, "Nếu email tồn tại, LibraryHub đã gửi hướng dẫn đặt lại mật khẩu."));
-        }
-
-        return Ok(ApiResponse.SuccessResponse("Nếu email tồn tại, LibraryHub đã gửi hướng dẫn đặt lại mật khẩu."));
+        return Ok(ApiResponse.SuccessResponse("Nếu email tồn tại, LibraryHub đã gửi mã xác nhận 6 chữ số đến email của bạn."));
     }
 
     /// <summary>

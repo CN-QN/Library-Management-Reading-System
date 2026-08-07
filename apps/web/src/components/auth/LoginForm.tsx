@@ -91,11 +91,8 @@ export function LoginForm() {
 
     try {
       const res = await authApi.forgotPassword(forgotEmail);
-      const devToken = (res.data?.data as { token?: string } | undefined)?.token;
-      if (devToken) {
-        setResetToken(devToken);
-      }
-      setForgotMessage(res.data?.message || 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.');
+      setResetToken('');
+      setForgotMessage(res.data?.message || 'Mã xác nhận 6 chữ số đã được gửi đến email của bạn.');
       setTokenStep(true);
     } catch (err: unknown) {
       setForgotError(axios.isAxiosError(err) ? err.response?.data?.message : 'Không thể gửi yêu cầu khôi phục.');
@@ -285,13 +282,14 @@ export function LoginForm() {
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">Token từ email *</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">Mã xác nhận từ email *</label>
                   <Input
                     type="text"
                     required
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
-                    placeholder="Dán token trong email"
+                    placeholder="Nhập mã xác nhận 6 chữ số"
+                    maxLength={10}
                     className="font-mono tracking-widest font-extrabold text-center text-lg rounded-xl text-primary border-primary/50"
                   />
                 </div>

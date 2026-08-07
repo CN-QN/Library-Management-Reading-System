@@ -73,12 +73,9 @@ export function ChangePasswordModal({
 
     try {
       const res = await authApi.forgotPassword(userEmail);
-      const devToken = (res.data?.data as { token?: string } | undefined)?.token;
-      if (devToken) {
-        setToken(devToken);
-      }
+      setToken('');
       setSuccessMessage(
-        res.data?.message || 'Mã xác nhận đổi mật khẩu đã được gửi đến email của bạn.'
+        res.data?.message || 'Mã xác nhận 6 chữ số đã được gửi đến email của bạn.'
       );
       setStep('reset');
     } catch (err: unknown) {
