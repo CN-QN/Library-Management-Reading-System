@@ -14,23 +14,115 @@ namespace api.Modules.Admin;
 [ApiController, Route("api/admin/media"), RequirePermission(Permissions.FileManage)]
 public sealed class AdminMediaController : ControllerBase
 {
+    private readonly ILogger<AdminMediaController> _logger;
     private const long MaxInputBytes = 10 * 1024 * 1024;
-    private readonly MongoDbContext _context; private readonly IMediaProcessor _processor; private readonly ICloudinaryClient _cloudinary;
-    public AdminMediaController(MongoDbContext context, IMediaProcessor processor, ICloudinaryClient cloudinary) { _context = context; _processor = processor; _cloudinary = cloudinary; }
+    private readonly MongoDbContext _context;
+    private readonly IMediaProcessor _processor;
+    private readonly ICloudinaryClient _cloudinary;
+
+    public AdminMediaController(
+        MongoDbContext context,
+        IMediaProcessor processor,
+        ICloudinaryClient cloudinary,
+        ILogger<AdminMediaController> logger)
+    {
+        _context = context;
+        _processor = processor;
+        _cloudinary = cloudinary;
+        _logger = logger;
+    }
 
     [HttpPost("upload"), RequestSizeLimit(MaxInputBytes)]
-    public async Task<IActionResult> Upload(IFormFile file, [FromForm] string usageType = "generic-media", [FromForm] string category = "general", [FromForm] string? description = null, [FromForm] string? referenceId = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Upload(
+        IFormFile file,
+        [FromForm] string usageType = "generic-media",
+        [FromForm] string category = "general",
+        [FromForm] string? description = null,
+        [FromForm] string? referenceId = null,
+        CancellationToken cancellationToken = default)
     {
-        if (file is null || file.Length == 0 || file.Length > MaxInputBytes) return BadRequest(ApiResponse.ErrorResponse(400, "Tệp ảnh rỗng hoặc vượt quá 10 MB."));
+        if (file is null || file.Length == 0 || file.Length > MaxInputBytes)
+            return BadRequest(ApiResponse.ErrorResponse(400, "Tệp ảnh rỗng hoặc vượt quá 10 MB."));
+
         ProcessedMedia processed;
-        try { await using var stream = file.OpenReadStream(); processed = await _processor.ProcessAsync(stream, usageType, cancellationToken); }
-        catch (Exception ex) when (ex is ArgumentException or UnknownImageFormatException or InvalidImageContentException) { return BadRequest(ApiResponse.ErrorResponse(400, "Tệp không phải ảnh hợp lệ.")); }
-        var uploaded = await _cloudinary.UploadAsync(processed, file.FileName, cancellationToken);
-        var asset = new FileAsset { FileName = Path.GetFileNameWithoutExtension(file.FileName) + processed.Extension, OriginalFileName = Path.GetFileName(file.FileName), FilePath = uploaded.PublicId, FileUrl = uploaded.SecureUrl, CloudinaryPublicId = uploaded.PublicId, FileType = usageType == "book-cover" ? "COVER" : usageType == "avatar" ? "AVATAR" : "IMAGE", MimeType = processed.MimeType, Format = processed.Format, FileSize = processed.Bytes.LongLength, Width = processed.Width, Height = processed.Height, Category = category.Trim().ToLowerInvariant(), UsageType = usageType.Trim().ToLowerInvariant(), Description = description, BookId = usageType == "book-cover" ? referenceId : null, UserId = usageType == "avatar" ? referenceId : null, CreatedBy = User.FindFirstValue(ClaimTypes.NameIdentifier) };
-        try { await _context.FileAssets.InsertOneAsync(asset, cancellationToken: cancellationToken); }
-        catch { await _cloudinary.DeleteAsync(uploaded.PublicId, cancellationToken); throw; }
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            processed = await _processor.ProcessAsync(stream, usageType, cancellationToken);
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnknownImageFormatException or InvalidImageContentException)
+        {
+            return BadRequest(ApiResponse.ErrorResponse(400, "Tệp không phải ảnh hợp lệ."));
+        }
+
+        CloudinaryUploadResult uploaded;
+        try
+        {
+            uploaded = await _cloudinary.UploadAsync(processed, file.FileName, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Cloudinary upload failed. Falling back to local storage.");
+
+            var localFileName = "local_" + global::System.Guid.NewGuid().ToString() + processed.Extension;
+            var localPath = global::System.IO.Path.Combine(global::System.IO.Directory.GetCurrentDirectory(), "uploads", localFileName);
+            var directory = global::System.IO.Path.GetDirectoryName(localPath);
+            if (!global::System.IO.Directory.Exists(directory))
+            {
+                global::System.IO.Directory.CreateDirectory(directory!);
+            }
+
+            await global::System.IO.File.WriteAllBytesAsync(localPath, processed.Bytes, cancellationToken);
+
+            var request = HttpContext.Request;
+            var host = request.Host.Value;
+            var scheme = request.Scheme;
+            var localUrl = $"{scheme}://{host}/uploads/{localFileName}";
+
+            uploaded = new CloudinaryUploadResult(localFileName, localUrl);
+        }
+
+        var asset = new FileAsset
+        {
+            FileName = global::System.IO.Path.GetFileNameWithoutExtension(file.FileName) + processed.Extension,
+            OriginalFileName = global::System.IO.Path.GetFileName(file.FileName),
+            FilePath = uploaded.PublicId,
+            FileUrl = uploaded.SecureUrl,
+            CloudinaryPublicId = uploaded.PublicId,
+            FileType = usageType == "book-cover" ? "COVER" : usageType == "avatar" ? "AVATAR" : "IMAGE",
+            MimeType = processed.MimeType,
+            Format = processed.Format,
+            FileSize = processed.Bytes.LongLength,
+            Width = processed.Width,
+            Height = processed.Height,
+            Category = category.Trim().ToLowerInvariant(),
+            UsageType = usageType.Trim().ToLowerInvariant(),
+            Description = description,
+            BookId = usageType == "book-cover" ? referenceId : null,
+            UserId = usageType == "avatar" ? referenceId : null,
+            CreatedBy = User.FindFirstValue(ClaimTypes.NameIdentifier)
+        };
+
+        try
+        {
+            await _context.FileAssets.InsertOneAsync(asset, cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            await _cloudinary.DeleteAsync(uploaded.PublicId, cancellationToken);
+            throw;
+        }
+
         if (usageType == "book-cover" && !string.IsNullOrWhiteSpace(referenceId))
-            await _context.Books.UpdateOneAsync(x => x.Id == referenceId, Builders<Book>.Update.Set(x => x.CoverAssetId, asset.Id).Set(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken: cancellationToken);
+        {
+            await _context.Books.UpdateOneAsync(
+                x => x.Id == referenceId,
+                Builders<Book>.Update
+                    .Set(x => x.CoverAssetId, asset.Id)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow),
+                cancellationToken: cancellationToken);
+        }
+
         return Ok(ApiResponse<FileAsset>.SuccessResponse(asset));
     }
 

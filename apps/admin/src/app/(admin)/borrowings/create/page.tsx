@@ -21,14 +21,12 @@ export default function CreateBorrowingPage() {
 
   const [user, setUser] = useState<AppUser | null>(null);
   const [cart, setCart] = useState<Copy[]>([]);
-  const [branchId, setBranchId] = useState("");
   const [daysToBorrow, setDaysToBorrow] = useState(14);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleSelectUser(selected: AppUser) {
     setUser(selected);
-    if (selected?.branchId) setBranchId(selected.branchId);
   }
 
   function addCopy(copy: Copy) {
@@ -52,16 +50,12 @@ export default function CreateBorrowingPage() {
       showToast("Vui lòng thêm ít nhất 1 cuốn sách.", "error");
       return;
     }
-    if (!branchId) {
-      showToast("Vui lòng nhập chi nhánh.", "error");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       const borrowing = await circulationApi.create({
         userId: user.id,
-        branchId,
+        branchId: user.branchId || "MAIN",
         copyIds: cart.map((c) => c.id),
         daysToBorrow,
         note: note || undefined,
@@ -130,21 +124,14 @@ export default function CreateBorrowingPage() {
       <Card>
         <CardHeader title="3. Chi tiết phiếu mượn" />
         <CardBody className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="Chi nhánh (ID)"
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value)}
-            />
-            <Input
-              label="Số ngày mượn"
-              type="number"
-              min={1}
-              max={30}
-              value={daysToBorrow}
-              onChange={(e) => setDaysToBorrow(Number(e.target.value))}
-            />
-          </div>
+          <Input
+            label="Số ngày mượn"
+            type="number"
+            min={1}
+            max={30}
+            value={daysToBorrow}
+            onChange={(e) => setDaysToBorrow(Number(e.target.value))}
+          />
           <Input label="Ghi chú (tùy chọn)" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button isLoading={isSubmitting} onClick={handleSubmit}>
             Xác nhận cho mượn

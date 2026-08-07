@@ -75,7 +75,21 @@ try
         options.InstanceName = "LibraryHub_";
     });
 
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(options =>
+    {
+        var fields = typeof(api.Common.Constants.Permissions)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy)
+            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string));
+
+        foreach (var field in fields)
+        {
+            var perm = (string)field.GetValue(null)!;
+            if (!string.IsNullOrEmpty(perm))
+            {
+                options.AddPolicy(perm, policy => policy.RequireAuthenticatedUser());
+            }
+        }
+    });
 
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<AuthService>();
@@ -267,6 +281,18 @@ builder.Services.AddScoped<
     app.UseCors();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseMiddleware<AuditLogMiddleware>();
+
+    app.UseStaticFiles();
+    var uploadsPath = System.IO.Path.Combine(app.Environment.ContentRootPath, "uploads");
+    if (!System.IO.Directory.Exists(uploadsPath))
+    {
+        System.IO.Directory.CreateDirectory(uploadsPath);
+    }
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+        RequestPath = "/uploads"
+    });
 
     if (app.Environment.IsDevelopment())
     {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   type CreateBookInput,
   type UpdateBookInput,
 } from "@/lib/api/books";
+import { mediaApi } from "@/lib/api/media";
 
 const ACCESS_TYPES = ["FREE", "PREMIUM", "PHYSICAL_ONLY"];
 
@@ -25,7 +26,6 @@ interface CreateFormValues {
   isbn: string;
   summary: string;
   publicationYear: string;
-  language: string;
   accessType: string;
   price: string;
   // Publisher inline
@@ -37,7 +37,6 @@ interface EditFormValues {
   title: string;
   summary: string;
   publicationYear: string;
-  language: string;
   accessType: string;
   price: string;
   // Publisher inline
@@ -178,52 +177,30 @@ function emptyCategory(): BookCategorySnapshot {
   return { categoryId: "", name: "", slug: "" };
 }
 
-/** Uploads the cover via the real Files API; failure doesn't block the save flow. */
-async function tryUploadCover(bookId: string, file: File | null, showToast: (m: string, v?: "success" | "error" | "info") => void) {
-  if (!file) return;
-  try {
-    await booksApi.uploadCover(bookId, file);
-    showToast("Tải ảnh bìa thành công.", "success");
-  } catch (err) {
-    showToast(
-      err instanceof Error ? `Đã lưu sách, nhưng tải ảnh bìa thất bại: ${err.message}` : "Đã lưu sách, nhưng tải ảnh bìa thất bại.",
-      "error"
-    );
-  }
-}
-
+/**
+ * CoverPicker: Hiển thị xem trước ảnh bìa cục bộ khi người dùng chọn file.
+ * Việc upload chỉ diễn ra khi người dùng ấn bấm submit (Tạo/Lưu sách).
+ */
 function CoverPicker({
   title,
-  file,
-  onChange,
+  existingCoverUrl,
+  onFileSelect,
 }: {
   title: string;
-  file: File | null;
-  onChange: (file: File | null) => void;
+  existingCoverUrl?: string | null;
+  onFileSelect: (file: File | null) => void;
 }) {
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(existingCoverUrl ?? undefined);
 
-  useEffect(() => {
-    let cancelled = false;
-    let url: string | undefined;
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    async function run() {
-      await Promise.resolve();
-      if (cancelled) return;
-      if (!file) {
-        setPreviewUrl(undefined);
-        return;
-      }
-      url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-
-    void run();
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [file]);
+    // Tạo preview blob URL cho người dùng xem trước, CHƯA gọi API upload
+    const blobUrl = URL.createObjectURL(file);
+    setPreviewUrl(blobUrl);
+    onFileSelect(file);
+  }
 
   return (
     <div>
@@ -235,16 +212,19 @@ function CoverPicker({
         ) : (
           <BookCover title={title || "?"} size={80} />
         )}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-          className="text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-        />
+        <div className="flex flex-col gap-2">
+          <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            {previewUrl ? "Đổi ảnh bìa khác" : "Chọn ảnh bìa"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+          <p className="text-xs text-slate-400">PNG/JPEG/WEBP, tối đa 10 MB.</p>
+        </div>
       </div>
-      <p className="mt-1 text-xs text-slate-400">
-        Ảnh sẽ được tải lên sau khi lưu sách. PNG/JPEG/WEBP.
-      </p>
     </div>
   );
 }
@@ -282,7 +262,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       publisherId: "",
       publisherName: "",
       publicationYear: "",
-      language: "vi",
       accessType: "FREE",
       price: "0",
     },
@@ -329,7 +308,6 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         isbn: values.isbn || undefined,
         summary: values.summary || undefined,
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
-        language: values.language || undefined,
         accessType: values.accessType || undefined,
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
@@ -338,7 +316,16 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
       };
 
       const book = await booksApi.create(payload);
-      await tryUploadCover(book.id, coverFile, showToast);
+
+      // Nếu có chọn ảnh bìa, upload trực tiếp lên Cloudinary sau khi sách vừa được tạo thành công
+      if (coverFile) {
+        try {
+          await booksApi.uploadCover(book.id, coverFile);
+        } catch {
+          showToast("Đã tạo sách nhưng upload ảnh bìa thất bại.", "warning");
+        }
+      }
+
       showToast("Tạo sách thành công.", "success");
       onCreated(book);
     } catch (err) {
@@ -356,11 +343,15 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         />
         <Input label="ISBN" error={errors.isbn?.message} {...register("isbn")} />
         <Input
-          label="Năm xuất bản"
+          label="Năm xuất bản (từ 1450)"
           type="number"
-          {...register("publicationYear")}
+          min={1450}
+          max={new Date().getFullYear()}
+          error={errors.publicationYear?.message}
+          {...register("publicationYear", {
+            validate: (val) => !val || (Number(val) >= 1450 && Number(val) <= new Date().getFullYear()) || `Năm xuất bản phải từ 1450 đến ${new Date().getFullYear()}`,
+          })}
         />
-        <Input label="Ngôn ngữ" {...register("language")} />
         <Select label="Loại truy cập" {...register("accessType")}>
           {ACCESS_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -442,7 +433,10 @@ export function CreateBookForm({ onCreated }: { onCreated: (book: Book) => void 
         </button>
       </div>
 
-      <CoverPicker title={title} file={coverFile} onChange={setCoverFile} />
+      <CoverPicker
+        title={title}
+        onFileSelect={(file) => setCoverFile(file)}
+      />
 
       <Button type="submit" isLoading={isSubmitting}>
         Tạo sách
@@ -483,7 +477,6 @@ export function EditBookForm({
       publisherId: book.publisher?.publisherId ?? "",
       publisherName: book.publisher?.name ?? "",
       publicationYear: book.publicationYear ? String(book.publicationYear) : "",
-      language: book.language,
       accessType: book.accessType,
       price: String(book.price ?? 0),
     },
@@ -521,15 +514,24 @@ export function EditBookForm({
         title: values.title,
         summary: values.summary || undefined,
         publicationYear: values.publicationYear ? Number(values.publicationYear) : undefined,
-        language: values.language || undefined,
         accessType: values.accessType || undefined,
         price: values.accessType === "FREE" ? 0 : Number(values.price),
         authors: validAuthors,
         categories: validCategories,
         publisher: buildPublisher(values.publisherId, values.publisherName),
       };
-      const updated = await booksApi.update(book.id, payload);
-      await tryUploadCover(book.id, coverFile, showToast);
+      let updated = await booksApi.update(book.id, payload);
+
+      // Nếu có chọn ảnh bìa mới, upload trực tiếp lên Cloudinary sau khi submit
+      if (coverFile) {
+        try {
+          const res = await booksApi.uploadCover(book.id, coverFile);
+          updated = { ...updated, coverAssetId: res.url };
+        } catch {
+          showToast("Đã lưu thông tin sách nhưng upload ảnh bìa mới thất bại.", "warning");
+        }
+      }
+
       showToast("Cập nhật sách thành công.", "success");
       onSaved(updated);
     } catch (err) {
@@ -553,11 +555,15 @@ export function EditBookForm({
           {...register("title", { required: "Vui lòng nhập tên sách." })}
         />
         <Input
-          label="Năm xuất bản"
+          label="Năm xuất bản (từ 1450)"
           type="number"
-          {...register("publicationYear")}
+          min={1450}
+          max={new Date().getFullYear()}
+          error={errors.publicationYear?.message}
+          {...register("publicationYear", {
+            validate: (val) => !val || (Number(val) >= 1450 && Number(val) <= new Date().getFullYear()) || `Năm xuất bản phải từ 1450 đến ${new Date().getFullYear()}`,
+          })}
         />
-        <Input label="Ngôn ngữ" {...register("language")} />
         <Select label="Loại truy cập" {...register("accessType")}>
           {ACCESS_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -639,7 +645,11 @@ export function EditBookForm({
         render={({ field }) => <RichTextEditor label="Tóm tắt" value={field.value} onChange={field.onChange} />}
       />
 
-      <CoverPicker title={title} file={coverFile} onChange={setCoverFile} />
+      <CoverPicker
+        title={title}
+        existingCoverUrl={book.coverAssetId}
+        onFileSelect={(file) => setCoverFile(file)}
+      />
 
       <Button type="submit" isLoading={isSubmitting}>
         Lưu thay đổi

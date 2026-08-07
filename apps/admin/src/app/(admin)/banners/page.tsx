@@ -148,7 +148,7 @@ export default function BannersPage() {
   }
 
   async function remove(item: Banner) {
-    if (!confirm(`Xóa banner “${item.title}”?`)) return;
+    if (!confirm(`Xóa banner "${item.title}"?`)) return;
     try {
       await promotionsApi.banners.remove(item.id);
       await load();
@@ -157,6 +157,11 @@ export default function BannersPage() {
       showToast(cause instanceof Error ? cause.message : "Không thể xóa banner.", "error");
     }
   }
+
+  // FIX: Stable onClose ref. Truoc day `onClose={() => setIsModalOpen(false)}` tao arrow function moi moi render
+  // => Modal useEffect([isOpen, onClose]) re-trigger => dialogRef.current?.focus() => input mat focus.
+  // Sau: handleClose la stable ref (useCallback), useEffect khong re-trigger khi form state thay doi.
+  const handleClose = useCallback(() => setIsModalOpen(false), []);
 
   return (
     <div className="space-y-6">
@@ -203,21 +208,20 @@ export default function BannersPage() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleClose}
         title={editing ? "Chỉnh sửa banner" : "Thêm banner"}
-        footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button><Button form="banner-form" type="submit" isLoading={isSaving}>Lưu banner</Button></>}
+        footer={<><Button variant="outline" onClick={handleClose}>Hủy</Button><Button form="banner-form" type="submit" isLoading={isSaving}>Lưu banner</Button></>}
       >
-        <form id="banner-form" onSubmit={save} className="space-y-4">
+        <form id="banner-form" onSubmit={(e) => void save(e)} className="space-y-4">
           <Input label="Tiêu đề *" required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
           <Input label="Mô tả" value={form.subtitle} onChange={(event) => setForm((current) => ({ ...current, subtitle: event.target.value }))} />
-          <Select label="Ảnh banner trong Media *" required value={form.mediaId} onChange={(event) => setForm((current) => ({ ...current, mediaId: event.target.value }))}>
-            <option value="">Chọn ảnh banner…</option>
-            {media.map((asset) => <option key={asset.id} value={asset.id}>{asset.originalFileName}</option>)}
-          </Select>
-          <label className="block rounded-lg border border-dashed border-slate-300 p-3 text-center text-sm text-slate-600 hover:border-slate-500">
-            {isUploading ? "Đang tải ảnh…" : "Hoặc chọn ảnh mới từ máy"}
-            <input className="hidden" type="file" accept="image/*" disabled={isUploading || isSaving} onChange={uploadBanner} />
-          </label>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Ảnh banner *</label>
+            <label className="block cursor-pointer rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-600 hover:border-slate-500 hover:bg-slate-50">
+              {isUploading ? "Đang tải ảnh lên Cloudinary…" : selectedMedia ? "Đổi ảnh khác từ máy" : "Chọn ảnh từ máy để tải lên Cloudinary"}
+              <input className="hidden" type="file" accept="image/*" disabled={isUploading || isSaving} onChange={(e) => void uploadBanner(e)} />
+            </label>
+          </div>
           {selectedMedia && (
             <div className="overflow-hidden rounded-lg bg-slate-50 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}

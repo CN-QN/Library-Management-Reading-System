@@ -10,18 +10,14 @@ import {
   BookOpen,
   Users,
   Repeat,
-  Ticket,
   Image as ImageIcon,
   Zap,
   Star,
   BarChart2,
-  Settings,
-  History,
   ChevronLeft,
   ChevronRight,
   Library,
   ShieldCheck,
-  Mail,
   CreditCard,
 } from "lucide-react";
 
@@ -40,14 +36,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/roles", label: "Vai trò & Phân quyền", epic: "E5.16", permissions: [Permissions.RoleRead], icon: ShieldCheck },
   { href: "/borrowings", label: "Mượn / Trả", epic: "E5.6", permissions: [Permissions.LoanCreate, Permissions.LoanReturn, Permissions.LoanExtend], icon: Repeat },
   { href: "/transactions", label: "Quản lý Thanh toán", epic: "E5.18", permissions: [Permissions.PaymentRead, Permissions.ReportView], icon: CreditCard },
-  { href: "/vouchers", label: "Quản lý Voucher", epic: "E5.11", permissions: [Permissions.PromotionVoucherManage], icon: Ticket },
   { href: "/banners", label: "Quản lý Banner UI", epic: "E5.12", permissions: [Permissions.PromotionBannerManage], icon: ImageIcon },
   { href: "/flash-sale", label: "Sự kiện Flash Sale", epic: "E5.13", permissions: [Permissions.PromotionFlashSaleManage], icon: Zap },
   { href: "/reviews", label: "Kiểm duyệt Đánh giá", epic: "E5.15", permissions: [Permissions.ReviewModerate], icon: Star },
-  { href: "/email-campaigns", label: "Gửi Email & Tin tức", epic: "E5.17", permissions: [Permissions.NotificationBroadcast], icon: Mail },
   { href: "/reports", label: "Báo cáo & Thống kê", epic: "E5.7", permissions: [Permissions.ReportView], icon: BarChart2 },
-  { href: "/settings", label: "Cấu hình hệ thống", epic: "E5.9", permissions: [Permissions.SettingRead], icon: Settings },
-  { href: "/audit-logs", label: "Nhật ký hệ thống", epic: "E5.10", permissions: [Permissions.AuditRead], icon: History },
 ];
 
 interface SidebarProps {
