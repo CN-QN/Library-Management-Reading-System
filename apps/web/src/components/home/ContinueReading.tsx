@@ -1,19 +1,29 @@
 import { getAllReadingProgress } from '@/lib/api/reading';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, ArrowRight } from 'lucide-react';
+import { BookOpen, ArrowRight, BookOpenCheck } from 'lucide-react';
 import Link from 'next/link';
 import { ContinueReadingCard } from '@/components/shared/ContinueReadingCard';
 
 export async function ContinueReading() {
   const progressList = await getAllReadingProgress();
 
-  if (!progressList || progressList.length === 0) {
-    // Empty State
+  // Không hiển thị phần "Tiếp tục đọc" nếu người dùng chưa đăng nhập (progressList === null)
+  if (progressList === null) {
+    return null;
+  }
+
+  if (progressList.length === 0) {
+    // Empty State cho người dùng đã đăng nhập nhưng chưa đọc cuốn sách nào
     return (
       <section className="w-full py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold tracking-tight">Tiếp tục đọc</h2>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+              <BookOpenCheck className="w-4 h-4" />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight">Tiếp tục đọc</h2>
+          </div>
         </div>
         <Card className="bg-muted/30 border-dashed border-2">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -36,7 +46,12 @@ export async function ContinueReading() {
   return (
     <section className="w-full py-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">Tiếp tục đọc</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <BookOpenCheck className="w-4 h-4" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Tiếp tục đọc</h2>
+        </div>
         <Link href="/profile?tab=reading" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
           Xem tất cả <ArrowRight className="w-4 h-4" />
         </Link>

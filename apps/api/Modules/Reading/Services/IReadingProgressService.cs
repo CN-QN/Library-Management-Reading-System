@@ -9,5 +9,6 @@ namespace api.Modules.Reading.Services
         Task<ReadingSessionResponseDto> StartReadingSessionAsync(string userId, StartReadingSessionDto dto);
         Task<ReadingSessionResponseDto> HeartbeatSessionAsync(string sessionId);
         Task<ReadingSessionResponseDto> EndReadingSessionAsync(string sessionId);
+        Task DeleteProgressAsync(string userId, string bookId);
     }
 }

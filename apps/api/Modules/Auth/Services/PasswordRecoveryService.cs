@@ -23,11 +23,11 @@ public sealed class PasswordRecoveryService : IPasswordRecoveryService
         _logger = logger;
     }
 
-    public async Task RequestAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<string?> RequestAsync(string email, CancellationToken cancellationToken = default)
     {
         var normalized = email.Trim().ToLowerInvariant();
         var user = await _context.Users.Find(u => u.Email == normalized).FirstOrDefaultAsync(cancellationToken);
-        if (user is null) return;
+        if (user is null) return null;
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         var update = Builders<User>.Update
@@ -36,18 +36,20 @@ public sealed class PasswordRecoveryService : IPasswordRecoveryService
         await _context.Users.UpdateOneAsync(u => u.Id == user.Id, update, cancellationToken: cancellationToken);
 
         var resetUrl = $"{_emailSettings.WebBaseUrl.TrimEnd('/')}/login?resetEmail={Uri.EscapeDataString(normalized)}&resetToken={Uri.EscapeDataString(token)}";
+
+        _logger.LogInformation("[PASSWORD RECOVERY] Email: {Email} | Reset Token: {Token} | URL: {ResetUrl}", normalized, token, resetUrl);
+
         try
         {
             await _emailSender.SendAsync(normalized, "Khôi phục mật khẩu LibraryHub",
-                $"<p>Bạn đã yêu cầu đặt lại mật khẩu.</p><p><a href=\"{resetUrl}\">Đặt lại mật khẩu</a></p><p>Liên kết hết hạn sau 15 phút.</p>", cancellationToken);
+                $"<p>Bạn đã yêu cầu đặt lại mật khẩu.</p><p><a href=\"{resetUrl}\">Đặt lại mật khẩu</a></p><p>Liên kết hết hạn sau 15 phút. Mã token: <strong>{token}</strong></p>", cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Password recovery email delivery failed.");
-            await _context.Users.UpdateOneAsync(u => u.Id == user.Id,
-                Builders<User>.Update.Unset(u => u.ResetToken).Unset(u => u.ResetTokenExpires),
-                cancellationToken: cancellationToken);
+            _logger.LogWarning(ex, "[PASSWORD RECOVERY] Email delivery failed, but token remains valid for reset. Reset URL: {ResetUrl}", resetUrl);
         }
+
+        return token;
     }
 
     public async Task<bool> ResetAsync(string email, string token, string newPassword, CancellationToken cancellationToken = default)

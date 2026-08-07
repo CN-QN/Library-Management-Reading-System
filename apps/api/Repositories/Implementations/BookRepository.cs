@@ -3,6 +3,7 @@ using api.Database.Entities;
 using api.Repositories.Interfaces;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace api.Repositories.Implementations
 {
@@ -65,6 +66,7 @@ namespace api.Repositories.Implementations
             string? status,
             string? availability,
             string? accessType,
+            string? language,
             int page,
             int limit,
             string sortBy = "createdAt",
@@ -81,11 +83,17 @@ namespace api.Repositories.Implementations
                 filters.Add(keywordFilter);
             }
 
-            // Lọc theo CategoryId (embedded snapshot)
+            // Lọc theo CategoryId, Category Slug hoặc Category Name (embedded snapshot)
             if (!string.IsNullOrEmpty(categoryId))
             {
-                filters.Add(filterBuilder.ElemMatch(b => b.Categories,
-                    Builders<BookCategorySnapshot>.Filter.Eq(c => c.CategoryId, categoryId)));
+                var normalizedCat = categoryId.Trim();
+                var slugifiedCat = normalizedCat.ToLowerInvariant().Replace(' ', '-');
+                var catFilter = Builders<BookCategorySnapshot>.Filter.Eq(c => c.CategoryId, categoryId) |
+                                Builders<BookCategorySnapshot>.Filter.Eq(c => c.Slug, categoryId) |
+                                Builders<BookCategorySnapshot>.Filter.Regex(c => c.Slug, new BsonRegularExpression($"^{Regex.Escape(normalizedCat)}$", "i")) |
+                                Builders<BookCategorySnapshot>.Filter.Regex(c => c.Slug, new BsonRegularExpression($"^{Regex.Escape(slugifiedCat)}$", "i")) |
+                                Builders<BookCategorySnapshot>.Filter.Regex(c => c.Name, new BsonRegularExpression($"^{Regex.Escape(normalizedCat)}$", "i"));
+                filters.Add(filterBuilder.ElemMatch(b => b.Categories, catFilter));
             }
 
             // Lọc theo AuthorId (embedded snapshot)
@@ -105,6 +113,20 @@ namespace api.Repositories.Implementations
             if (!string.IsNullOrEmpty(accessType))
             {
                 filters.Add(filterBuilder.Eq(b => b.AccessType, accessType));
+            }
+
+            // Lọc theo Language
+            if (!string.IsNullOrEmpty(language))
+            {
+                var langs = language.Split(',').Select(l => l.Trim()).ToList();
+                if (langs.Count == 1)
+                {
+                    filters.Add(filterBuilder.Eq(b => b.Language, langs[0]));
+                }
+                else if (langs.Count > 1)
+                {
+                    filters.Add(filterBuilder.In(b => b.Language, langs));
+                }
             }
 
             // Lọc theo tình trạng bản sao dựa vào book_copies

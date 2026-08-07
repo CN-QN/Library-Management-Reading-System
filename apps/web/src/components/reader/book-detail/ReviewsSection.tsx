@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { MessageSquare, LogIn, AlertCircle, BookOpen } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -236,9 +236,12 @@ export function ReviewsSection({
     setPage(1);
   };
 
+  // Hook điều hướng và làm mới dữ liệu Server Component từ Next.js App Router
+  const router = useRouter();
+
   /**
    * Xử lý gửi bài đánh giá mới của độc giả.
-   * Sau khi tạo thành công: Cập nhật state bài viết cá nhân, tải lại thống kê và quay về trang 1 danh sách.
+   * Sau khi tạo thành công: Cập nhật state bài viết cá nhân, tải lại thống kê, làm mới Server Component header và quay về trang 1 danh sách.
    */
   const handleCreateReview = async (data: { rating: number; comment: string }) => {
     if (!activeUserId) {
@@ -258,11 +261,12 @@ export function ReviewsSection({
     await loadStats();
     setPage(1);
     await loadReviews();
+    router.refresh();
   };
 
   /**
    * Xử lý cập nhật bài đánh giá hiện có của độc giả.
-   * Sau khi sửa thành công: Đóng form edit, tải lại review cá nhân và cập nhật danh sách & thống kê.
+   * Sau khi sửa thành công: Đóng form edit, tải lại review cá nhân, làm mới Server Component header và cập nhật danh sách & thống kê.
    */
   const handleUpdateReview = async (data: { rating: number; comment: string }) => {
     if (!userReview || !activeUserId) {
@@ -280,11 +284,12 @@ export function ReviewsSection({
     await loadUserReview();
     await loadStats();
     await loadReviews();
+    router.refresh();
   };
 
   /**
    * Xử lý xóa bài đánh giá cá nhân.
-   * Sau khi xóa thành công: Reset state userReview, đóng mode edit, làm mới thống kê và danh sách.
+   * Sau khi xóa thành công: Reset state userReview, đóng mode edit, làm mới thống kê, Server Component header và danh sách.
    */
   const handleDeleteReview = async (reviewId: string) => {
     if (!activeUserId) return;
@@ -295,6 +300,7 @@ export function ReviewsSection({
     await loadStats();
     setPage(1);
     await loadReviews();
+    router.refresh();
   };
 
   // Lấy pathname hiện tại từ hook của Next.js để đồng nhất 100% giữa Server và Client (tránh lỗi React Hydration Mismatch)

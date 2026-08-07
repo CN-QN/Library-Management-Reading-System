@@ -7,4 +7,5 @@ export * from './ReadingHistoryTab';
 export * from './BorrowedBooksTab';
 export * from './PaymentHistoryTab';
 export * from './EditProfileModal';
+export * from './ChangePasswordModal';
 export * from './ProfileContainer';

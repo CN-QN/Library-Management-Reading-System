@@ -73,14 +73,17 @@ type FilterContentProps = {
   selectedCategoryId: string;
   selectedLanguage: string;
   selectedAvailability: string;
+  selectedAccessType: string;
   selectedSort: string;
   categoryOptions: { value: string; label: string }[];
   availabilityOptions: SearchFilterOption[];
+  accessTypeOptions: SearchFilterOption[];
   sortOptions: SearchFilterOption[];
   onKeywordChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onLanguageChange: (value: string, checked: boolean) => void;
   onAvailabilityChange: (value: string) => void;
+  onAccessTypeChange: (value: string) => void;
   onSortChange: (value: string | null) => void;
   onClearFilters: () => void;
 };
@@ -94,14 +97,17 @@ function FilterContent({
   selectedCategoryId,
   selectedLanguage,
   selectedAvailability,
+  selectedAccessType,
   selectedSort,
   categoryOptions,
   availabilityOptions,
+  accessTypeOptions,
   sortOptions,
   onKeywordChange,
   onCategoryChange,
   onLanguageChange,
   onAvailabilityChange,
+  onAccessTypeChange,
   onSortChange,
   onClearFilters,
 }: FilterContentProps) {
@@ -144,6 +150,24 @@ function FilterContent({
       </div>
 
       <div className="space-y-3">
+        <h3 className="font-semibold text-sm">Hình thức đọc</h3>
+        <RadioGroup value={selectedAccessType || 'all'} onValueChange={onAccessTypeChange}>
+          {accessTypeOptions.map((option, index) => {
+            const rawVal = option.value || 'all';
+            const idKey = `accessType-${rawVal || index}`;
+            return (
+              <div key={idKey} className="flex items-center space-x-2">
+                <RadioGroupItem value={rawVal} id={idKey} />
+                <Label htmlFor={idKey} className="text-sm font-normal cursor-pointer">
+                  {option.label}
+                </Label>
+              </div>
+            );
+          })}
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-3">
         <h3 className="font-semibold text-sm">Thể loại</h3>
         <RadioGroup value={selectedCategoryId || 'all'} onValueChange={onCategoryChange}>
           <div className="flex items-center space-x-2">
@@ -164,7 +188,7 @@ function FilterContent({
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm">Tình trạng</h3>
+        <h3 className="font-semibold text-sm font-sans">Tình trạng bản sao</h3>
         <RadioGroup value={selectedAvailability || 'all'} onValueChange={onAvailabilityChange}>
           {availabilityOptions.map((option, index) => {
             const rawVal = option.value || 'all';
@@ -188,7 +212,7 @@ function FilterContent({
             <div key={language.value ?? 'vi'} className="flex items-center space-x-2">
               <Checkbox
                 id={`language-${language.value}`}
-                checked={selectedLanguage === language.value}
+                checked={selectedLanguage.split(',').includes(language.value ?? '')}
                 onCheckedChange={(checked) => onLanguageChange(language.value ?? '', checked === true)}
               />
               <Label htmlFor={`language-${language.value}`} className="text-sm font-normal cursor-pointer">
@@ -220,11 +244,34 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
   const selectedCategoryId = searchParams.get('CategoryId') || '';
   const selectedLanguage = searchParams.get('Language') || '';
   const selectedAvailability = searchParams.get('Availability') || '';
+  const selectedAccessType = searchParams.get('AccessType') || '';
   const selectedSort = searchParams.get('Sort') || searchParams.get('SortBy') || DEFAULT_SORT;
 
-  // Chuyển đổi danh sách thể loại từ dữ liệu API backend
+  // Chuyển đổi danh sách thể loại từ dữ liệu API backend (khử trùng lặp theo tên chuẩn hóa)
   const categoryOptions = useMemo(() => {
-    return filtersData?.categories?.map((c) => ({ value: c.id, label: c.name })) ?? [];
+    if (!filtersData?.categories) return [];
+    const seen = new Set<string>();
+    const result: { value: string; label: string }[] = [];
+    for (const c of filtersData.categories) {
+      const normKey = (c.name || c.slug || c.id || '').toLowerCase().trim();
+      if (normKey && !seen.has(normKey)) {
+        seen.add(normKey);
+        result.push({ value: c.id || c.slug, label: c.name });
+      }
+    }
+    return result;
+  }, [filtersData]);
+
+  // Tùy chọn hình thức đọc (miễn phí / trả phí) từ API backend với fallback
+  const accessTypeOptions = useMemo(() => {
+    if (filtersData?.accessTypes && filtersData.accessTypes.length > 0) {
+      return filtersData.accessTypes;
+    }
+    return [
+      { value: null, label: 'Tất cả' },
+      { value: 'FREE', label: 'Miễn phí' },
+      { value: 'PREMIUM', label: 'Trả phí' },
+    ];
   }, [filtersData]);
 
   // Tùy chọn tình trạng sách từ API backend với fallback an toàn
@@ -257,9 +304,10 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       selectedCategoryId,
       selectedLanguage,
       selectedAvailability,
+      selectedAccessType,
       selectedSort !== DEFAULT_SORT ? selectedSort : '',
     ].filter(Boolean).length;
-  }, [selectedAvailability, selectedCategoryId, selectedLanguage, selectedSort]);
+  }, [selectedAccessType, selectedAvailability, selectedCategoryId, selectedLanguage, selectedSort]);
 
   const replaceParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -297,6 +345,7 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       CategoryId: null,
       Language: null,
       Availability: null,
+      AccessType: null,
       Sort: null,
       SortBy: null,
       SortOrder: null,
@@ -309,14 +358,26 @@ export function BookSearchAndFilters({ initialKeyword, filtersData }: BookSearch
       selectedCategoryId={selectedCategoryId}
       selectedLanguage={selectedLanguage}
       selectedAvailability={selectedAvailability}
+      selectedAccessType={selectedAccessType}
       selectedSort={selectedSort}
       categoryOptions={categoryOptions}
       availabilityOptions={availabilityOptions}
+      accessTypeOptions={accessTypeOptions}
       sortOptions={sortOptions}
       onKeywordChange={(value) => replaceParams({ Keyword: value || null })}
       onCategoryChange={(value) => replaceParams({ CategoryId: value === 'all' ? null : value })}
-      onLanguageChange={(value, checked) => replaceParams({ Language: checked ? value : null })}
+      onLanguageChange={(value, checked) => {
+        const currentLangs = selectedLanguage ? selectedLanguage.split(',') : [];
+        if (checked) {
+          if (!currentLangs.includes(value)) currentLangs.push(value);
+        } else {
+          const idx = currentLangs.indexOf(value);
+          if (idx > -1) currentLangs.splice(idx, 1);
+        }
+        replaceParams({ Language: currentLangs.length > 0 ? currentLangs.join(',') : null });
+      }}
       onAvailabilityChange={(value) => replaceParams({ Availability: value === 'all' ? null : value })}
+      onAccessTypeChange={(value) => replaceParams({ AccessType: value === 'all' ? null : value })}
       onSortChange={handleSortChange}
       onClearFilters={handleClearFilters}
     />

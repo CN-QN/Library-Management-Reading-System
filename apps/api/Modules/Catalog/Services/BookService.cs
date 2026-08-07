@@ -45,6 +45,7 @@ namespace api.Modules.Catalog.Services
                 query.Status,
                 query.Availability,
                 query.AccessType,
+                query.Language,
                 query.Page,
                 query.Limit,
                 query.SortBy,

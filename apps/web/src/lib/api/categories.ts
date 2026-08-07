@@ -43,6 +43,15 @@ export async function getBooksByCategory(
         : (Array.isArray(item['authorNames']) ? (item['authorNames'] as string[]).join(', ') : '') ||
           'Không rõ tác giả';
 
+    const coverImage =
+      (item['coverImage'] as string) ||
+      (item['coverImageUrl'] as string) ||
+      (item['coverAssetId'] as string) ||
+      (item['CoverAssetId'] as string) ||
+      (item['CoverImage'] as string) ||
+      (item['CoverImageUrl'] as string) ||
+      'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400';
+
     return {
       id: (item['id'] as string) || (item['bookId'] as string) || '',
       slug: (item['slug'] as string) || undefined,
@@ -51,7 +60,7 @@ export async function getBooksByCategory(
       authors,
       categories,
       publisher,
-      coverImage: (item['coverImage'] as string) || (item['coverImageUrl'] as string) || '',
+      coverImage,
       rating: (item['rating'] as number) || 0,
       accessType: (item['accessType'] as string) || 'FREE',
       price: (item['price'] as number) || 0,
@@ -79,8 +88,9 @@ export function deriveCategoriesFromBooks(books: Book[]): BookCategorySnapshot[]
   const result: BookCategorySnapshot[] = [];
   for (const book of books) {
     for (const cat of book.categories ?? []) {
-      if (cat.slug && !seen.has(cat.slug)) {
-        seen.add(cat.slug);
+      const normKey = (cat.name || cat.slug || cat.categoryId || '').toLowerCase().trim();
+      if (normKey && !seen.has(normKey)) {
+        seen.add(normKey);
         result.push(cat);
       }
     }

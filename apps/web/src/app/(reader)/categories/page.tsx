@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BookOpen, FolderTree, Search, ChevronRight } from 'lucide-react';
 import { deriveCategoriesFromBooks } from '@/lib/api/categories';
 import { searchBooks } from '@/lib/api/books';
+import { getSearchFilters } from '@/lib/api/search';
 import { BookCategorySnapshot } from '@/types/Book';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,10 +21,39 @@ export default function CategoriesPage() {
     async function fetchAllCategories() {
       try {
         setIsLoading(true);
-        // Derive categories from embedded book metadata — does NOT call /api/categories
-        const booksResult = await searchBooks({ Limit: 200, Page: 1 });
+        // Tải song song danh sách sách và siêu dữ liệu thể loại từ backend
+        const [booksResult, filtersData] = await Promise.all([
+          searchBooks({ Limit: 200, Page: 1 }),
+          getSearchFilters().catch(() => null),
+        ]);
+
         const derived = deriveCategoriesFromBooks(booksResult.items);
-        setCategories(derived);
+        const filterCats: BookCategorySnapshot[] = (filtersData?.categories ?? []).map((c) => ({
+          categoryId: c.id,
+          name: c.name,
+          slug: c.slug,
+        }));
+
+        // Gộp kết quả thể loại duy nhất dựa trên tên thể loại đã được chuẩn hóa (loại bỏ trùng lặp)
+        const combinedMap = new Map<string, BookCategorySnapshot>();
+
+        // Ưu tiên nạp từ Backend Metadata trước để giữ thông tin ID và Slug chuẩn
+        filterCats.forEach((c) => {
+          const normKey = (c.name || c.slug || c.categoryId || '').toLowerCase().trim();
+          if (normKey && !combinedMap.has(normKey)) {
+            combinedMap.set(normKey, c);
+          }
+        });
+
+        // Nạp thêm từ danh sách sách bóc tách (dự phòng các thể loại khác)
+        derived.forEach((c) => {
+          const normKey = (c.name || c.slug || c.categoryId || '').toLowerCase().trim();
+          if (normKey && !combinedMap.has(normKey)) {
+            combinedMap.set(normKey, c);
+          }
+        });
+
+        setCategories(Array.from(combinedMap.values()));
       } catch (err) {
         console.error('Error loading categories:', err);
       } finally {

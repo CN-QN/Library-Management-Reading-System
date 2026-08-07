@@ -82,5 +82,14 @@ namespace api.Repositories.Implementations
 
             await _progressesCollection.BulkWriteAsync(writes);
         }
+
+        public async Task DeleteByUserIdAndBookIdAsync(string userId, string bookId)
+        {
+            var filter = Builders<ReadingProgress>.Filter.And(
+                Builders<ReadingProgress>.Filter.Eq(p => p.UserId, userId),
+                Builders<ReadingProgress>.Filter.Eq(p => p.BookId, bookId)
+            );
+            await _progressesCollection.DeleteOneAsync(filter);
+        }
     }
 }

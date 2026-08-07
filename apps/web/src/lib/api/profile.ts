@@ -26,8 +26,12 @@ interface RawReadingProgress {
   bookSlug?: string;
   coverImage?: string;
   bookCoverImage?: string;
+  BookCoverImage?: string;
+  coverAssetId?: string;
+  CoverAssetId?: string;
   author?: string;
   authorName?: string;
+  AuthorName?: string;
   chapterId?: string;
   chapterNumber?: number;
   chapterTitle?: string;
@@ -84,19 +88,22 @@ export async function getMyReadingProgress(): Promise<InProgressBook[]> {
 
     return items
       .filter((p) => (p.percentage ?? 0) < 100 && p.status !== 'COMPLETED')
-      .map((p) => ({
-        bookId: p.bookId || p.id || '',
-        bookTitle: p.bookTitle || 'Sách đang đọc',
-        bookSlug: p.bookSlug || 'sach',
-        bookCoverImage: p.coverImage || p.bookCoverImage || '',
-        authorName: p.author || p.authorName || 'Nhiều tác giả',
-        chapterId: p.chapterId,
-        chapterNumber: p.chapterNumber ?? 1,
-        chapterTitle: p.chapterTitle || (p.chapterNumber ? `Chương ${p.chapterNumber}` : 'Chương đang đọc'),
-        scrollPosition: p.scrollPosition ?? 0,
-        percentage: Math.min(100, Math.max(0, Math.round(p.percentage ?? 0))),
-        lastReadAt: p.lastReadAt || new Date().toISOString(),
-      }));
+      .map((p) => {
+        const rawCover = p.bookCoverImage || p.BookCoverImage || p.coverImage || p.coverAssetId || p.CoverAssetId || '';
+        return {
+          bookId: p.bookId || p.id || '',
+          bookTitle: p.bookTitle || 'Sách đang đọc',
+          bookSlug: p.bookSlug || 'sach',
+          bookCoverImage: rawCover,
+          authorName: p.authorName || p.AuthorName || p.author || 'Nhiều tác giả',
+          chapterId: p.chapterId,
+          chapterNumber: p.chapterNumber ?? 1,
+          chapterTitle: p.chapterTitle || (p.chapterNumber ? `Chương ${p.chapterNumber}` : 'Chương đang đọc'),
+          scrollPosition: p.scrollPosition ?? 0,
+          percentage: Math.min(100, Math.max(0, Math.round(p.percentage ?? 0))),
+          lastReadAt: p.lastReadAt || new Date().toISOString(),
+        };
+      });
   } catch (error) {
     console.warn('Không thể tải tiến trình đọc từ API thật, sử dụng LocalStorage fallback:', error);
     return getStoredInProgressFallback();
@@ -115,17 +122,20 @@ export async function getMyReadingHistory(): Promise<ReadingHistoryItem[]> {
 
     return items
       .filter((p) => (p.percentage ?? 0) >= 100 || p.status === 'COMPLETED')
-      .map((p, idx) => ({
-        id: p.id || `hist_${p.bookId || idx}`,
-        bookId: p.bookId || p.id || '',
-        bookTitle: p.bookTitle || 'Sách đã đọc',
-        bookSlug: p.bookSlug || 'sach',
-        bookCoverImage: p.coverImage || p.bookCoverImage || '',
-        authorName: p.author || p.authorName || 'Tác giả',
-        completedAt: p.lastReadAt || new Date().toISOString(),
-        totalChaptersRead: p.chapterNumber || 1,
-        totalReadingTimeMinutes: Math.floor((p.scrollPosition ?? 1200) / 60) + 15,
-      }));
+      .map((p, idx) => {
+        const rawCover = p.bookCoverImage || p.BookCoverImage || p.coverImage || p.coverAssetId || p.CoverAssetId || '';
+        return {
+          id: p.id || `hist_${p.bookId || idx}`,
+          bookId: p.bookId || p.id || '',
+          bookTitle: p.bookTitle || 'Sách đã đọc',
+          bookSlug: p.bookSlug || 'sach',
+          bookCoverImage: rawCover,
+          authorName: p.authorName || p.AuthorName || p.author || 'Tác giả',
+          completedAt: p.lastReadAt || new Date().toISOString(),
+          totalChaptersRead: p.chapterNumber || 1,
+          totalReadingTimeMinutes: Math.floor((p.scrollPosition ?? 1200) / 60) + 15,
+        };
+      });
   } catch (error) {
     console.warn('Không thể tải lịch sử đọc sách từ API thật:', error);
     return [];
@@ -138,10 +148,11 @@ export async function getMyReadingHistory(): Promise<ReadingHistoryItem[]> {
  * Tự động tính toán số ngày còn lại và trạng thái quá hạn/sắp hết hạn cho từng cuốn sách.
  */
 export async function getMyBorrowedBooks(userId?: string): Promise<BorrowedBook[]> {
+  if (!userId) {
+    return [];
+  }
   try {
-    const params: Record<string, string | number> = { limit: 50 };
-    if (userId) params.userId = userId;
-
+    const params: Record<string, string | number> = { limit: 50, userId };
     const res = await apiClient.get('/Borrowings', { params });
     const paged = res.data?.data || res.data;
     const borrowings: RawBorrowing[] = paged?.items || (Array.isArray(paged) ? paged : []);
@@ -246,6 +257,20 @@ export async function updateProfile(data: { firstName: string; lastName: string;
     fullName: `${data.firstName} ${data.lastName}`.trim(),
     avatar: data.avatar,
   });
+}
+
+/**
+ * Xóa tiến trình đọc của một cuốn sách
+ * Kết nối endpoint backend: DELETE /api/Reading/progress/{bookId}
+ */
+export async function deleteReadingProgress(bookId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/Reading/progress/${bookId}`);
+    return true;
+  } catch (error) {
+    console.error('Không thể xóa tiến trình đọc sách:', error);
+    return false;
+  }
 }
 
 /**

@@ -201,6 +201,9 @@ export function useReadingProgress({
       document.removeEventListener('visibilitychange', handleExit);
       window.removeEventListener('pagehide', handleExit);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Save progress on component unmount (e.g. client-side routing like clicking Back)
+      saveReadingProgressBeacon(getPayload());
     };
   }, [bookId, chapterId, getPayload]);
 
