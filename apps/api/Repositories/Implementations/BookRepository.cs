@@ -68,7 +68,6 @@ namespace api.Repositories.Implementations
             await _collection.DeleteOneAsync(filter);
         }
 
-        // [SỬA LỖI] Cập nhật SearchAsync để lọc theo CategoryId, AuthorId, AccessType, Availability và sắp xếp động
         public async Task<(List<Book> Items, long Total)> SearchAsync(
             string? keyword,
             string? categoryId,
@@ -85,7 +84,6 @@ namespace api.Repositories.Implementations
             var filterBuilder = Builders<Book>.Filter;
             var filters = new List<FilterDefinition<Book>>();
 
-            // Lọc theo keyword - Sử dụng Regex thay vì Text Search
             if (!string.IsNullOrEmpty(keyword))
             {
                 var keywordFilter = filterBuilder.Regex(b => b.Title, new BsonRegularExpression(keyword, "i")) |
@@ -93,7 +91,6 @@ namespace api.Repositories.Implementations
                 filters.Add(keywordFilter);
             }
 
-            // Lọc theo CategoryId, Category Slug hoặc Category Name (embedded snapshot)
             if (!string.IsNullOrEmpty(categoryId))
             {
                 var normalizedCat = categoryId.Trim();
@@ -106,26 +103,22 @@ namespace api.Repositories.Implementations
                 filters.Add(filterBuilder.ElemMatch(b => b.Categories, catFilter));
             }
 
-            // Lọc theo AuthorId (embedded snapshot)
             if (!string.IsNullOrEmpty(authorId))
             {
                 filters.Add(filterBuilder.ElemMatch(b => b.Authors,
                     Builders<BookAuthorSnapshot>.Filter.Eq(a => a.AuthorId, authorId)));
             }
 
-            // Lọc theo status
             if (!string.IsNullOrEmpty(status))
             {
                 filters.Add(filterBuilder.Eq(b => b.Status, status));
             }
 
-            // Lọc theo accessType
             if (!string.IsNullOrEmpty(accessType))
             {
                 filters.Add(filterBuilder.Eq(b => b.AccessType, accessType));
             }
 
-            // Lọc theo Language
             if (!string.IsNullOrEmpty(language))
             {
                 var langs = language.Split(',').Select(l => l.Trim()).ToList();
@@ -139,12 +132,9 @@ namespace api.Repositories.Implementations
                 }
             }
 
-            // Lọc theo tình trạng bản sao dựa vào book_copies
             if (!string.IsNullOrEmpty(availability))
             {
                 var copiesCollection = _collection.Database.GetCollection<BookCopy>("book_copies");
-
-                // Lấy tất cả book ID có ít nhất 1 bản sao AVAILABLE
                 var availableBookIds = await copiesCollection
                     .Distinct<string>("bookId", Builders<BookCopy>.Filter.Eq(c => c.Status, "AVAILABLE"))
                     .ToListAsync();
@@ -159,13 +149,9 @@ namespace api.Repositories.Implementations
                 }
             }
 
-            // Kết hợp tất cả filters
             var filter = filters.Any() ? filterBuilder.And(filters) : filterBuilder.Empty;
-
-            // Đếm tổng số bản ghi
             var total = await _collection.CountDocumentsAsync(filter);
 
-            // Xây dựng dynamic sort
             var isAsc = sortOrder.ToLower() == "asc";
             SortDefinition<Book> sort = sortBy.ToLower() switch
             {
@@ -175,7 +161,6 @@ namespace api.Repositories.Implementations
                 _           => isAsc ? Builders<Book>.Sort.Ascending(b => b.CreatedAt) : Builders<Book>.Sort.Descending(b => b.CreatedAt),
             };
 
-            // Phân trang và sắp xếp
             var skip = (page - 1) * limit;
             var items = await _collection.Find(filter)
                 .Sort(sort)
@@ -228,10 +213,28 @@ namespace api.Repositories.Implementations
             return await _collection.Find(filter).AnyAsync();
         }
 
-        public async Task<bool> ExistsByISBNAsync(string isbn)
+        public async Task<bool> ExistsByISBNAsync(string isbn, string? excludeId = null)
         {
-            if (string.IsNullOrEmpty(isbn)) return false;
-            var filter = Builders<Book>.Filter.Eq(b => b.ISBN, isbn);
+            if (string.IsNullOrWhiteSpace(isbn)) return false;
+            var builder = Builders<Book>.Filter;
+            var filter = builder.Eq(b => b.ISBN, isbn.Trim());
+            if (!string.IsNullOrEmpty(excludeId))
+            {
+                filter = builder.And(filter, builder.Ne(b => b.Id, excludeId));
+            }
+            return await _collection.Find(filter).AnyAsync();
+        }
+
+        public async Task<bool> ExistsByTitleAsync(string title, string? excludeId = null)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return false;
+            var normalizedTitle = title.Trim();
+            var builder = Builders<Book>.Filter;
+            var filter = builder.Regex(b => b.Title, new BsonRegularExpression($"^{Regex.Escape(normalizedTitle)}$", "i"));
+            if (!string.IsNullOrEmpty(excludeId))
+            {
+                filter = builder.And(filter, builder.Ne(b => b.Id, excludeId));
+            }
             return await _collection.Find(filter).AnyAsync();
         }
 
@@ -275,7 +278,6 @@ namespace api.Repositories.Implementations
 
         public async Task<bool> ReplaceChapterAsync(string bookId, string chapterId, BookChapter chapter)
         {
-            // Load the current book to validate size after replace
             var existingBook = await GetByIdAsync(bookId);
             if (existingBook is null) return false;
 
@@ -314,8 +316,8 @@ namespace api.Repositories.Implementations
 
             var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
             var update = Builders<Book>.Update
-                .Set(b => b.Chapters, chapters.ToList())
-                .Set(b => b.TotalChapters, chapters.Count)
+                .Set(b => b.Chapters, existingBook.Chapters)
+                .Set(b => b.TotalChapters, existingBook.TotalChapters)
                 .Set(b => b.UpdatedAt, DateTime.UtcNow);
 
             var result = await _collection.UpdateOneAsync(filter, update);
@@ -324,13 +326,10 @@ namespace api.Repositories.Implementations
 
         public async Task<bool> ArchiveChapterAsync(string bookId, string chapterId)
         {
-            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId) &
-                         Builders<Book>.Filter.ElemMatch(b => b.Chapters,
-                             Builders<BookChapter>.Filter.Eq(c => c.ChapterId, chapterId));
-
+            var filter = Builders<Book>.Filter.Eq(b => b.Id, bookId);
             var update = Builders<Book>.Update
-                .Set("chapters.$.status", "ARCHIVED")
-                .Set("chapters.$.updatedAt", DateTime.UtcNow)
+                .PullFilter(b => b.Chapters, c => c.ChapterId == chapterId)
+                .Inc(b => b.TotalChapters, -1)
                 .Set(b => b.UpdatedAt, DateTime.UtcNow);
 
             var result = await _collection.UpdateOneAsync(filter, update);

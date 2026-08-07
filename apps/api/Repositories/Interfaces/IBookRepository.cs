@@ -30,7 +30,8 @@ namespace api.Repositories.Interfaces
         Task IncrementViewCountAsync(string bookId);
         Task UpdateTotalChaptersAsync(string bookId, int count);
         Task<bool> ExistsBySlugAsync(string slug);
-        Task<bool> ExistsByISBNAsync(string isbn);
+        Task<bool> ExistsByISBNAsync(string isbn, string? excludeId = null);
+        Task<bool> ExistsByTitleAsync(string title, string? excludeId = null);
 
         // Embedded chapter methods
         Task<BookChapter?> GetChapterByIdAsync(string bookId, string chapterId);

@@ -6,6 +6,7 @@ namespace api.Modules.Catalog.DTOs.Requests;
 public class UpdateBookDto
 {
     public string? Title { get; set; }
+    public string? ISBN { get; set; }
     public string? Summary { get; set; }
     [Obsolete("Use Publisher instead.")]
     public string? PublisherId { get; set; }

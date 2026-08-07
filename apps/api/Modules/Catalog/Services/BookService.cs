@@ -71,13 +71,16 @@ namespace api.Modules.Catalog.Services
 
         public async Task<BookResponseDto> CreateAsync(CreateBookDto dto, string userId)
         {
+            if (await _bookRepository.ExistsByTitleAsync(dto.Title))
+                throw new InvalidOperationException($"Cuốn sách có tên '{dto.Title}' đã tồn tại trong hệ thống. Vui lòng không thêm sản phẩm trùng lặp.");
+
+            if (!string.IsNullOrWhiteSpace(dto.ISBN) && await _bookRepository.ExistsByISBNAsync(dto.ISBN))
+                throw new InvalidOperationException($"Mã ISBN '{dto.ISBN}' đã được sử dụng bởi cuốn sách khác.");
+
             var slug = await GenerateUniqueSlugAsync(dto.Title);
             var accessType = string.IsNullOrWhiteSpace(dto.AccessType)
                 ? "FREE"
                 : dto.AccessType.ToUpperInvariant();
-
-            if (!string.IsNullOrEmpty(dto.ISBN) && await _bookRepository.ExistsByISBNAsync(dto.ISBN))
-                throw new InvalidOperationException($"ISBN '{dto.ISBN}' already exists");
 
             var book = new Book
             {
@@ -144,7 +147,20 @@ namespace api.Modules.Catalog.Services
             var book = await _bookRepository.GetByIdAsync(id);
             if (book == null) return null;
 
-            if (!string.IsNullOrEmpty(dto.Title)) book.Title = dto.Title;
+            if (!string.IsNullOrWhiteSpace(dto.Title) && !string.Equals(book.Title, dto.Title, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await _bookRepository.ExistsByTitleAsync(dto.Title, excludeId: id))
+                    throw new InvalidOperationException($"Cuốn sách có tên '{dto.Title}' đã tồn tại trong hệ thống.");
+                book.Title = dto.Title;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.ISBN) && !string.Equals(book.ISBN, dto.ISBN, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await _bookRepository.ExistsByISBNAsync(dto.ISBN, excludeId: id))
+                    throw new InvalidOperationException($"Mã ISBN '{dto.ISBN}' đã được sử dụng bởi cuốn sách khác.");
+                book.ISBN = dto.ISBN;
+            }
+
             if (!string.IsNullOrEmpty(dto.Summary)) book.Summary = dto.Summary;
             if (dto.PublicationYear.HasValue) book.PublicationYear = dto.PublicationYear;
             if (!string.IsNullOrEmpty(dto.Language)) book.Language = dto.Language;
